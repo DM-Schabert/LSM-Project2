@@ -45,7 +45,7 @@ METHODS: Tuple[Method, Method] = ("random", "nearest")
 
 DEFAULT_CSV_PATH: Path = Path("gaia_cleaned.csv")
 DEFAULT_SEED: int = 42
-DEFAULT_N_VALUES: List[int] = [1_000, 5_000, 20_000]
+DEFAULT_N_VALUES: List[int] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 5_000, 20_000, 100_000]
 DEFAULT_OUT_DIR: Path = Path("gaia_subsets")
 DEFAULT_PLOTS_DIR: Path = Path("Plots")
 
