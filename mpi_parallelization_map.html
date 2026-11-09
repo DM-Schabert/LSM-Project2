@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parallelizing Gaia N-Body</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column (max 1040px); figures use the full column width, single column below 780px */
+:root {
+  --bg: #f3f5f8;
+  --surface: #fcfdfe;
+  --ink: #121823;
+  --ink-2: #465063;
+  --muted: #6f798b;
+  --line: #dce1e8;
+  --line-strong: #bfc7d3;
+  --faint: #e7ebf1;
+  --t-parallel: #2a78d6;
+  --t-komm: #eb6834;
+  --t-lokal: #1baf7a;
+  --t-sync: #e34948;
+  --t-rank0: #6250d6;
+  --t-seriell: #898781;
+  --on-fill: #ffffff;
+  --shadow: rgba(18, 24, 35, 0.12);
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1016; --surface: #151a22; --ink: #e6eaf0; --ink-2: #b0b8c5; --muted: #8a92a2;
+    --line: #252c37; --line-strong: #3a4350; --faint: #1e242e;
+    --t-parallel: #3987e5; --t-komm: #d95926; --t-lokal: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-seriell: #898781;
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1016; --surface: #151a22; --ink: #e6eaf0; --ink-2: #b0b8c5; --muted: #8a92a2;
+  --line: #252c37; --line-strong: #3a4350; --faint: #1e242e;
+  --t-parallel: #3987e5; --t-komm: #d95926; --t-lokal: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-seriell: #898781;
+  --shadow: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.page {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 48px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 72px;
+}
+p { margin: 0; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(34px, 5.2vw, 54px); line-height: 1.04; letter-spacing: -0.01em; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 3vw, 31px); line-height: 1.15; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 1.25; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--faint); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 68ch; color: var(--ink-2); }
+section { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+section > header { display: flex; flex-direction: column; gap: 8px; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--t-parallel); outline-offset: 2px; }
+
+/* tag colours */
+.tag-PARALLEL { --c: var(--t-parallel); }
+.tag-KOMM { --c: var(--t-komm); }
+.tag-LOKAL { --c: var(--t-lokal); }
+.tag-SYNC { --c: var(--t-sync); }
+.tag-RANK0 { --c: var(--t-rank0); }
+.tag-SERIELL { --c: var(--t-seriell); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em; line-height: 1;
+  padding: 5px 8px; border-radius: 4px; color: var(--ink);
+  background: color-mix(in srgb, var(--c) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); flex: none; }
+
+/* hero */
+.hero { display: flex; flex-direction: column; gap: 18px; }
+.lede { font-size: 18px; color: var(--ink-2); max-width: 62ch; }
+.filechip {
+  align-self: flex-start; max-width: 100%;
+  display: inline-flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+  font-family: var(--font-mono); font-size: 13px;
+  padding: 9px 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+}
+.filechip b { font-weight: 500; overflow-wrap: anywhere; }
+.filechip span { color: var(--muted); }
+
+/* runtime */
+.stat { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 28px; align-items: end; }
+.stat .num { font-family: var(--font-display); font-weight: 600; font-size: clamp(54px, 9vw, 84px); line-height: 0.9; letter-spacing: -0.02em; }
+.stat .num small { font-size: 0.5em; margin-left: 2px; }
+.stat .what { color: var(--ink-2); max-width: 52ch; padding-bottom: 6px; }
+@media (max-width: 560px) { .stat { grid-template-columns: minmax(0, 1fr); } }
+.bars { display: flex; flex-direction: column; gap: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+.bar-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 18px; align-items: center; }
+.bar-label { font-size: 14px; color: var(--ink-2); line-height: 1.35; }
+.bar-label b { display: block; color: var(--ink); font-weight: 600; }
+.strip { display: flex; gap: 2px; height: 30px; min-width: 0; }
+.seg { flex-basis: 0; min-width: 3px; border: 0; padding: 0; background: var(--c); cursor: pointer; transition: opacity 0.15s; }
+.seg:first-child { border-radius: 4px 0 0 4px; }
+.seg:last-child { border-radius: 0 4px 4px 0; }
+.seg.dim { opacity: 0.2; }
+.bar-note { grid-column: 2; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .bar-row { grid-template-columns: minmax(0, 1fr); } .bar-note { grid-column: 1; } }
+
+/* legend + list */
+.legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 760px) { .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .legend { grid-template-columns: minmax(0, 1fr); } }
+.lg {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left;
+  padding: 12px 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer;
+}
+.lg:hover { border-color: var(--line-strong); }
+.lg[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.lg p { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.hint { font-size: 13.5px; color: var(--muted); }
+.codelist { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 18px; padding: 14px 6px; border-bottom: 1px solid var(--line); align-items: start; transition: opacity 0.15s; scroll-margin: 80px; }
+.row .ln { font-family: var(--font-mono); font-size: 13px; color: var(--muted); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.row .nm { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.row .nm.mono { font-family: var(--font-mono); font-size: 14.5px; font-weight: 500; }
+.row .nt { font-size: 14.5px; color: var(--ink-2); margin-top: 3px; max-width: 70ch; }
+.row .tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 270px; }
+.row.dim { opacity: 0.3; }
+.row.hot { background: color-mix(in srgb, var(--t-parallel) 8%, transparent); }
+.row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--t-parallel) 24%, transparent); } }
+.hotbadge { display: inline-block; margin-left: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 4px; background: var(--t-parallel); color: var(--on-fill); vertical-align: 2px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .row { grid-template-columns: 52px minmax(0, 1fr); }
+  .row .tags { grid-column: 2; justify-content: flex-start; max-width: none; margin-top: 6px; }
+}
+
+/* figures */
+figure { margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.figbox { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; overflow-x: auto; }
+.figbox svg { display: block; width: 100%; height: auto; min-width: 640px; color: var(--ink-2); }
+figcaption { font-size: 14px; color: var(--muted); max-width: 78ch; }
+.sv-h { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); }
+.sv-lane { font-family: var(--font-body); font-size: 12.5px; fill: var(--ink-2); }
+.sv-neutral { fill: var(--faint); stroke: var(--line-strong); }
+.sv-t { font-family: var(--font-body); font-size: 12.5px; fill: var(--ink); }
+.sv-w { font-family: var(--font-body); font-size: 12.5px; font-weight: 500; fill: var(--on-fill); }
+.sv-s { font-size: 11px; }
+.sv-par { fill: var(--t-parallel); }
+.sv-komm { fill: var(--t-komm); }
+.sv-lok { fill: var(--t-lokal); }
+.sv-sync { fill: var(--t-sync); }
+.sv-tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; fill: var(--muted); }
+.sv-guide { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 4; }
+.sv-arrow { stroke: currentColor; stroke-width: 1.4; fill: none; }
+.sv-note { font-family: var(--font-body); font-size: 11.5px; fill: var(--ink-2); }
+
+/* matrix */
+.mx-controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; }
+.ctl { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctl-label { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.segctl { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.segctl button { font-size: 14px; font-weight: 500; padding: 7px 12px; border: 0; border-right: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.segctl button:last-child { border-right: 0; }
+.segctl button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.stepbtn { width: 32px; height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 14px; line-height: 1; }
+.rankval { font-family: var(--font-mono); font-size: 14px; min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.playbtn { padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 14px; font-weight: 500; }
+input[type="range"] { width: 150px; accent-color: var(--t-parallel); }
+.mx-grid { display: grid; grid-template-columns: minmax(0, 430px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 780px) { .mx-grid { grid-template-columns: minmax(0, 1fr); } }
+.mx-figure { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+#matrix { display: block; width: 100%; height: auto; max-width: 440px; margin: 0 auto; }
+#matrix [data-a] { cursor: pointer; }
+.mx-text { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.mx-cap { font-size: 16px; color: var(--ink); max-width: 60ch; }
+pre.snip { margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; background: var(--faint); border-radius: 6px; padding: 12px 14px; overflow-x: auto; color: var(--ink); }
+.mx-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--ink-2); }
+.mx-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
+.sw-line { width: 20px; height: 0; border-top: 2px solid var(--t-komm); display: inline-block; flex: none; }
+.sw-line.dash { border-top-style: dashed; }
+.t-other { fill: var(--faint); }
+.t-mine { fill: var(--t-parallel); }
+.t-cur { fill: color-mix(in srgb, var(--t-parallel) 42%, var(--faint)); }
+.t-done { fill: color-mix(in srgb, var(--t-parallel) 15%, var(--faint)); }
+.t-minedone { fill: color-mix(in srgb, var(--t-parallel) 30%, var(--faint)); }
+.t-band { fill: color-mix(in srgb, var(--t-komm) 18%, var(--faint)); }
+.h-idle { fill: var(--faint); stroke: var(--line-strong); stroke-width: 1; }
+.h-own { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+.h-recv { fill: var(--t-komm); }
+.h-me { fill: var(--t-parallel); }
+.b-row { fill: none; stroke: var(--t-komm); stroke-width: 2; }
+.b-col { fill: none; stroke: var(--t-komm); stroke-width: 2; stroke-dasharray: 6 4; }
+.mx-ax { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.mx-lab { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+.mx-lab.on { fill: var(--ink); font-weight: 500; }
+.mx-in { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-2); pointer-events: none; }
+.mx-in.on { fill: var(--on-fill); }
+
+/* table */
+.n-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.n-row label { font-size: 14px; color: var(--ink-2); }
+input[type="number"] { font-family: var(--font-mono); font-size: 15px; font-weight: 500; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); width: 140px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 660px; font-size: 14px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.num { font-family: var(--font-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+td.num small { display: block; color: var(--muted); font-size: 12px; }
+td.scheme { font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tr.sel td { background: color-mix(in srgb, var(--t-parallel) 9%, transparent); }
+.worknote { font-size: 14.5px; color: var(--ink-2); max-width: 78ch; }
+.small { font-size: 12.5px; color: var(--muted); }
+
+/* pitfalls */
+.pits { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.pit { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 6px 22px; padding: 16px 4px; border-bottom: 1px solid var(--line); }
+.pit .pt { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.pit p { font-size: 15px; color: var(--ink-2); max-width: 70ch; }
+@media (max-width: 640px) { .pit { grid-template-columns: minmax(0, 1fr); } }
+
+.foot { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; max-width: 90ch; }
+
+.tip { position: fixed; z-index: 20; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px 10px; font-size: 13px; line-height: 1.4; max-width: 300px; box-shadow: 0 8px 24px var(--shadow); }
+.tip b { font-weight: 600; }
+.tip span { color: var(--ink-2); font-family: var(--font-mono); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<main class="page">
+  <header class="hero">
+    <div class="eyebrow">02616 Large Scale Modelling · Project 2 · Gaia N-body</div>
+    <h1>Parallelizing Gaia N-Body</h1>
+    <p class="lede">A map of <code>SerialImplementation.py</code>: which part MPI splits up, where the ranks have to exchange data, and what stays serial or on rank&nbsp;0. The tags match the comments in the annotated copy.</p>
+    <div class="filechip"><b>SerialImplementation_MPI_annotated.py</b><span>code unchanged, 212 comment lines · grep -n "\[MPI-"</span></div>
+  </header>
+
+  <section aria-labelledby="h-time">
+    <header>
+      <div class="eyebrow">Runtime</div>
+      <h2 id="h-time">Almost all the time goes into one function</h2>
+    </header>
+    <div class="stat">
+      <div class="num">99.5<small>%</small></div>
+      <p class="what">of the runtime is spent in <code>compute_accelerations</code>, a 40-line function. Measured in <code>results.csv</code>: gaia_nearest_1000, 2,000 steps, 168.9 of 169.6&nbsp;s. With 5,000 stars it is 99.6%.</p>
+    </div>
+    <div class="bars">
+      <div class="bar-row">
+        <div class="bar-label"><b>Share of code</b>SerialImplementation.py, 919 lines</div>
+        <div class="strip" id="codeStrip" role="group" aria-label="Sections of the file by line count, coloured by tag"></div>
+        <div class="bar-note">compute_accelerations: 40 of 919 lines (4%) · click to jump to a section</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><b>Share of runtime</b>169.6 s, one process</div>
+        <div class="strip" id="timeStrip" role="group" aria-label="Runtime by section"></div>
+        <div class="bar-note">Forces 168.9 s (99.5%) · plotting 0.65 s (0.4%) · everything else 0.11 s (0.07%)</div>
+      </div>
+    </div>
+    <p class="prose">So there is one place where MPI pays off. Everything outside the force computation is currently so small that it barely slows the run down, even if it stays serial. That changes once Numba makes the kernel faster: then communication and the serial remainder start to count.</p>
+  </section>
+
+  <section aria-labelledby="h-file">
+    <header>
+      <div class="eyebrow">The file</div>
+      <h2 id="h-file">What happens at each place</h2>
+      <p class="hint">Line numbers refer to the annotated file. Click a tag to highlight only the places that carry it.</p>
+    </header>
+    <div class="legend" id="legend"></div>
+    <div class="codelist" id="codeList"></div>
+  </section>
+
+  <section aria-labelledby="h-step">
+    <header>
+      <div class="eyebrow">One time step</div>
+      <h2 id="h-step">Serial and MPI side by side</h2>
+    </header>
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 760 322" role="img" aria-label="One time step, serial and with three MPI ranks: positions exchanged via Allgatherv, forces for a third of the stars each computed in parallel, shared merge and stop decisions via allreduce, kick and drift local.">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="0" y="20" class="sv-h">Serial, today</text>
+          <text x="98" y="57" class="sv-lane" text-anchor="end">1 process</text>
+          <rect x="110" y="36" width="450" height="34" rx="4" class="sv-neutral"/>
+          <text x="335" y="57" class="sv-t" text-anchor="middle">Forces: 1000 targets × 1000 sources</text>
+          <rect x="564" y="36" width="44" height="34" rx="4" class="sv-neutral"/>
+          <text x="586" y="57" class="sv-t sv-s" text-anchor="middle">Merge</text>
+          <rect x="612" y="36" width="56" height="34" rx="4" class="sv-neutral"/>
+          <text x="640" y="50" class="sv-t sv-s" text-anchor="middle">Kick +</text>
+          <text x="640" y="63" class="sv-t sv-s" text-anchor="middle">Drift</text>
+          <rect x="672" y="36" width="44" height="34" rx="4" class="sv-neutral"/>
+          <text x="694" y="57" class="sv-t sv-s" text-anchor="middle">Stop?</text>
+
+          <text x="0" y="112" class="sv-h">MPI, P = 3 ranks, Allgather</text>
+          <text x="98" y="149" class="sv-lane" text-anchor="end">Rank 0</text>
+          <text x="98" y="197" class="sv-lane" text-anchor="end">Rank 1</text>
+          <text x="98" y="245" class="sv-lane" text-anchor="end">Rank 2</text>
+
+          <rect x="110" y="128" width="88" height="130" rx="4" class="sv-komm"/>
+          <text x="154" y="189" class="sv-w" text-anchor="middle">Allgatherv</text>
+          <text x="154" y="204" class="sv-w sv-s" text-anchor="middle">positions</text>
+
+          <rect x="202" y="128" width="150" height="34" rx="4" class="sv-par"/>
+          <text x="277" y="149" class="sv-w sv-s" text-anchor="middle">Targets 0–333 × 1000</text>
+          <rect x="202" y="176" width="150" height="34" rx="4" class="sv-par"/>
+          <text x="277" y="197" class="sv-w sv-s" text-anchor="middle">Targets 334–666 × 1000</text>
+          <rect x="202" y="224" width="150" height="34" rx="4" class="sv-par"/>
+          <text x="277" y="245" class="sv-w sv-s" text-anchor="middle">Targets 667–999 × 1000</text>
+
+          <rect x="356" y="128" width="64" height="130" rx="4" class="sv-sync"/>
+          <text x="388" y="189" class="sv-w" text-anchor="middle">Merge?</text>
+          <text x="388" y="204" class="sv-w sv-s" text-anchor="middle">allreduce</text>
+
+          <rect x="424" y="128" width="56" height="34" rx="4" class="sv-lok"/>
+          <text x="452" y="142" class="sv-w sv-s" text-anchor="middle">Kick +</text>
+          <text x="452" y="155" class="sv-w sv-s" text-anchor="middle">Drift</text>
+          <rect x="424" y="176" width="56" height="34" rx="4" class="sv-lok"/>
+          <text x="452" y="190" class="sv-w sv-s" text-anchor="middle">Kick +</text>
+          <text x="452" y="203" class="sv-w sv-s" text-anchor="middle">Drift</text>
+          <rect x="424" y="224" width="56" height="34" rx="4" class="sv-lok"/>
+          <text x="452" y="238" class="sv-w sv-s" text-anchor="middle">Kick +</text>
+          <text x="452" y="251" class="sv-w sv-s" text-anchor="middle">Drift</text>
+
+          <rect x="484" y="128" width="64" height="130" rx="4" class="sv-sync"/>
+          <text x="516" y="189" class="sv-w" text-anchor="middle">Stop?</text>
+          <text x="516" y="204" class="sv-w sv-s" text-anchor="middle">allreduce</text>
+
+          <text x="154" y="276" class="sv-tag" text-anchor="middle">KOMM</text>
+          <text x="277" y="276" class="sv-tag" text-anchor="middle">PARALLEL</text>
+          <text x="388" y="276" class="sv-tag" text-anchor="middle">SYNC</text>
+          <text x="452" y="276" class="sv-tag" text-anchor="middle">LOKAL</text>
+          <text x="516" y="276" class="sv-tag" text-anchor="middle">SYNC</text>
+
+          <line x1="548" y1="122" x2="548" y2="300" class="sv-guide"/>
+          <line x1="716" y1="30" x2="716" y2="300" class="sv-guide"/>
+          <line x1="554" y1="294" x2="710" y2="294" class="sv-arrow" marker-start="url(#arr)" marker-end="url(#arr)"/>
+          <text x="632" y="286" class="sv-note" text-anchor="middle">forces ÷ 3, plus exchange</text>
+          <text x="548" y="316" class="sv-note" text-anchor="middle">MPI step ends</text>
+          <text x="716" y="316" class="sv-note" text-anchor="middle">serial ends</text>
+        </svg>
+      </div>
+      <figcaption>Schematic. The force boxes are to scale: with 3 ranks, each computes a third of the pairs. Exchange, merge, kick/drift and stop are heavily enlarged for readability; with the current Python kernel they add up to less than 1%. The tall boxes spanning all three ranks are collectives: no rank moves on until every rank has arrived. The labels underneath are the tags from the annotated file.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-mx">
+    <header>
+      <div class="eyebrow">Force matrix</div>
+      <h2 id="h-mx">Three ways to split the N × N pairs</h2>
+      <p class="prose">Each row is a target star i, each column a source star j. The matrix is cut into blocks, and each tile is one piece of work. The three schemes from the assignment compute exactly the same tiles; they only distribute them differently and exchange different data. Click a tile to pick a rank.</p>
+    </header>
+
+    <div class="mx-controls">
+      <div class="ctl"><span class="ctl-label">Scheme</span>
+        <div class="segctl" id="schemeCtl">
+          <button type="button" data-v="allgather" aria-pressed="true">Allgather</button>
+          <button type="button" data-v="ring" aria-pressed="false">Ring</button>
+          <button type="button" data-v="2d" aria-pressed="false">2D</button>
+        </div>
+      </div>
+      <div class="ctl"><span class="ctl-label">Ranks P</span>
+        <div class="segctl" id="pCtl">
+          <button type="button" data-v="4" aria-pressed="false">4</button>
+          <button type="button" data-v="9" aria-pressed="true">9</button>
+          <button type="button" data-v="16" aria-pressed="false">16</button>
+        </div>
+      </div>
+      <div class="ctl"><span class="ctl-label">Rank</span>
+        <button type="button" class="stepbtn" id="rankPrev" aria-label="Previous rank">◀</button>
+        <span class="rankval" id="rankVal" aria-live="polite">4</span>
+        <button type="button" class="stepbtn" id="rankNext" aria-label="Next rank">▶</button>
+      </div>
+      <div class="ctl" id="ringCtl" hidden><span class="ctl-label">Ring step</span>
+        <input type="range" id="ringStep" min="0" max="8" value="2" aria-label="Ring step">
+        <span class="rankval" id="ringVal">2 / 8</span>
+        <button type="button" class="playbtn" id="ringPlay">Play</button>
+      </div>
+    </div>
+
+    <div class="mx-grid">
+      <div class="mx-figure">
+        <svg id="matrix" viewBox="0 0 400 388" role="img" aria-label="Force matrix, split according to the selected scheme"></svg>
+      </div>
+      <div class="mx-text">
+        <p class="mx-cap" id="mxCap"></p>
+        <div class="mx-legend" id="mxLegend"></div>
+        <pre class="snip" id="mxCode"></pre>
+      </div>
+    </div>
+
+    <div class="n-row">
+      <label for="nInput">Stars N</label>
+      <input type="number" id="nInput" min="1000" max="590796" step="1000" value="100000">
+      <span class="small">The project description suggests 100,000 for strong scaling; the cleaned dataset has 590,796.</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Scheme</th><th>Received per step</th><th>Positions in memory</th><th>MPI calls per step</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+    <p class="worknote" id="workNote"></p>
+    <p class="small">Per rank, computed from formulas, not measured. 24 B per position (3 × float64); in the ring the mass travels with the block, which makes it 32 B. With Allgather and 2D the masses are distributed once at the start.</p>
+  </section>
+
+  <section aria-labelledby="h-pit">
+    <header>
+      <div class="eyebrow">Pitfalls</div>
+      <h2 id="h-pit">Where the rewrite gets tricky</h2>
+    </header>
+    <div class="pits">
+      <div class="pit">
+        <div class="pt"><h3>Merging</h3><span class="chip tag-SYNC">MPI-SYNC</span></div>
+        <p>N changes, the blocks have to be redistributed, and chains of close stars cross rank boundaries. Use <code>--merge-radius 0</code> for the scaling runs. Otherwise treat merging as a rare event: gather everything, merge identically on every rank, redistribute.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Shared stop</h3><span class="chip tag-SYNC">MPI-SYNC</span></div>
+        <p>Today every process checks the time limit and Ctrl+C/SIGTERM on its own. If one rank stops a step early, the others wait forever in the next <code>Allgatherv</code>. Fix: one <code>comm.allreduce(stop, op=MPI.LOR)</code> per step.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Uneven blocks</h3><span class="chip tag-KOMM">MPI-KOMM</span></div>
+        <p>If N is not divisible by P, you need <code>Allgatherv</code> and <code>Gatherv</code> with <code>counts</code> and <code>displs</code>. The ring needs equal-sized buffers: pad every block to the largest one and give the padding stars mass 0.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Output</h3><span class="chip tag-RANK0">MPI-RANK0</span></div>
+        <p><code>print</code>, <code>results.csv</code>, <code>--save-final</code> and plots on rank 0 only, after the data has arrived there via <code>Gatherv</code> or <code>reduce</code>. Cluster nodes have no display: <code>matplotlib.use("Agg")</code>.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Kernel first</h3><span class="chip tag-PARALLEL">MPI-PARALLEL</span></div>
+        <p>The Python loop manages about 2·10⁷ pairs per second. Each rank then computes for so long that communication hardly registers and the scaling looks better than it is. Numba first, then measure.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Sources: <code>SerialImplementation.py</code> (commit f34c223), <code>results.csv</code> (runs from 8 Nov 2026 with gaia_nearest_1000 and gaia_nearest_5000), project description “Gaia N-body two HPC project descriptions.md”. MPI calls use mpi4py syntax. The comments in <code>SerialImplementation_MPI_annotated.py</code> are in German; the tag names are the same as on this page.</p>
+</main>
+
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(() => {
+  const TAGS = {
+    PARALLEL: { name: 'Parallel', desc: 'Work is split: each rank computes only its own block.' },
+    KOMM: { name: 'Communication', desc: 'Ranks exchange data: Allgatherv, Allreduce, Gatherv, reduce.' },
+    LOKAL: { name: 'Local', desc: 'Runs unchanged on every rank, for its own stars only.' },
+    SYNC: { name: 'Shared decision', desc: 'All ranks must decide the same way, or the program hangs.' },
+    RANK0: { name: 'Rank 0 only', desc: 'Console, files and plots.' },
+    SERIELL: { name: 'Serial', desc: 'Stays serial or runs redundantly on every rank.' },
+  };
+  const ORDER = ['PARALLEL', 'KOMM', 'LOKAL', 'SYNC', 'RANK0', 'SERIELL'];
+
+  // at = first [MPI-] line in the annotated file, lines = line count in SerialImplementation.py
+  const SECTIONS = [
+    { name: 'Header and imports', at: 49, lines: 121, tags: ['SERIELL', 'KOMM'], note: 'Guide to all tags at the top of the file. New: <code>from mpi4py import MPI</code>; matplotlib on rank 0 only.' },
+    { name: 'Stars', mono: true, at: 174, lines: 23, tags: ['PARALLEL'], note: 'Each rank holds only its own block <code>[lo:hi]</code>. Distribute the masses of all stars once at the start. For the struct datatype, use a NumPy structured array.' },
+    { name: 'load_subset', mono: true, at: 209, lines: 49, tags: ['SERIELL', 'RANK0'], note: 'Each rank reads the small CSV itself (same seed) and slices out its block. <code>print</code> on rank 0 only.' },
+    { name: 'guess_ / parse_spectral_classes', mono: true, at: 263, lines: 13, tags: ['SERIELL'], note: 'Unchanged. Only needed for plots and output.' },
+    { name: 'Perf, peak_memory_mb', mono: true, at: 278, lines: 41, tags: ['KOMM'], note: 'Each rank times itself. At the end, <code>reduce</code> with MAX and the mean, which gives <code>load_imbalance</code>. New timing section <code>communication</code>.' },
+    { name: 'compute_accelerations', mono: true, at: 327, lines: 40, tags: ['PARALLEL', 'KOMM'], hot: true, note: 'Restrict the loop over i to the rank’s own block and change the signature to “targets against sources”. Then the same function works for Allgather, Ring and 2D.' },
+    { name: 'group_close_stars', mono: true, at: 399, lines: 25, tags: ['SERIELL', 'KOMM'], note: 'Share the pair list with every rank via <code>allgather</code>; union-find then runs identically on each rank.' },
+    { name: 'merge_stars', mono: true, at: 430, lines: 37, tags: ['SYNC'], note: 'Changes N and the block split. Turn it off for scaling runs (<code>--merge-radius 0</code>) or treat it as a rare event with a full gather.' },
+    { name: 'timed_accelerations', mono: true, at: 480, lines: 9, tags: ['KOMM'], note: 'Counts the pairs. With MPI, count locally and sum at the end.' },
+    { name: 'step', mono: true, at: 491, lines: 23, tags: ['PARALLEL', 'KOMM', 'SYNC', 'LOKAL'], note: 'The time step: exchange positions, compute forces for the own block, kick and drift locally. The merge loop needs a shared condition.' },
+    { name: 'mean_distance_to_centre_of_mass, total_momentum', mono: true, at: 535, lines: 9, tags: ['KOMM'], note: 'Sum locally, then <code>Allreduce</code>. The same goes for the energy, which is still missing.' },
+    { name: 'Plot helpers', at: 554, lines: 78, tags: ['RANK0'], note: 'Rank 0 only.' },
+    { name: 'LivePlot', mono: true, at: 638, lines: 43, tags: ['RANK0', 'KOMM'], note: 'Rank 0 only, after a <code>Gatherv</code> of the positions. Turn it off for scaling runs.' },
+    { name: 'plot_start_to_end', mono: true, at: 681, lines: 31, tags: ['RANK0'], note: 'Rank 0 only, once the final state has been gathered.' },
+    { name: 'StopRequest, run_mode', mono: true, at: 711, lines: 39, tags: ['SYNC'], note: 'The time limit and signals reach the ranks at different moments. Stop via <code>allreduce</code> or a <code>bcast</code> from rank 0, otherwise deadlock.' },
+    { name: 'build_results_row, append_results', mono: true, at: 757, lines: 121, tags: ['RANK0'], note: 'Rank 0 only. Parameters for <code>n_ranks</code>, <code>comm_bytes</code> and <code>load_imbalance</code> already exist.' },
+    { name: 'parse_args', mono: true, at: 898, lines: 57, tags: ['SERIELL'], note: 'Every rank parses the same command line. New: <code>--scheme allgather|ring|2d</code>.' },
+    { name: 'main: setup and loading', at: 950, lines: 34, tags: ['SERIELL', 'KOMM', 'RANK0'], note: 'Set up <code>comm</code>, <code>rank</code>, <code>size</code>, <code>counts</code> and <code>displs</code>. Output and LivePlot on rank 0 only.' },
+    { name: 'main: time limit and loop', at: 982, lines: 41, tags: ['SYNC', 'PARALLEL'], note: 'Merge the two stop checks into one shared decision. <code>step()</code> is the parallel part.' },
+    { name: 'main: results and output', at: 1036, lines: 63, tags: ['RANK0', 'KOMM'], note: 'Gather timings via <code>reduce</code> and the final state via <code>Gatherv</code>. Files, plots and console on rank 0 only.' },
+    { name: 'print_performance_summary', mono: true, at: 1110, lines: 22, tags: ['RANK0'], note: 'Rank 0 only.' },
+  ];
+  const TIME = [
+    { label: 'Forces (compute_accelerations)', s: 168.884, cls: 'tag-PARALLEL' },
+    { label: 'Plotting (rank 0 only)', s: 0.649, cls: 'tag-RANK0' },
+    { label: 'Everything else: loading, merge, kick/drift, output', s: 0.114, cls: 'tag-SERIELL' },
+  ];
+  const TOTAL_S = 169.647;
+  const en = (x, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const chip = t => `<span class="chip tag-${t}">MPI-${t}</span>`;
+
+  /* tooltip */
+  const tip = document.getElementById('tip');
+  function placeTip(x, y) {
+    const r = tip.getBoundingClientRect(), pad = 14;
+    let left = x + pad, top = y + pad;
+    if (left + r.width > innerWidth - 8) left = Math.max(8, x - r.width - pad);
+    if (top + r.height > innerHeight - 8) top = Math.max(8, y - r.height - pad);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function bindTip(el, html) {
+    el.addEventListener('pointerenter', e => { tip.innerHTML = html; tip.hidden = false; placeTip(e.clientX, e.clientY); });
+    el.addEventListener('pointermove', e => placeTip(e.clientX, e.clientY));
+    el.addEventListener('pointerleave', () => { tip.hidden = true; });
+    el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); tip.innerHTML = html; tip.hidden = false; placeTip(b.left, b.bottom); });
+    el.addEventListener('blur', () => { tip.hidden = true; });
+  }
+
+  /* code map */
+  const legend = document.getElementById('legend');
+  legend.innerHTML = ORDER.map(t => `<button type="button" class="lg tag-${t}" data-tag="${t}" aria-pressed="false">${chip(t)}<p><b>${TAGS[t].name}.</b> ${TAGS[t].desc}</p></button>`).join('');
+
+  const list = document.getElementById('codeList');
+  list.innerHTML = SECTIONS.map((s, i) => `
+    <div class="row${s.hot ? ' hot' : ''}" id="row-${i}">
+      <div class="ln">L. ${s.at}</div>
+      <div><div class="nm${s.mono ? ' mono' : ''}">${s.name}${s.hot ? '<span class="hotbadge">99.5% of runtime</span>' : ''}</div><p class="nt">${s.note}</p></div>
+      <div class="tags">${s.tags.map(chip).join('')}</div>
+    </div>`).join('');
+  const rows = [...list.querySelectorAll('.row')];
+
+  const codeStrip = document.getElementById('codeStrip');
+  SECTIONS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = `seg tag-${s.tags[0]}`; b.style.flexGrow = s.lines;
+    b.setAttribute('aria-label', `${s.name}, ${s.lines} lines, ${s.tags.map(t => 'MPI-' + t).join(', ')}`);
+    bindTip(b, `<b>${s.name}</b><br><span>${s.lines} lines · ${s.tags.map(t => 'MPI-' + t).join(' · ')}</span>`);
+    b.addEventListener('click', () => {
+      const row = rows[i];
+      row.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+    });
+    codeStrip.appendChild(b);
+  });
+  const codeSegs = [...codeStrip.children];
+
+  const timeStrip = document.getElementById('timeStrip');
+  TIME.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = `seg ${t.cls}`; b.style.flexGrow = t.s; b.style.cursor = 'default';
+    const pct = t.s / TOTAL_S * 100;
+    b.setAttribute('aria-label', `${t.label}: ${en(t.s, 2)} s, ${en(pct, 2)} percent`);
+    bindTip(b, `<b>${t.label}</b><br><span>${en(t.s, t.s < 1 ? 3 : 1)} s · ${en(pct, 2)}%</span>`);
+    timeStrip.appendChild(b);
+  });
+
+  let filter = null;
+  function applyFilter() {
+    legend.querySelectorAll('.lg').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tag === filter)));
+    SECTIONS.forEach((s, i) => {
+      const off = !!filter && !s.tags.includes(filter);
+      rows[i].classList.toggle('dim', off);
+      codeSegs[i].classList.toggle('dim', off);
+    });
+  }
+  legend.addEventListener('click', e => {
+    const b = e.target.closest('.lg'); if (!b) return;
+    filter = filter === b.dataset.tag ? null : b.dataset.tag;
+    applyFilter();
+  });
+
+  /* matrix */
+  const M = { scheme: 'allgather', P: 9, rank: 4, step: 2, N: 100000, timer: null };
+  const mx = document.getElementById('matrix');
+  const cap = document.getElementById('mxCap');
+  const lg = document.getElementById('mxLegend');
+  const code = document.getElementById('mxCode');
+  const rankVal = document.getElementById('rankVal');
+  const ringCtl = document.getElementById('ringCtl');
+  const ringStep = document.getElementById('ringStep');
+  const ringVal = document.getElementById('ringVal');
+  const ringPlay = document.getElementById('ringPlay');
+  const mod = (a, n) => ((a % n) + n) % n;
+
+  const CODE = {
+    allgather:
+`comm.Allgatherv(pos_local,
+    [pos_all, counts * 3, displs * 3, MPI.DOUBLE])
+acc = accel_block(pos_local, pos_all, m_all, eps)`,
+    ring:
+`cart = comm.Create_cart([P], periods=[True])
+left, right = cart.Shift(0, 1)
+blk = np.hstack([pos_local, m_local[:, None]])  # x, y, z, m
+for k in range(P):
+    acc += accel_block(pos_local, blk[:, :3], blk[:, 3], eps)
+    if k < P - 1:
+        cart.Sendrecv_replace(blk, dest=right, source=left)`,
+    '2d':
+`dims = MPI.Compute_dims(P, 2)          # e.g. [3, 3]
+i, j = divmod(rank, dims[1])
+row_comm = comm.Split(color=i, key=j)
+col_comm = comm.Split(color=j, key=i)
+# block i via Bcast along the row, block j down the column
+acc_part = accel_block(pos_i, pos_j, m_j, eps)
+row_comm.Allreduce(MPI.IN_PLACE, acc_part, op=MPI.SUM)`,
+  };
+
+  function legendHTML() {
+    const sw = (style, text) => `<span><i class="sw" style="${style}"></i>${text}</span>`;
+    if (M.scheme === 'allgather') return [
+      sw('background:var(--t-parallel)', 'computed by the selected rank'),
+      sw('background:var(--faint);border:1px solid var(--line-strong)', 'computed by the others'),
+      sw('background:var(--t-komm)', 'received via Allgatherv'),
+      sw('background:var(--surface);border:1.5px solid var(--ink)', 'own block'),
+    ].join('');
+    if (M.scheme === 'ring') return [
+      sw('background:var(--t-parallel)', 'selected rank, now'),
+      sw('background:color-mix(in srgb,var(--t-parallel) 42%,var(--faint))', 'other ranks, now'),
+      sw('background:color-mix(in srgb,var(--t-parallel) 15%,var(--faint))', 'already computed'),
+      sw('background:var(--t-komm)', 'block it currently holds'),
+      sw('background:var(--surface);border:1.5px solid var(--ink)', 'own block'),
+    ].join('');
+    return [
+      sw('background:var(--t-parallel)', 'selected rank'),
+      sw('background:var(--t-komm)', 'received blocks i and j'),
+      `<span><i class="sw-line"></i>row_comm</span>`,
+      `<span><i class="sw-line dash"></i>col_comm</span>`,
+    ].join('');
+  }
+
+  function render() {
+    const { scheme, P } = M;
+    const q = Math.round(Math.sqrt(P));
+    const two = scheme === '2d';
+    const B = two ? q : P;
+    const r = Math.min(M.rank, P - 1);
+    const ri = Math.floor(r / q), rj = r % q;
+    const k = Math.min(M.step, P - 1);
+    const X0 = 72, Y0 = 60, S = 320, c = S / B, g = B >= 16 ? 1.5 : 2;
+    let s = '';
+    s += `<text x="${X0}" y="16" class="mx-ax">Sources j: where the force comes from →</text>`;
+    s += `<text x="2" y="${Y0 - 26}" class="mx-ax">Targets i ↓</text>`;
+
+    // column header: position blocks
+    for (let b = 0; b < B; b++) {
+      let cls = 'h-idle';
+      if (scheme === 'allgather') cls = b === r ? 'h-own' : 'h-recv';
+      else if (scheme === 'ring') cls = b === r ? 'h-own' : (k > 0 && b === mod(r - k, P) ? 'h-recv' : 'h-idle');
+      else cls = b === rj ? 'h-recv' : 'h-idle';
+      const x = X0 + b * c + g / 2;
+      s += `<rect x="${x}" y="${Y0 - 20}" width="${c - g}" height="14" rx="2" class="${cls}"/>`;
+      const lab = two ? `j=${b}` : `${b}`;
+      const on = two ? b === rj : b === r;
+      s += `<text x="${X0 + b * c + c / 2}" y="${Y0 - 26}" text-anchor="middle" class="mx-lab${on ? ' on' : ''}">${lab}</text>`;
+    }
+    // row header: ranks (1D) or blocks (2D)
+    for (let a = 0; a < B; a++) {
+      const y = Y0 + a * c + g / 2;
+      const cls = two ? (a === ri ? 'h-recv' : 'h-idle') : (a === r ? 'h-me' : 'h-idle');
+      s += `<rect x="${X0 - 20}" y="${y}" width="14" height="${c - g}" rx="2" class="${cls}"/>`;
+      const lab = two ? `i=${a}` : `R${a}`;
+      const on = two ? a === ri : a === r;
+      s += `<text x="${X0 - 25}" y="${Y0 + a * c + c / 2 + 3.5}" text-anchor="end" class="mx-lab${on ? ' on' : ''}">${lab}</text>`;
+    }
+    // tiles
+    for (let a = 0; a < B; a++) {
+      for (let b = 0; b < B; b++) {
+        let cls = 't-other';
+        if (scheme === 'allgather') cls = a === r ? 't-mine' : 't-other';
+        else if (scheme === 'ring') {
+          const st = mod(a - b, P);
+          if (st === k) cls = a === r ? 't-mine' : 't-cur';
+          else if (st < k) cls = a === r ? 't-minedone' : 't-done';
+          else cls = 't-other';
+        } else {
+          if (a === ri && b === rj) cls = 't-mine';
+          else if (a === ri || b === rj) cls = 't-band';
+        }
+        const x = X0 + b * c + g / 2, y = Y0 + a * c + g / 2;
+        s += `<rect x="${x}" y="${y}" width="${c - g}" height="${c - g}" rx="${B >= 16 ? 1.5 : 3}" class="${cls}" data-a="${a}" data-b="${b}"/>`;
+        if (two) s += `<text x="${X0 + b * c + c / 2}" y="${Y0 + a * c + c / 2 + 4}" text-anchor="middle" class="mx-in${cls === 't-mine' ? ' on' : ''}">(${a},${b})</text>`;
+      }
+    }
+    if (two) {
+      s += `<rect x="${X0 - 1}" y="${Y0 + ri * c - 1}" width="${S + 2}" height="${c + 2}" rx="4" class="b-row"/>`;
+      s += `<rect x="${X0 + rj * c - 1}" y="${Y0 - 1}" width="${c + 2}" height="${S + 2}" rx="4" class="b-col"/>`;
+    }
+    mx.innerHTML = s;
+
+    rankVal.textContent = two ? `(${ri},${rj})` : `${r}`;
+    ringCtl.hidden = scheme !== 'ring';
+    ringStep.max = String(P - 1);
+    ringStep.value = String(k);
+    ringVal.textContent = `${k} / ${P - 1}`;
+
+    const n = en(M.N / P);
+    if (scheme === 'allgather') {
+      cap.innerHTML = `Rank ${r} computes the whole row for its roughly ${n} target stars against all sources. For that it needs all ${P} position blocks: ${P - 1} arrive via <code>Allgatherv</code>, one it already has. So every rank holds all N positions.`;
+    } else if (scheme === 'ring') {
+      cap.innerHTML = k === 0
+        ? `Step 0: every rank first computes its own block, the diagonal. Then each passes its block to its right-hand neighbour. Drag the slider or play the round.`
+        : `Step ${k} of ${P - 1}: rank ${r} currently holds the block of rank ${mod(r - k, P)} and computes this one tile. Then it passes the block on to rank ${mod(r + 1, P)} via <code>Sendrecv_replace</code> and receives the one from rank ${mod(r - 1, P)}. After ${P - 1} passes every row is complete; no rank ever holds more than one foreign block.`;
+    } else {
+      cap.innerHTML = `Rank (${ri},${rj}) computes the forces of block ${rj} on block ${ri}: ${q} × ${q} blocks for ${P} ranks. Block ${ri} arrives along its row, block ${rj} down its column, each via <code>Bcast</code>. <code>row_comm.Allreduce</code> sums the ${q} partial results for block ${ri}. No rank holds all positions.`;
+    }
+    lg.innerHTML = legendHTML();
+    code.textContent = CODE[scheme];
+    renderTable();
+  }
+
+  function mb(count, bytes = 24) {
+    const v = count * bytes / 1e6;
+    return en(v, v < 1 ? 2 : 1) + ' MB';
+  }
+  function fmtTime(t) {
+    if (t < 1) return en(t * 1000) + ' ms';
+    if (t < 120) return en(t, t < 10 ? 1 : 0) + ' s';
+    return en(t / 60, 1) + ' min';
+  }
+  function renderTable() {
+    const { N, P } = M, q = Math.sqrt(P);
+    const recv1 = N * (P - 1) / P;
+    const rows = [
+      { id: 'allgather', name: 'Allgather', recv: `≈ ${en(recv1)} pos.<small>${mb(recv1)}</small>`, mem: `${en(N)}<small>${mb(N)}</small>`, calls: '1 × Allgatherv' },
+      { id: 'ring', name: 'Ring', recv: `≈ ${en(recv1)} pos. in ${P - 1} blocks<small>${mb(recv1, 32)} incl. mass</small>`, mem: `≈ ${en(2 * N / P)}<small>${mb(2 * N / P, 32)}, own + travelling block</small>`, calls: `${P - 1} × Sendrecv_replace` },
+      { id: '2d', name: '2D', recv: `≈ ${en(2 * N / q)} pos.<small>${mb(2 * N / q)} + ${en(N / q)} force vectors in Allreduce</small>`, mem: `≈ ${en(2 * N / q)}<small>${mb(2 * N / q)}, block i + block j</small>`, calls: '2 × Bcast, 1 × Allreduce' },
+    ];
+    document.getElementById('tbl').innerHTML = rows.map(x => `
+      <tr class="${x.id === M.scheme ? 'sel' : ''}">
+        <td class="scheme">${x.name}</td><td class="num">${x.recv}</td><td class="num">${x.mem}</td><td class="num">${x.calls}</td>
+      </tr>`).join('');
+    const pairs = N * N / P;
+    document.getElementById('workNote').innerHTML = `The compute work is the same for all three: N²/P ≈ ${en(pairs)} pairs per step and rank. With the current Python kernel (measured 2.3·10⁷ pairs/s on gaia_nearest_5000) that is ≈ ${fmtTime(pairs / 2.3e7)} per step.`;
+  }
+
+  function stopPlay() { if (M.timer) { clearInterval(M.timer); M.timer = null; ringPlay.textContent = 'Play'; } }
+  function setPressed(groupId, v) { document.querySelectorAll(`#${groupId} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v))); }
+
+  document.getElementById('schemeCtl').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    stopPlay(); M.scheme = b.dataset.v; setPressed('schemeCtl', M.scheme); render();
+  });
+  document.getElementById('pCtl').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    stopPlay(); M.P = +b.dataset.v; M.rank = Math.min(M.rank, M.P - 1); M.step = Math.min(M.step, M.P - 1);
+    setPressed('pCtl', String(M.P)); render();
+  });
+  document.getElementById('rankPrev').addEventListener('click', () => { M.rank = mod(M.rank - 1, M.P); render(); });
+  document.getElementById('rankNext').addEventListener('click', () => { M.rank = mod(M.rank + 1, M.P); render(); });
+  ringStep.addEventListener('input', () => { stopPlay(); M.step = +ringStep.value; render(); });
+  ringPlay.addEventListener('click', () => {
+    if (M.timer) { stopPlay(); return; }
+    ringPlay.textContent = 'Pause';
+    M.timer = setInterval(() => { M.step = mod(M.step + 1, M.P); render(); }, 900);
+  });
+  mx.addEventListener('click', e => {
+    const t = e.target.closest('[data-a]'); if (!t) return;
+    const a = +t.dataset.a, b = +t.dataset.b, q = Math.round(Math.sqrt(M.P));
+    M.rank = M.scheme === '2d' ? a * q + b : a;
+    render();
+  });
+  const nInput = document.getElementById('nInput');
+  nInput.addEventListener('input', () => {
+    const v = Math.round(+nInput.value);
+    if (Number.isFinite(v) && v >= 1000 && v <= 590796) { M.N = v; render(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

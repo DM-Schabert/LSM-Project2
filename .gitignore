@@ -1,3 +1,4 @@
 /data
 .DS_Store
 dataGaia2.csv
+/__pycache__
