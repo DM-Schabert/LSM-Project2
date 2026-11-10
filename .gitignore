@@ -2,3 +2,5 @@
 .DS_Store
 dataGaia2.csv
 /__pycache__
+/Plots
+/gaia_subsets

@@ -24,7 +24,7 @@ Usage examples:
     python GaiaSubsetSelection.py --no-show            # save the plots without opening the browser
     python GaiaSubsetSelection.py --csv data/gaia_cleaned.csv --out my_subsets
 
-Plots are saved in the Plots folder (change with --plots-dir) as interactive
+Plots are saved in the Plots folder (chanecho "path/to/bigstuff" >> .gitignorege with --plots-dir) as interactive
 HTML, plus PNG when kaleido is installed. They have no titles; the file name is
 what the title would have been.
 """
@@ -45,7 +45,7 @@ METHODS: Tuple[Method, Method] = ("random", "nearest")
 
 DEFAULT_CSV_PATH: Path = Path("gaia_cleaned.csv")
 DEFAULT_SEED: int = 42
-DEFAULT_N_VALUES: List[int] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 5_000, 20_000, 100_000]
+DEFAULT_N_VALUES: List[int] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 2000, 5_000, 20_000, 100_000]
 DEFAULT_OUT_DIR: Path = Path("gaia_subsets")
 DEFAULT_PLOTS_DIR: Path = Path("Plots")
 

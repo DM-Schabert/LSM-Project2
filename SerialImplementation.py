@@ -152,7 +152,10 @@ def load_subset(file_path: Path, rng: np.random.Generator) -> Stars:
                                 f"`python GaiaSubsetSelection.py --save` or pass --data <path>.")
 
     df: pd.DataFrame = pd.read_csv(file_path)
-    positions: FloatArray = df[["x_pc", "y_pc", "z_pc"]].to_numpy(dtype=np.float64, copy=True)
+    # pandas returns a column-major (Fortran-ordered) array here. Make it row-major
+    # (C-contiguous) so that x, y, z of one star sit next to each other in memory:
+    # MPI sends raw memory, and the summation order (hence the last bits) must match the MPI version.
+    positions: FloatArray = np.ascontiguousarray(df[["x_pc", "y_pc", "z_pc"]].to_numpy(dtype=np.float64))
 
     if "Mass-Flame" in df.columns:
         masses: FloatArray = df["Mass-Flame"].to_numpy(dtype=np.float64, copy=True)
@@ -248,26 +251,37 @@ def peak_memory_mb() -> float:
 # ---------------------------------------------------------------- physics
 
 def compute_accelerations(positions: FloatArray, masses: FloatArray, softening: float,
-                          merge_radius: float) -> Tuple[FloatArray, List[Pair]]:
-    """Gravitational acceleration on every star from every other star (direct summation, O(N²)).
+                          merge_radius: float, i_start: int = 0,
+                          i_stop: int | None = None) -> Tuple[FloatArray, List[Pair]]:
+    """Gravitational acceleration on stars i_start..i_stop-1 from every star (direct summation).
 
     Each star i is handled independently (a loop over i, vectorised over j),
     which is the same split an MPI version can use: give each rank a block of i's.
+    The serial code uses the default range (all stars). ParallelImplementation.py
+    passes each rank's own block, so both versions run exactly this kernel.
+
+    `positions` and `masses` must always hold *all* N stars (every j), and `i`
+    stays the global star index inside the loop: the self-force exclusion
+    (dist_sq[i]) and the pair search (j > i) both depend on it.
 
     `softening` (pc) is added to every distance so that very close passes don't
     give an almost infinite kick.
 
-    Also returns every pair (i, j), i < j, that is closer than `merge_radius`.
-    This reuses the distances already computed for the forces, so finding
-    merges costs (almost) nothing extra.
+    Returns the accelerations of the block, shape (i_stop - i_start, 3), and
+    every pair (i, j), i < j, with i in the block, that is closer than
+    `merge_radius`. This reuses the distances already computed for the forces,
+    so finding merges costs (almost) nothing extra. Because only j > i is
+    searched, each pair is found exactly once, by whoever owns the smaller index.
     """
     n: int = len(masses)
-    accelerations: FloatArray = np.zeros_like(positions)
+    if i_stop is None:
+        i_stop = n
+    accelerations: FloatArray = np.zeros((i_stop - i_start, 3), dtype=np.float64)
     softening_sq: float = softening ** 2
     merge_radius_sq: float = merge_radius ** 2
     close_pairs: List[Pair] = []
 
-    for i in range(n):
+    for i in range(i_start, i_stop):
         dis_vectors: FloatArray = positions - positions[i]          # from star i to every star j
         raw_dist_sq: FloatArray = np.sum(dis_vectors ** 2, axis=1)
 
@@ -280,7 +294,7 @@ def compute_accelerations(positions: FloatArray, masses: FloatArray, softening: 
         dist_sq[i] = np.inf                                           # no force from itself
         inv_dist_cubed: FloatArray = dist_sq ** -1.5
         # a_i = G · Σ_j m_j · (r_j − r_i) / |r_j − r_i|³
-        accelerations[i] = G * np.sum((masses * inv_dist_cubed)[:, np.newaxis] * dis_vectors, axis=0)
+        accelerations[i - i_start] = G * np.sum((masses * inv_dist_cubed)[:, np.newaxis] * dis_vectors, axis=0)
 
     return accelerations, close_pairs
 
@@ -683,21 +697,49 @@ def build_results_row(*, args: argparse.Namespace, perf: Perf, run_started: date
     }
 
 
+@contextmanager
+def results_lock(path: Path) -> Iterator[None]:
+    """Hold an exclusive lock on `<results>.lock` while the results file is updated.
+
+    Several batch jobs can finish at the same moment and write to the same
+    results.csv. Without a lock, two jobs can both read the file, each add their
+    row, and one row is lost. POSIX locks (fcntl.lockf) also work on the
+    cluster's network file systems. On Windows (no fcntl) there is no lock,
+    which is fine for one run at a time.
+    """
+    try:
+        import fcntl
+    except ImportError:
+        yield
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_name(path.name + ".lock"), "a") as lock_file:
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)  # waits until no other job holds the lock
+        try:
+            yield
+        finally:
+            fcntl.lockf(lock_file, fcntl.LOCK_UN)
+
+
 def append_results(path: Path, row: Dict[str, Value]) -> None:
     """Append one row to the results CSV, creating it (with header) if needed.
 
-    If an older file has different columns, the columns are merged and missing
-    values are left empty, so adding a metric later never breaks the file.
+    Serial and MPI runs share one file. Columns a run doesn't have (e.g. the
+    MPI-only ones for a serial run) are left empty. If a run brings new columns,
+    the file is rewritten with the merged columns, so adding a metric later
+    never breaks the file. Safe when several jobs write at the same time.
     """
     new_row: pd.DataFrame = pd.DataFrame([row])
-    if path.exists() and path.stat().st_size > 0:
-        existing: pd.DataFrame = pd.read_csv(path)
-        if list(existing.columns) == list(new_row.columns):
-            new_row.to_csv(path, mode="a", header=False, index=False)
-            return
-        new_row = pd.concat([existing, new_row], ignore_index=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    new_row.to_csv(path, index=False)
+    with results_lock(path):
+        if path.exists() and path.stat().st_size > 0:
+            columns: List[str] = list(pd.read_csv(path, nrows=0).columns)  # header only
+            if set(new_row.columns) <= set(columns):
+                # Same or fewer columns: append in the file's column order
+                new_row.reindex(columns=columns).to_csv(path, mode="a", header=False, index=False)
+                return
+            new_row = pd.concat([pd.read_csv(path), new_row], ignore_index=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        new_row.to_csv(path, index=False)
 
 
 # ---------------------------------------------------------------- main
