@@ -6,6 +6,16 @@
 #  Watch:    bstat   /   bjobs -w   /   bjobs -p <jobid>   (why is it pending?)
 #  Cancel:   bkill <jobid>
 #
+#  Choosing the run from the command line: put settings IN FRONT of bsub.
+#  The job inherits your shell's environment, and every setting in the
+#  "settings" block below uses that value if it is set:
+#      N=2828 bsub < batch.sh                    # uses gaia_subsets/gaia_nearest_2828.csv
+#      N=2828 SUBSET=random bsub < batch.sh      # gaia_subsets/gaia_random_2828.csv
+#      N=1000 MODE=validate STEPS=500 bsub < batch.sh
+#      N=2828 NP=2 bsub -n 24 -J weak_2828 < batch.sh   # 2 ranks on a fully reserved node
+#  (bsub options such as -n and -J go after "bsub"; settings go before it.)
+#  The .out file prints the settings the job actually used, so check it there.
+#
 #  To change the number of ranks or the placement, edit the #BSUB lines
 #  below. LSF reads them before the script runs, so shell variables don't
 #  work in them. Options given on the command line override the ones in
@@ -28,29 +38,32 @@
 #BSUB -e nbody_mpi_%J.err
 
 # ----------------------------------------------------------------- settings
-MODE=benchmark          # benchmark: one MPI run
-                        # validate:  serial + MPI on the same input, then compare final states
+# ${NAME:-default}: use NAME from the command line if given, otherwise the default.
+MODE=${MODE:-benchmark}         # benchmark: one MPI run
+                                # validate:  serial + MPI on the same input, then compare final states
 
-DATA=gaia_subsets/gaia_nearest_5000.csv
-STEPS=10000              # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
-DT=0.01
-SOFTENING=0.01
-MERGE_RADIUS=0.001        # 0 = merging off (use for benchmarks); the program's default is 0.01
+N=${N:-300}                    # number of stars: picks the subset file below
+SUBSET=${SUBSET:-nearest}       # nearest or random (as made by GaiaSubsetSelection.py)
+DATA=${DATA:-gaia_subsets/gaia_${SUBSET}_${N}.csv}   # or give DATA=... directly
+STEPS=${STEPS:-10000}             # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
+DT=${DT:-0.01}
+SOFTENING=${SOFTENING:-0.01}
+MERGE_RADIUS=${MERGE_RADIUS:-0.001} # 0 = merging off (use for benchmarks); the program's default is 0.01
 
-WALLTIME_MIN=7         # keep equal to #BSUB -W above
+WALLTIME_MIN=${WALLTIME_MIN:-7}  # keep equal to #BSUB -W (or the -W you pass to bsub)
 # The program stops itself and saves its results before LSF kills the job.
 # This is the stop that is guaranteed to work: in testing, a SIGTERM sent to
 # mpirun (as bkill or the walltime limit may do) killed the ranks before
 # they could save.
 TIME_LIMIT=$(( WALLTIME_MIN * 60 - 120 ))
 
-NP=""                   # empty: one rank per reserved slot (#BSUB -n). Set it to start fewer ranks
-MAP_OPTS=""             # e.g. "--map-by ppr:4:package --bind-to core" (needs NP set)
+NP=${NP:-}                      # empty: one rank per reserved slot (#BSUB -n). Set it to start fewer ranks
+MAP_OPTS=${MAP_OPTS:-}          # e.g. "--map-by ppr:4:package --bind-to core" (needs NP set)
 
 # Every run (serial and MPI, every job) appends one row to this one file.
 # The scripts lock it while writing, so jobs that finish at the same time
 # don't lose each other's rows.
-RESULTS=results.csv
+RESULTS=${RESULTS:-results.csv}
 # ---------------------------------------------------------------------------
 
 module load pandas/2.3.0-python-3.12.11
@@ -71,7 +84,7 @@ echo "time limit: ${TIME_LIMIT} s   NP: ${NP:-all slots}   MAP_OPTS: ${MAP_OPTS:
 module list 2>&1 | tail -n +2
 
 if [ ! -f "$DATA" ]; then
-    echo "Data file $DATA not found. Create it with: python3 GaiaSubsetSelection.py --save --no-plot"
+    echo "Data file $DATA not found. Create it with: python3 GaiaSubsetSelection.py --n $N --save --no-plot"
     exit 1
 fi
 

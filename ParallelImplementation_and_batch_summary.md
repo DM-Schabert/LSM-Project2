@@ -123,10 +123,23 @@ Job name `nbody_mpi`, queue `hpcintro`, 8 slots on one node (`span[hosts=1]`), 2
 
 ### Settings at the top of the script
 
+Every setting can be given on the command line **in front of** `bsub`. The job inherits your shell's environment and uses that value instead of the default (bsub options such as `-n` and `-J` go after `bsub`):
+
+```bash
+N=2828 bsub < batch.sh                              # gaia_subsets/gaia_nearest_2828.csv
+N=2828 SUBSET=random bsub < batch.sh                # gaia_subsets/gaia_random_2828.csv
+N=1000 MODE=validate STEPS=500 bsub < batch.sh
+N=2828 NP=2 bsub -n 24 -J weak_2828 < batch.sh      # 2 ranks on a fully reserved node
+```
+
+The `.out` file prints the settings the job actually used.
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `MODE` | `benchmark` | `benchmark`: one MPI run. `validate`: serial run, MPI run, then compare the final states |
-| `DATA` | `gaia_subsets/gaia_nearest_5000.csv` | subset CSV |
+| `N` | `5000` | number of stars; picks the subset file |
+| `SUBSET` | `nearest` | `nearest` or `random` subset |
+| `DATA` | `gaia_subsets/gaia_<SUBSET>_<N>.csv` | subset CSV; set it directly to use any other file |
 | `STEPS` | `100` | number of steps; choose from the serial baseline, steps ≈ 200 s × (interactions/s) / N² |
 | `DT`, `SOFTENING` | `0.01`, `0.01` | as in the simulation |
 | `MERGE_RADIUS` | `0` | merging off for benchmarks (the program's own default is 0.01) |
