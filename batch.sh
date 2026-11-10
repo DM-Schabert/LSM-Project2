@@ -23,7 +23,7 @@
 #BSUB -n 8
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=2GB]"
-#BSUB -W 00:15
+#BSUB -W 00:07
 #BSUB -o nbody_mpi_%J.out
 #BSUB -e nbody_mpi_%J.err
 
@@ -32,12 +32,12 @@ MODE=benchmark          # benchmark: one MPI run
                         # validate:  serial + MPI on the same input, then compare final states
 
 DATA=gaia_subsets/gaia_nearest_5000.csv
-STEPS=100               # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
+STEPS=10000              # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
 DT=0.01
 SOFTENING=0.01
-MERGE_RADIUS=0          # 0 = merging off (use for benchmarks); the program's default is 0.01
+MERGE_RADIUS=0.001        # 0 = merging off (use for benchmarks); the program's default is 0.01
 
-WALLTIME_MIN=15         # keep equal to #BSUB -W above
+WALLTIME_MIN=7         # keep equal to #BSUB -W above
 # The program stops itself and saves its results before LSF kills the job.
 # This is the stop that is guaranteed to work: in testing, a SIGTERM sent to
 # mpirun (as bkill or the walltime limit may do) killed the ranks before
