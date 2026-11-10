@@ -321,6 +321,34 @@ h3.sub { font-size: 21px; }
 .deck-nav span { min-width: 46px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 @media print { .deck-nav { display: none; } }
 
+/* cluster runs */
+.sp-bars { gap: 18px; }
+.sp-group { display: flex; flex-direction: column; gap: 6px; }
+.sp-head { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.sp-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 14px; align-items: center; border-radius: 4px; outline-offset: 3px; }
+.sp-row:focus-visible { outline: 2px solid var(--t-parallel); }
+.sp-lab { font-size: 14px; color: var(--ink-2); }
+.sp-track { display: flex; align-items: center; gap: 10px; min-width: 0; height: 28px; }
+.sp-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--c); flex: none; min-width: 3px; }
+.sp-val { font-family: var(--font-mono); font-size: 13px; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sp-val b { font-weight: 500; margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--t-parallel) 14%, transparent); }
+.sp-note { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.bchart { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 12px; }
+.bchart figcaption { font-size: 13px; }
+.bc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.bc-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.bc-refkey { border-top: 2px dashed var(--muted); }
+#bChart { display: block; width: 100%; height: auto; }
+.bc-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.bc-line.bc-time { stroke: var(--t-parallel); }
+.bc-line.bc-bytes { stroke: var(--t-komm); }
+.bc-line.bc-ref { stroke: var(--muted); stroke-dasharray: 5 5; stroke-width: 1.5; }
+.bc-dot { stroke: var(--surface); stroke-width: 2; }
+.bc-dot.bc-time { fill: var(--t-parallel); }
+.bc-dot.bc-bytes { fill: var(--t-komm); }
+.bc-end { font-family: var(--font-mono); font-size: 11.5px; fill: var(--ink-2); }
+.bc-hit { fill: transparent; cursor: crosshair; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
@@ -635,7 +663,96 @@ h3.sub { font-size: 21px; }
     </div>
   </section>
 
-  <p class="foot">Sources: <code>SerialImplementation.py</code> (commit f34c223), <code>results.csv</code> (runs from 8 Nov 2026 with gaia_nearest_1000 and gaia_nearest_5000), project description “Gaia N-body two HPC project descriptions.md”. 3D data: <code>gaia_cleaned.csv</code> and <code>gaia_subsets/gaia_nearest_20000.csv</code>; replays recorded with the unchanged <code>step()</code> from <code>SerialImplementation.py</code>; plots from <code>Plots/</code>. MPI calls use mpi4py syntax. The comments in <code>SerialImplementation_MPI_annotated.py</code> are in German; the tag names are the same as on this page.</p>
+  <section aria-labelledby="h-bench">
+    <header>
+      <div class="eyebrow">Cluster runs · 10 Nov 2026</div>
+      <h2 id="h-bench">Eight ranks, 7.8 times faster</h2>
+      <p class="prose">First runs of the MPI version on the DTU cluster: block decomposition with <code>Allgatherv</code>, all ranks on one node (Intel Xeon E5-2650 v4, 24 cores). Serial and MPI each ran 100 steps on the same node with the same 5,000 stars. No stars merged.</p>
+    </header>
+    <div class="stat">
+      <div class="num">7.76<small>×</small></div>
+      <p class="what">faster with 8 ranks on gaia_nearest_5000: 2,499&nbsp;ms per step serial, 322&nbsp;ms with MPI. That is 97% of the ideal 8×. A repeat on a second node gives 7.77×.</p>
+    </div>
+    <div class="bars sp-bars" role="group" aria-label="Time per step, serial against 8 MPI ranks, on two nodes">
+    <div class="sp-group">
+      <div class="sp-head">5,000 stars · node n-62-21-75 · merge radius 0</div>
+      <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;serial, 1 process · n-62-21-75&lt;/b&gt;&lt;br&gt;&lt;span&gt;2,499.4 ms per step (± 1.2)&lt;br&gt;forces 249.9 s of 249.9 s&lt;br&gt;10.0 M pairs per second&lt;/span&gt;">
+        <span class="sp-lab">Serial</span>
+        <div class="sp-track"><i class="sp-fill tag-SERIELL" style="width:68.64%"></i><span class="sp-val">2,499&nbsp;ms</span></div>
+      </div>
+      <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;MPI, 8 ranks · n-62-21-75&lt;/b&gt;&lt;br&gt;&lt;span&gt;322.3 ms per step (± 0.5)&lt;br&gt;forces 32.2 s of 32.2 s&lt;br&gt;77.6 M pairs per second&lt;/span&gt;">
+        <span class="sp-lab">8 ranks</span>
+        <div class="sp-track"><i class="sp-fill tag-PARALLEL" style="width:8.85%"></i><span class="sp-val">322&nbsp;ms <b>7.76×</b></span></div>
+      </div>
+    </div>
+    <div class="sp-group">
+      <div class="sp-head">5,000 stars · node n-62-21-77 · merge radius 0.001&nbsp;pc</div>
+      <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;serial, 1 process · n-62-21-77&lt;/b&gt;&lt;br&gt;&lt;span&gt;2,913.0 ms per step (± 1.6)&lt;br&gt;forces 291.3 s of 291.3 s&lt;br&gt;8.6 M pairs per second&lt;/span&gt;">
+        <span class="sp-lab">Serial</span>
+        <div class="sp-track"><i class="sp-fill tag-SERIELL" style="width:80.00%"></i><span class="sp-val">2,913&nbsp;ms</span></div>
+      </div>
+      <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;MPI, 8 ranks · n-62-21-77&lt;/b&gt;&lt;br&gt;&lt;span&gt;374.7 ms per step (± 0.6)&lt;br&gt;forces 37.4 s of 37.5 s&lt;br&gt;66.8 M pairs per second&lt;/span&gt;">
+        <span class="sp-lab">8 ranks</span>
+        <div class="sp-track"><i class="sp-fill tag-PARALLEL" style="width:10.29%"></i><span class="sp-val">375&nbsp;ms <b>7.77×</b></span></div>
+      </div>
+    </div>
+      <div class="sp-note">Mean time per step over 100 steps, all bars on one scale. The second pair is slower in both versions: with a merge radius above 0 every row also searches for close pairs, and it ran on another node.</div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="v">97%</div><div class="k">parallel efficiency: 7.76× out of an ideal 8×</div></div>
+      <div class="tile"><div class="v">0.05%</div><div class="k">of the MPI run is spent in <code>Allgatherv</code>: 0.15&nbsp;ms per step</div></div>
+      <div class="tile"><div class="v">1.6%</div><div class="k">average time a rank waits for the slowest one (load imbalance 1.016)</div></div>
+      <div class="tile"><div class="v">+1.5%</div><div class="k">force time in total: 8 × 31.7&nbsp;s on the ranks against 249.9&nbsp;s serial</div></div>
+    </div>
+    <p class="prose">The 3% missing from 8× come from waiting for the slowest rank and from a little more force time per rank than an eighth of the serial run, likely because eight processes share the caches and memory bandwidth of one node. Sending the positions costs next to nothing: 0.15&nbsp;ms per step against 322&nbsp;ms of compute.</p>
+  </section>
+
+  <section aria-labelledby="h-bench-n">
+    <header>
+      <div class="eyebrow">Cluster runs · 8 ranks</div>
+      <h2 id="h-bench-n">Compute grows with N², communication with N</h2>
+      <p class="prose">Three problem sizes with 8 ranks each, all with merge radius 0.001&nbsp;pc on nodes of the same type. Twice the stars make a step 3.8 times slower, three times the stars 8.4 times. The data the ranks exchange grows only 2× and 3×. So the larger the problem, the smaller the share of communication: 0.04% of the run at 5,000 stars, 0.01% at 15,000.</p>
+    </header>
+    <figure class="bchart">
+      <div class="bc-legend">
+        <span><i class="sw" style="background:var(--t-parallel)"></i>Time per step, measured</span>
+        <span><i class="sw" style="background:var(--t-komm)"></i>Data exchanged, measured</span>
+        <span><i class="sw-line bc-refkey"></i>N² for comparison</span>
+      </div>
+      <svg id="bChart" viewBox="0 0 680 300" role="img" aria-label="Indexed to 5,000 stars: time per step grows 3.79 and 8.35 times for 10,000 and 15,000 stars, close to N squared; data exchanged grows exactly 2 and 3 times, like N."><line x1="58" y1="252.0" x2="520" y2="252.0" class="rc-grid"/><text x="50" y="256.0" class="rc-ax" text-anchor="end">0</text><line x1="58" y1="206.0" x2="520" y2="206.0" class="rc-grid"/><text x="50" y="210.0" class="rc-ax" text-anchor="end">2</text><line x1="58" y1="160.0" x2="520" y2="160.0" class="rc-grid"/><text x="50" y="164.0" class="rc-ax" text-anchor="end">4</text><line x1="58" y1="114.0" x2="520" y2="114.0" class="rc-grid"/><text x="50" y="118.0" class="rc-ax" text-anchor="end">6</text><line x1="58" y1="68.0" x2="520" y2="68.0" class="rc-grid"/><text x="50" y="72.0" class="rc-ax" text-anchor="end">8</text><line x1="58" y1="22.0" x2="520" y2="22.0" class="rc-grid"/><text x="50" y="26.0" class="rc-ax" text-anchor="end">10×</text><text x="58.0" y="272" class="rc-ax" text-anchor="middle">5,000</text><text x="289.0" y="272" class="rc-ax" text-anchor="middle">10,000</text><text x="520.0" y="272" class="rc-ax" text-anchor="middle">15,000 stars</text><polyline points="58.0,229.0 289.0,160.0 520.0,45.0" class="bc-line bc-ref"/><polyline points="58.0,229.0 289.0,164.9 520.0,59.9" class="bc-line bc-time"/><polyline points="58.0,229.0 289.0,206.0 520.0,183.0" class="bc-line bc-bytes"/><circle cx="58.0" cy="229.0" r="4.5" class="bc-dot bc-time"/><circle cx="289.0" cy="164.9" r="4.5" class="bc-dot bc-time"/><circle cx="520.0" cy="59.9" r="4.5" class="bc-dot bc-time"/><circle cx="58.0" cy="229.0" r="4.5" class="bc-dot bc-bytes"/><circle cx="289.0" cy="206.0" r="4.5" class="bc-dot bc-bytes"/><circle cx="520.0" cy="183.0" r="4.5" class="bc-dot bc-bytes"/><text x="530" y="49.0" class="bc-end">N² would give 9×</text><text x="530" y="64.0" class="bc-end">time per step 8.35×</text><text x="530" y="187.0" class="bc-end">data exchanged 3.00×</text><line id="bcHov" x1="0" y1="22" x2="0" y2="252" class="rc-hov" visibility="hidden"/><rect x="28.0" y="12" width="145.5" height="250" class="bc-hit" data-i="0" data-x="58.0"/><rect x="173.5" y="12" width="231.0" height="250" class="bc-hit" data-i="1" data-x="289.0"/><rect x="404.5" y="12" width="145.5" height="250" class="bc-hit" data-i="2" data-x="520.0"/></svg>
+      <figcaption>Each value divided by its value at 5,000 stars. Hover a column for the absolute numbers.</figcaption>
+    </figure>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Run</th><th>Node</th><th>Time per step</th><th>Allgatherv per step</th><th>Waiting for slowest rank</th><th>Data exchanged</th><th>Pairs per second</th></tr></thead>
+        <tbody>
+          <tr><td class="scheme">Serial · 5,000</td><td class="num">n-62-21-75<small>merge radius 0</small></td><td class="num">2,499&nbsp;ms<small>–</small></td><td class="num">–</td><td class="num">–</td><td class="num">0&nbsp;MB</td><td class="num">10.0&nbsp;M</td></tr>
+          <tr><td class="scheme">8 ranks · 5,000</td><td class="num">n-62-21-75<small>merge radius 0</small></td><td class="num">322&nbsp;ms<small>7.76× faster</small></td><td class="num">0.15&nbsp;ms<small>0.047%</small></td><td class="num">1.6%<small>imbalance 1.016</small></td><td class="num">88&nbsp;MB</td><td class="num">77.6&nbsp;M</td></tr>
+          <tr><td class="scheme">Serial · 5,000</td><td class="num">n-62-21-77<small>merge radius 0.001&nbsp;pc</small></td><td class="num">2,913&nbsp;ms<small>–</small></td><td class="num">–</td><td class="num">–</td><td class="num">0&nbsp;MB</td><td class="num">8.6&nbsp;M</td></tr>
+          <tr><td class="scheme">8 ranks · 5,000</td><td class="num">n-62-21-77<small>merge radius 0.001&nbsp;pc</small></td><td class="num">375&nbsp;ms<small>7.77× faster</small></td><td class="num">0.16&nbsp;ms<small>0.041%</small></td><td class="num">1.8%<small>imbalance 1.019</small></td><td class="num">88&nbsp;MB</td><td class="num">66.8&nbsp;M</td></tr>
+          <tr><td class="scheme">8 ranks · 10,000</td><td class="num">n-62-21-47<small>merge radius 0.001&nbsp;pc</small></td><td class="num">1,419&nbsp;ms<small>–</small></td><td class="num">0.20&nbsp;ms<small>0.014%</small></td><td class="num">1.0%<small>imbalance 1.010</small></td><td class="num">176&nbsp;MB</td><td class="num">70.5&nbsp;M</td></tr>
+          <tr><td class="scheme">8 ranks · 15,000</td><td class="num">n-62-21-76<small>merge radius 0.001&nbsp;pc</small></td><td class="num">3,129&nbsp;ms<small>–</small></td><td class="num">0.32&nbsp;ms<small>0.010%</small></td><td class="num">1.0%<small>imbalance 1.010</small></td><td class="num">265&nbsp;MB</td><td class="num">71.9&nbsp;M</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">100 steps per run, dt&nbsp;0.01 (≈&nbsp;9,800 years), softening 0.01&nbsp;pc, seed 42, one thread per rank, Python 3.12.11, NumPy 2.3.1. “Data exchanged” is the <code>comm_bytes</code> column for the whole run. No serial runs were made for 10,000 and 15,000 stars. LSF jobs 29960697, 29960740, 29960856, 29960840.</p>
+    <div class="pits">
+      <div class="pit">
+        <div class="pt"><h3>One node only</h3></div>
+        <p>All 8 ranks shared one node, so <code>Allgatherv</code> went through shared memory at 5.7–8.8&nbsp;GB/s, not over the network. Runs spread over several nodes will show more communication.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Slow kernel</h3></div>
+        <p>The Python kernel manages about 1·10⁷ pairs per second on one core of this node. That much compute hides the communication. With a faster kernel (Numba) the communication share will grow, as warned under “Kernel first”.</p>
+      </div>
+      <div class="pit">
+        <div class="pt"><h3>Short runs</h3></div>
+        <p>100 steps, one run per configuration, no merges. A full strong-scaling series over 1 to 24 ranks and runs across nodes are still missing.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Sources: <code>SerialImplementation.py</code> (commit f34c223), <code>results.csv</code> (runs from 8 Nov 2026 with gaia_nearest_1000 and gaia_nearest_5000), project description “Gaia N-body two HPC project descriptions.md”. 3D data: <code>gaia_cleaned.csv</code> and <code>gaia_subsets/gaia_nearest_20000.csv</code>; replays recorded with the unchanged <code>step()</code> from <code>SerialImplementation.py</code>; plots from <code>Plots/</code>. Cluster runs: <code>results.csv</code> rows from 10 Nov 2026 (MPI code md5 cd88c7c94b). MPI calls use mpi4py syntax. The comments in <code>SerialImplementation_MPI_annotated.py</code> are in German; the tag names are the same as on this page.</p>
 </main>
 
 <div class="tip" id="tip" hidden></div>
@@ -1683,6 +1800,37 @@ void main() { gl_FragColor = vCol; }`;
       else if (e.key === 'f' || e.key === 'F') fs();
     });
   })();
+})();
+</script>
+<script>
+/* cluster runs: tooltips on the bars and the indexed chart */
+(() => {
+  const tip = document.getElementById('tip');
+  if (!tip) return;
+  const place = (x, y) => {
+    const r = tip.getBoundingClientRect(), pad = 14;
+    let left = x + pad, top = y + pad;
+    if (left + r.width > innerWidth - 8) left = x - r.width - pad;
+    if (top + r.height > innerHeight - 8) top = y - r.height - pad;
+    tip.style.left = Math.max(8, left) + 'px'; tip.style.top = Math.max(8, top) + 'px';
+  };
+  const show = (html, x, y) => { tip.innerHTML = html; tip.hidden = false; place(x, y); };
+  const hide = () => { tip.hidden = true; };
+  document.querySelectorAll('.sp-row[data-tip]').forEach(el => {
+    el.addEventListener('pointerenter', e => show(el.dataset.tip, e.clientX, e.clientY));
+    el.addEventListener('pointermove', e => place(e.clientX, e.clientY));
+    el.addEventListener('pointerleave', hide);
+    el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); show(el.dataset.tip, b.left + 90, b.bottom); });
+    el.addEventListener('blur', hide);
+  });
+  const TIPS = ["<b>5,000 stars · 8 ranks · n-62-21-77</b><br><span>375 ms per step (1.00×)<br>data exchanged 88 MB (1.00×)<br>Allgatherv 0.16 ms per step, 0.041% of the run</span>", "<b>10,000 stars · 8 ranks · n-62-21-47</b><br><span>1,419 ms per step (3.79×)<br>data exchanged 176 MB (2.00×)<br>Allgatherv 0.20 ms per step, 0.014% of the run</span>", "<b>15,000 stars · 8 ranks · n-62-21-76</b><br><span>3,129 ms per step (8.35×)<br>data exchanged 265 MB (3.00×)<br>Allgatherv 0.32 ms per step, 0.010% of the run</span>"];
+  const hov = document.getElementById('bcHov');
+  document.querySelectorAll('#bChart .bc-hit').forEach(el => {
+    const on = e => { hov.setAttribute('x1', el.dataset.x); hov.setAttribute('x2', el.dataset.x); hov.setAttribute('visibility', 'visible'); show(TIPS[+el.dataset.i], e.clientX, e.clientY); };
+    el.addEventListener('pointerenter', on);
+    el.addEventListener('pointermove', e => place(e.clientX, e.clientY));
+    el.addEventListener('pointerleave', () => { hov.setAttribute('visibility', 'hidden'); hide(); });
+  });
 })();
 </script>
 </body>
