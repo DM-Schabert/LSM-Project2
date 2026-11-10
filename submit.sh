@@ -23,8 +23,15 @@
 #  First time:  chmod +x submit.sh
 # =============================================================================
 
+# Must be run as a program, not with "source": sourcing would run it inside your
+# login shell, and the "set -e" below would then close your terminal on the next error.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    echo "Run this as  ./submit.sh ...  or  bash submit.sh ...  (not with source)" >&2
+    return 1
+fi
+
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 JOB_SCRIPT=batch.sh
 MARKER="# ----------------------------------------------------------------- settings"
