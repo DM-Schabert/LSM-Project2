@@ -12,8 +12,9 @@ Every rank owns a contiguous block of stars and only moves those. Before every f
 # laptop (correctness only, never timing)
 mpirun --oversubscribe -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_nearest_1000.csv --steps 20
 
-# HPC: edit the settings at the top of batch.sh, then
+# HPC: the defaults in batch.sh, or choose settings per job with submit.sh
 bsub < batch.sh
+./submit.sh 2828 STEPS=100 -- -n 24
 ```
 
 `ParallelImplementation.py` imports `SerialImplementation.py`, so the two must be in the same folder.
@@ -113,7 +114,7 @@ Each section is timed per rank; `results.csv` shows the max over ranks.
 
 ### LSF settings (`#BSUB` lines)
 
-Job name `nbody_mpi`, queue `hpcintro`, 8 slots on one node (`span[hosts=1]`), 2 GB memory per slot, 15 minutes walltime. Output goes to `nbody_mpi_<jobid>.out` and `.err`.
+Job name `nbody_mpi`, queue `hpcintro`, 8 slots on one node (`span[hosts=1]`), 2 GB memory per slot, 7 minutes walltime. Output goes to `nbody_mpi_<jobid>.out` and `.err`.
 
 - **Changing ranks or placement:** edit these lines, or override them on the command line, e.g. `bsub -n 16 < batch.sh`. LSF reads them before the script runs, so shell variables don't work in them.
 - **Placement recipes from week 2:**
@@ -123,28 +124,37 @@ Job name `nbody_mpi`, queue `hpcintro`, 8 slots on one node (`span[hosts=1]`), 2
 
 ### Settings at the top of the script
 
-Every setting can be given on the command line **in front of** `bsub`. The job inherits your shell's environment and uses that value instead of the default (bsub options such as `-n` and `-J` go after `bsub`):
+To choose settings per job, submit with **`submit.sh`**. It writes the settings as `export` lines into a copy of `batch.sh`, right after the `#BSUB` lines, and pipes that copy to `bsub`; `batch.sh` itself is not changed.
 
 ```bash
-N=2828 bsub < batch.sh                              # gaia_subsets/gaia_nearest_2828.csv
-N=2828 SUBSET=random bsub < batch.sh                # gaia_subsets/gaia_random_2828.csv
-N=1000 MODE=validate STEPS=500 bsub < batch.sh
-N=2828 NP=2 bsub -n 24 -J weak_2828 < batch.sh      # 2 ranks on a fully reserved node
+chmod +x submit.sh                                  # once
+./submit.sh 2828 STEPS=100                          # N=2828 -> gaia_subsets/gaia_nearest_2828.csv
+./submit.sh 2828 SUBSET=random                      # gaia_subsets/gaia_random_2828.csv
+./submit.sh N=1000 MODE=validate STEPS=500
+./submit.sh 2828 NP=2 STEPS=100 -- -n 24 -J weak_2828   # bsub options after "--"
+./submit.sh 300 --dry-run                           # print the job script instead of submitting
 ```
 
-The `.out` file prints the settings the job actually used.
+- A bare number means `N`.
+- `NAME=value` sets any setting in the table below; unknown names are rejected, so typos are caught.
+- Everything after `--` goes to `bsub`.
+- If you pass `-W`, also pass `WALLTIME_MIN`, so the program's own time limit stays below the walltime.
+
+**Don't use `N=2828 bsub < batch.sh`.** On the DTU cluster LSF does not pass shell variables on to the job, so the job silently runs with the defaults. This happened on 10 Nov: six jobs meant for N = 2 828…9 798 all ran N = 300.
+
+The `.out` file prints the settings the job actually used (the `data:` line).
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `MODE` | `benchmark` | `benchmark`: one MPI run. `validate`: serial run, MPI run, then compare the final states |
-| `N` | `5000` | number of stars; picks the subset file |
+| `N` | `300` | number of stars; picks the subset file |
 | `SUBSET` | `nearest` | `nearest` or `random` subset |
 | `DATA` | `gaia_subsets/gaia_<SUBSET>_<N>.csv` | subset CSV; set it directly to use any other file |
-| `STEPS` | `100` | number of steps; choose from the serial baseline, steps ≈ 200 s × (interactions/s) / N² |
+| `STEPS` | `10000` | number of steps; choose from the serial baseline, steps ≈ 200 s × (interactions/s) / N². Lower it for large N |
 | `DT`, `SOFTENING` | `0.01`, `0.01` | as in the simulation |
-| `MERGE_RADIUS` | `0` | merging off for benchmarks (the program's own default is 0.01) |
-| `WALLTIME_MIN` | `15` | must match `#BSUB -W` |
-| `TIME_LIMIT` | walltime − 120 s | the program stops itself and saves before LSF kills the job |
+| `MERGE_RADIUS` | `0.001` | merge radius in pc; `0` turns merging off and also skips the per-step merge check |
+| `WALLTIME_MIN` | `7` | must match `#BSUB -W` |
+| `TIME_LIMIT` | walltime − 120 s (= 300 s) | the program stops itself and saves before LSF kills the job |
 | `NP` | empty | empty means one rank per reserved slot; set it to start fewer ranks than reserved |
 | `MAP_OPTS` | empty | e.g. `--map-by ppr:4:package --bind-to core` (needs `NP`) |
 | `RESULTS` | `results.csv` | the one shared results file |

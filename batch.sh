@@ -6,14 +6,14 @@
 #  Watch:    bstat   /   bjobs -w   /   bjobs -p <jobid>   (why is it pending?)
 #  Cancel:   bkill <jobid>
 #
-#  Choosing the run from the command line: put settings IN FRONT of bsub.
-#  The job inherits your shell's environment, and every setting in the
-#  "settings" block below uses that value if it is set:
-#      N=2828 bsub < batch.sh                    # uses gaia_subsets/gaia_nearest_2828.csv
-#      N=2828 SUBSET=random bsub < batch.sh      # gaia_subsets/gaia_random_2828.csv
-#      N=1000 MODE=validate STEPS=500 bsub < batch.sh
-#      N=2828 NP=2 bsub -n 24 -J weak_2828 < batch.sh   # 2 ranks on a fully reserved node
-#  (bsub options such as -n and -J go after "bsub"; settings go before it.)
+#  Choosing the run from the command line: use submit.sh, which writes the
+#  settings into a copy of this script before submitting it. (Writing
+#  "N=2828 bsub < batch.sh" does NOT work on the DTU cluster: LSF does not
+#  pass your shell variables on to the job.)
+#      ./submit.sh 2828 STEPS=100                # uses gaia_subsets/gaia_nearest_2828.csv
+#      ./submit.sh 2828 SUBSET=random            # gaia_subsets/gaia_random_2828.csv
+#      ./submit.sh N=1000 MODE=validate STEPS=500
+#      ./submit.sh 2828 NP=2 -- -n 24 -J weak_2828   # bsub options after "--"
 #  The .out file prints the settings the job actually used, so check it there.
 #
 #  To change the number of ranks or the placement, edit the #BSUB lines
@@ -38,17 +38,17 @@
 #BSUB -e nbody_mpi_%J.err
 
 # ----------------------------------------------------------------- settings
-# ${NAME:-default}: use NAME from the command line if given, otherwise the default.
+# ${NAME:-default}: use NAME if it is already set (submit.sh sets it), otherwise the default.
 MODE=${MODE:-benchmark}         # benchmark: one MPI run
                                 # validate:  serial + MPI on the same input, then compare final states
 
-N=${N:-300}                    # number of stars: picks the subset file below
+N=${N:-300}                     # number of stars: picks the subset file below
 SUBSET=${SUBSET:-nearest}       # nearest or random (as made by GaiaSubsetSelection.py)
 DATA=${DATA:-gaia_subsets/gaia_${SUBSET}_${N}.csv}   # or give DATA=... directly
-STEPS=${STEPS:-10000}             # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
+STEPS=${STEPS:-10000}           # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
 DT=${DT:-0.01}
 SOFTENING=${SOFTENING:-0.01}
-MERGE_RADIUS=${MERGE_RADIUS:-0.001} # 0 = merging off (use for benchmarks); the program's default is 0.01
+MERGE_RADIUS=${MERGE_RADIUS:-0.001}  # pc; 0 turns merging off (also skips the per-step merge check)
 
 WALLTIME_MIN=${WALLTIME_MIN:-7}  # keep equal to #BSUB -W (or the -W you pass to bsub)
 # The program stops itself and saves its results before LSF kills the job.
