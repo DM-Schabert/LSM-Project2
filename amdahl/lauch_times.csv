@@ -1,0 +1,25 @@
+lsb_jobid,label,run_name,implementation,n_ranks,repeat,data_file,steps,host,mpirun_opts,exit_code,launch_wall_s,start_epoch
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,serial,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,88.0461,1794325383.228249
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,88.1098,1794325471.293010
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,2,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,46.0699,1794325559.419671
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,4,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,24.0966,1794325605.507918
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,8,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.1008,1794325629.622942
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,12,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.5949,1794325642.741477
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,16,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.9707,1794325652.354887
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,24,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.2649,1794325660.343637
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,24,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.5893,1794325666.632648
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,16,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.9417,1794325673.239789
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,12,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.6632,1794325681.199471
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,8,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.1735,1794325690.880594
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,4,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.5787,1794325704.071630
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,2,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.0183,1794325727.668371
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,87.0178,1794325772.704677
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,serial,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,86.6806,1794325859.740635
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,serial,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,88.4012,1794325946.439216
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,89.0132,1794326034.859063
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,2,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,57.5992,1794326123.889836
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,4,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,24.8286,1794326181.507263
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,8,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.0942,1794326206.354248
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,12,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.7828,1794326219.466545
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,16,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,8.0674,1794326229.267602
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,24,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.6663,1794326237.353062

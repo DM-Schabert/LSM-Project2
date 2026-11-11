@@ -2,8 +2,11 @@
 # =============================================================================
 #  Amdahl sweep: serial baseline + MPI runs at P = 1, 2, 4, ... on ONE node
 #
-#  Submit from the repository root:   bsub < amdahl/amdahl_batch.sh
-#  Other N without editing:           DATA=gaia_subsets/gaia_nearest_1000.csv STEPS=300 bsub < amdahl/amdahl_batch.sh
+#  All N at once (recommended):       bash amdahl/run_all.sh
+#  One sweep with the defaults below: bsub < amdahl/amdahl_batch.sh
+#  One sweep with other settings:     sed -e 's|gaia_nearest_5000|gaia_nearest_1000|' -e 's|STEPS:-30|STEPS:-300|' \
+#                                         amdahl/amdahl_batch.sh | bsub
+#    (VAR=value bsub < ... does NOT work on the DTU cluster: it does not pass your environment on)
 #  Laptop test (no LSF, tiny N):      LOCAL=1 DATA=gaia_subsets/gaia_nearest_100.csv STEPS=20 \
 #                                     P_LIST="1 2 4" REPEATS=1 bash amdahl/amdahl_batch.sh
 #  Analyse afterwards:                python3 amdahl/amdahl_analysis.py
@@ -28,7 +31,8 @@
 #BSUB -e amdahl/logs/amdahl_%J.err
 
 # ----------------------------------------------------------------- settings
-# Every setting can also be set from outside (LSF passes your environment on), see above.
+# Every setting can be preset by an export line above this block; run_all.sh writes those.
+# (Locally, VAR=value bash amdahl/amdahl_batch.sh works too.)
 LABEL=${LABEL:-v1-numpy}              # name of the code version. Change it for every new parallelisation
 DATA=${DATA:-gaia_subsets/gaia_nearest_5000.csv}
 STEPS=${STEPS:-30}                    # fixed work: same N and steps for every P (strong scaling).
@@ -90,9 +94,14 @@ echo "results: $RESULTS   launch times: $LAUNCH"
 if [ ! -f "$DATA" ]; then
     echo "Data file $DATA not found. Create it with: python3 GaiaSubsetSelection.py --save --no-plot"; exit 1
 fi
-if [ ! -f "$LAUNCH" ]; then
-    echo "lsb_jobid,label,run_name,implementation,n_ranks,repeat,data_file,steps,host,mpirun_opts,exit_code,launch_wall_s,start_epoch" > "$LAUNCH"
-fi
+LAUNCH_HEADER="lsb_jobid,label,run_name,implementation,n_ranks,repeat,data_file,steps,host,mpirun_opts,exit_code,launch_wall_s,start_epoch"
+append_launch() {   # several jobs may write to $LAUNCH at the same time: take a lock where flock exists
+    if command -v flock >/dev/null 2>&1; then
+        ( flock 9; [ -s "$LAUNCH" ] || echo "$LAUNCH_HEADER" >> "$LAUNCH"; echo "$1" >> "$LAUNCH" ) 9>>"$LAUNCH.lock"
+    else
+        [ -s "$LAUNCH" ] || echo "$LAUNCH_HEADER" >> "$LAUNCH"; echo "$1" >> "$LAUNCH"
+    fi
+}
 
 launch() {   # launch <serial|mpi> <ranks> <repeat>
     local impl=$1 np=$2 rep=$3
@@ -117,7 +126,7 @@ launch() {   # launch <serial|mpi> <ranks> <repeat>
     code=$?
     t1=$(now)
     wall=$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.4f", b - a }')
-    echo "$JOBID,$LABEL,$name,$impl,$np,$rep,$DATA,$STEPS,$(hostname),\"$opts\",$code,$wall,$t0" >> "$LAUNCH"
+    append_launch "$JOBID,$LABEL,$name,$impl,$np,$rep,$DATA,$STEPS,$(hostname),\"$opts\",$code,$wall,$t0"
     echo "--- $impl P=$np repeat $rep: ${wall} s launch wall time, exit code $code"
 }
 

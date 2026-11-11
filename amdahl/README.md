@@ -4,23 +4,32 @@ Measures how the run time falls with the number of MPI ranks P at **fixed work**
 
 | File | What it does |
 |---|---|
-| `amdahl_batch.sh` | LSF job: reserves a whole node, runs the serial baseline and MPI at P = 1, 2, 4, 8, 12, 16, 24, three times each |
-| `amdahl_analysis.py` | reads the `amdahl_` rows of `results.csv` plus `launch_times.csv`, fits Amdahl, makes plots and a LaTeX table |
+| `run_all.sh` | the whole campaign: one sweep per N (50, 100, 300, 1 000, 5 000), each as its own job, plus an analysis job that starts when all have ended |
+| `amdahl_batch.sh` | LSF job for one N: reserves a whole node, runs the serial baseline and MPI at P = 1, 2, 4, 8, 12, 16, 24, three times each |
+| `amdahl_analysis.py` | reads the `amdahl_` rows of `results.csv` plus `launch_times.csv`, fits Amdahl, makes plots and LaTeX tables |
 | `launch_times.csv` | created by the job: wall time of every whole launch (see below) |
-| `logs/` | LSF `.out`/`.err` files. The `.err` file has the `--report-bindings` output |
-| `out/` | created by the analysis: plots (PNG + PDF), `amdahl_summary.csv`, LaTeX tables |
+| `logs/` | LSF `.out`/`.err` files. The `.err` file has the `--report-bindings` output. `logs/<campaign>/` keeps the exact job scripts `run_all.sh` submitted and `jobs.txt` |
+| `out/` | created by the analysis: plots (PNG + PDF), `amdahl_summary.csv`, LaTeX tables, `report.txt` |
 
 ## Run it
 
-From the repository root on the HPC:
+From the repository root on the HPC login node:
 
 ```bash
-bsub < amdahl/amdahl_batch.sh                                   # default: N = 5 000, 30 steps, label v1-numpy
-DATA=gaia_subsets/gaia_nearest_1000.csv STEPS=300 bsub < amdahl/amdahl_batch.sh   # other N, no editing needed
-python3 amdahl/amdahl_analysis.py                               # after the job(s) finished
+bash amdahl/run_all.sh                 # everything: 5 sweeps + the analysis, results in amdahl/out/<campaign>/
+DRY_RUN=1 bash amdahl/run_all.sh       # only write and show the job scripts
+LABEL=v2-numba bash amdahl/run_all.sh  # the same campaign for a new code version
 ```
 
-Every setting at the top of `amdahl_batch.sh` can be set from outside like this, because LSF passes the environment on.
+Each sweep runs on its own node with its own serial baseline, so the jobs can run at the same time. When all of them have ended, the analysis job writes `amdahl/out/<campaign>/report.txt` and the plots. The N, steps, repeats and walltimes are the `SWEEPS` table at the top of `run_all.sh`.
+
+**The DTU cluster does not pass your environment on to a job**, so `DATA=... bsub < amdahl/amdahl_batch.sh` silently runs the defaults. `run_all.sh` therefore writes the settings as `export` lines into a copy of `amdahl_batch.sh` (as the team's `submit.sh` does for `batch.sh`). For a single sweep by hand, edit a copy on the fly:
+
+```bash
+bsub < amdahl/amdahl_batch.sh          # one sweep with the defaults: N = 5 000, 30 steps
+sed -e 's|gaia_nearest_5000|gaia_nearest_1000|' -e 's|STEPS:-30|STEPS:-300|' amdahl/amdahl_batch.sh | bsub
+python3 amdahl/amdahl_analysis.py --job <jobid> ...   # analyse by hand (needs the pandas and matplotlib modules)
+```
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -34,7 +43,9 @@ Every setting at the top of `amdahl_batch.sh` can be set from outside like this,
 | `WALLTIME_MIN` | `30` | must match `#BSUB -W`. Runs stop themselves before the walltime |
 | `RESULTS` | `results.csv` | the shared file. Rows are found again by `run_name = amdahl_<label>_j<jobid>_r<repeat>` |
 
-**Time budget for the defaults** (Xeon E5-2650 v4, N = 5 000): serial ≈ 2.5–2.9 s per step, so 75–90 s per serial run; all MPI runs of one repeat together take about 2.1 × that. One repeat ≈ 4–5 min, three repeats ≈ 13–15 min plus start-up, inside the 30 min walltime. If `hpcintro` does not allow 30 min, lower `-W`, `WALLTIME_MIN` and `REPEATS` together.
+**Time budget** (Xeon E5-2650 v4): one repeat costs about 3 × the serial run (serial, MPI at P = 1, then halving). The campaign's sweeps take 6–15 min each (N = 300 with 10 000 steps about 25 min, hence 2 repeats). With `-W` 00:30 the jobs ran fine on `hpcintro`.
+
+**Choosing the steps:** fixed work per N, with the serial run lasting about 30–90 s. The efficiency of the step loop does not depend on the number of steps (work and per-step overhead both scale with it); only the one-time start-up shrinks relative to longer runs. Our 10 000 steps are used where they fit (N ≤ 300); at N = 5 000 they would take 8 h serially.
 
 **Laptop test** (correctness of the pipeline only; laptop timings say nothing about the cluster):
 
@@ -64,6 +75,8 @@ The programs cannot time their own start-up, so the job script times every launc
 - **`measures_<label>_N<n>`**: speed-up of the step loop, the program and the whole launch side by side. The gap between them is what the parts outside the loop cost.
 - **`lost_time_<label>_N<n>`**: where the efficiency goes. Each bar is `P·T(P) − T(serial)` in % of the serial run, i.e. `1/E − 1`, split into: extra compute, communication, waiting, the parts outside the step loop, and start-up. Serial parts grow linearly with P here, because all P cores wait while one does them.
 - **`amdahl_table_<label>_N<n>.tex`**: booktabs table (P, T, S, E, e) with the fit in the caption.
+- **`by_N_{speedup,efficiency,karp_flatt}_<label>`**: the step loop of every N in one plot. This is where strong scaling breaks down: the work per step grows like N², the overhead per step (latency, Python, uneven split of the stars) hardly depends on N.
+- **`by_N_<label>.tex/.csv`**: one row per N with the serial step time, S and E at the largest P, the Amdahl `s`, `s · T_step` (the time per step the fit treats as serial; about 0.1 ms for small N) and Karp–Flatt at P = 4 and the largest P. Rising Karp–Flatt = an overhead that grows with P, which Amdahl's model does not contain.
 - The terminal report also gives the gain of every doubling of P (`8→16: ×1.6`) and the first P where the efficiency drops below 70 %. That answers the question in our project description: when does doubling the cores stop paying off?
 
 ## Comparing parallelisations

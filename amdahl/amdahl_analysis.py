@@ -10,6 +10,10 @@ amdahl/launch_times.csv, and writes to amdahl/out/:
     karp_flatt_N<n>.png/.pdf            experimentally determined serial fraction per P
     measures_<label>_N<n>.png/.pdf      speed-up of the step loop, the program and the whole launch
     lost_time_<label>_N<n>.png/.pdf     where the efficiency goes, per P
+    by_N_{speedup,efficiency,karp_flatt}_<label>.png/.pdf
+                                        the step loop of all N in one plot (latest sweep per N)
+    by_N_<label>.csv / .tex             one row per N: serial step time, S and E at the largest P,
+                                        Amdahl s, s times the serial step time, Karp-Flatt
 
 Three wall-clock time measures:
     loop     simulation_time_s: the step loop (slowest rank per step)
@@ -45,6 +49,7 @@ REPO = HERE.parent
 NAME_RE = r"^amdahl_(?P<label>[^_]+)_j(?P<job>[^_]+)_r(?P<rep>\d+)$"
 MEASURES = {"loop": "simulation_time_s", "program": "total_time_s", "launch": "launch_wall_s"}
 MEASURE_TEXT = {"loop": "step loop", "program": "program (after imports)", "launch": "whole launch"}
+MEASURE_SHORT = {"loop": "step loop", "program": "program", "launch": "whole launch"}   # for axis labels
 
 # Colours: one per version / time measure, always in this order (checked for colour-blind
 # separation on white). Serial is never a series here: it is the baseline of every speed-up.
@@ -193,18 +198,20 @@ def fit_text(name: str, s: float) -> str:
 # ------------------------------------------------------------------ plots per N (all versions together)
 def plot_versions(res: pd.DataFrame, n: int, out: Path) -> None:
     sub = res[res["n_stars_start"] == n]
-    keys = sub[["label", "job"]].drop_duplicates().itertuples(index=False)
-    keys = list(keys)
+    keys = list(sub[["label", "job"]].drop_duplicates().itertuples(index=False))
     dup = sub.groupby("label")["job"].nunique()
+    # one time measure for all series: the whole launch only if every sweep has it
+    has_launch = all(((sub["label"] == label) & (sub["job"] == job) & (sub["measure"] == "launch")).any()
+                     for label, job in keys)
+    measure_key = "launch" if has_launch else "program"
     series = []
     for i, (label, job) in enumerate(keys):
-        d = sub[(sub["label"] == label) & (sub["job"] == job)]
-        d = d[d["measure"] == main_measure(d)].sort_values("n_ranks")
+        d = sub[(sub["label"] == label) & (sub["job"] == job) & (sub["measure"] == measure_key)].sort_values("n_ranks")
         name = label if dup[label] == 1 else f"{label} (job {job})"
         series.append((name, d, SERIES[i % len(SERIES)]))
     p_all = sorted(sub["n_ranks"].unique())
     p_line = np.linspace(1, max(p_all), 200)
-    measure = MEASURE_TEXT[main_measure(sub)]
+    measure = MEASURE_SHORT[measure_key]
 
     # speed-up
     fig, ax = plt.subplots()
@@ -218,7 +225,7 @@ def plot_versions(res: pd.DataFrame, n: int, out: Path) -> None:
             ax.plot(p_line, 1 / (s + (1 - s) / p_line), color=c, lw=1, ls=(0, (2, 2)))
         ends.append((d["n_ranks"].iloc[-1], d["speedup"].iloc[-1], fit_text(name, s), c))
     ax.plot([], [], color=MUTED, lw=1, ls=(0, (2, 2)), label="Amdahl fit")
-    style(ax, "MPI ranks P", f"Speed-up S = T(serial) / T(P), {measure}", p_all)
+    style(ax, "MPI ranks P", f"Speed-up T(serial) / T(P), {measure}", p_all)
     ax.set_ylim(0, max(p_all) * 1.05)
     ax.legend(loc="upper left")
     end_labels(ax, ends)
@@ -233,8 +240,8 @@ def plot_versions(res: pd.DataFrame, n: int, out: Path) -> None:
         if np.isfinite(s):
             ax.plot(p_line, 100 / (s * p_line + 1 - s), color=c, lw=1, ls=(0, (2, 2)))
     ax.plot([], [], color=MUTED, lw=1, ls=(0, (2, 2)), label="Amdahl fit")
-    style(ax, "MPI ranks P", f"Parallel efficiency E = S / P (%), {measure}", p_all)
-    ax.set_ylim(0, 110)
+    style(ax, "MPI ranks P", f"Efficiency S / P (%), {measure}", p_all)
+    ax.set_ylim(0, max(110, 100 * max(d["efficiency"].max() for _, d, _ in series) + 5))
     ax.legend(loc="lower left")
     save(fig, out, f"efficiency_N{n}")
 
@@ -299,10 +306,120 @@ def plot_lost_time(g: pd.DataFrame, res: pd.DataFrame, tag: str, out: Path) -> N
     ax.plot(xs, [100 * (1 / total[P] - 1) for P in ps], ls="none", marker="_", ms=16, mew=2, color=INK,
             label="total = 1/E − 1")
     ax.axhline(0, color=MUTED, lw=1)
-    style(ax, "MPI ranks P", f"Lost core time (% of serial), {measure}", [])
+    style(ax, "MPI ranks P", f"Lost core time (% of serial), {MEASURE_SHORT[measure]}", [])
     ax.set_xticks(xs, [str(P) for P in ps])
     ax.legend(loc="upper left", fontsize=8.5)
     save(fig, out, f"lost_time_{tag}")
+
+
+# ------------------------------------------------------------------ all N of one version together
+def latest_sweeps(res: pd.DataFrame, label: str, measure: str = "loop") -> List[tuple]:
+    """(N, rows of that sweep) for every N of one version; the latest job if an N was run more than once."""
+    lr = res[(res["label"] == label) & (res["measure"] == measure)]
+    sweeps = []
+    for n, g in lr.groupby("n_stars_start"):
+        job = max(g["job"].unique(), key=lambda j: (len(str(j)), str(j)))
+        sweeps.append((int(n), g[g["job"] == job].sort_values("n_ranks")))
+    return sweeps
+
+
+def plot_by_n(res: pd.DataFrame, label: str, out: Path, measure: str = "loop") -> None:
+    """Speed-up, efficiency and Karp-Flatt of the step loop with one line per N: where strong scaling breaks down."""
+    sweeps = latest_sweeps(res, label, measure)
+    if len(sweeps) < 2:
+        return
+    p_all = sorted({int(p) for _, d in sweeps for p in d["n_ranks"]})
+    what = MEASURE_SHORT[measure]
+    ylabels = {"speedup": f"Speed-up T(serial) / T(P), {what}", "efficiency": f"Efficiency S / P (%), {what}",
+               "karp_flatt": f"Karp-Flatt e(P) (%), {what}"}
+    for kind, ylabel in ylabels.items():
+        fig, ax = plt.subplots()
+        if kind == "speedup":
+            ax.plot(p_all, p_all, ls=(0, (4, 4)), lw=1, color=MUTED, label="ideal")
+        elif kind == "efficiency":
+            ax.axhline(100, ls=(0, (4, 4)), lw=1, color=MUTED, label="ideal")
+        else:
+            ax.axhline(0, color=MUTED, lw=1)
+        top = 0.0
+        for i, (n, d) in enumerate(sweeps):
+            if kind == "karp_flatt":
+                d = d[d["n_ranks"] > 1]
+            y = d[kind] * (1 if kind == "speedup" else 100)
+            top = max(top, float(y.max()))
+            ax.plot(d["n_ranks"], y, color=SERIES[i % len(SERIES)], marker="o", ms=5, label=f"N = {n:,}")
+        style(ax, "MPI ranks P", ylabel, [p for p in p_all if kind != "karp_flatt" or p > 1])
+        if kind == "speedup":
+            ax.set_ylim(0, max(p_all) * 1.05)
+            ax.legend(loc="upper left")
+        elif kind == "efficiency":
+            ax.set_ylim(0, max(110, top + 5))
+            ax.legend(loc="lower left")
+        else:
+            ax.legend(loc="best")
+        save(fig, out, f"by_N_{kind}_{label}")
+
+
+def by_n_table(res: pd.DataFrame, label: str, out: Path, measure: str = "loop") -> pd.DataFrame | None:
+    """One row per N: how much of a step the Amdahl fit treats as serial, and whether Karp-Flatt rises."""
+    sweeps = latest_sweeps(res, label, measure)
+    if not sweeps:
+        return None
+    rows = []
+    for n, d in sweeps:
+        steps = int(d["steps_requested"].iloc[0])
+        t_step = 1000 * float(d["t1_s"].iloc[0]) / steps
+        kf = d[d["n_ranks"] > 1].set_index("n_ranks")["karp_flatt"]
+        p_kf = next((p for p in kf.index if p >= 4), kf.index[0]) if len(kf) else np.nan
+        s = float(d["s_fit"].iloc[0])
+        last = d.iloc[-1]
+        rows.append({"label": label, "n_stars": n, "steps": steps, "job": d["job"].iloc[0],
+                     "serial_ms_per_step": t_step, "p_max": int(last["n_ranks"]),
+                     "speedup_pmax": float(last["speedup"]), "efficiency_pmax": float(last["efficiency"]),
+                     "s_fit": s, "serial_ms_per_step_fit": s * t_step if np.isfinite(s) else np.nan,
+                     "p_kf_first": p_kf, "karp_flatt_first": kf.get(p_kf, np.nan) if len(kf) else np.nan,
+                     "karp_flatt_pmax": kf.iloc[-1] if len(kf) else np.nan})
+    t = pd.DataFrame(rows)
+    t.to_csv(out / f"by_N_{label}.csv", index=False)
+
+    pk = int(t["p_kf_first"].dropna().iloc[0]) if t["p_kf_first"].notna().any() else 4
+    pm = int(t["p_max"].max())
+    lines = [r"\begin{table}[htbp]", r"  \centering",
+             rf"  \caption{{Strong scaling of the step loop of \texttt{{{label}}} for different $N$ (one fully "
+             r"reserved node per $N$, medians over repeats). $T_\mathrm{step}$: serial time per step. "
+             r"$s$: Amdahl fit; $s\,T_\mathrm{step}$ is the time per step that the fit treats as serial. "
+             r"$e$: Karp--Flatt serial fraction; flat means a fixed serial part (Amdahl), rising means an "
+             r"overhead that grows with $P$.}",
+             rf"  \label{{tab:amdahl_by_n_{label}}}", r"  \begin{tabular}{rrrrrrrr}", r"    \toprule",
+             rf"    $N$ & steps & $T_\mathrm{{step}}$ [ms] & $S({pm})$ & $E({pm})$ & $s$ & $s\,T_\mathrm{{step}}$ [ms] "
+             rf"& $e({pk}) \to e({pm})$ \\", r"    \midrule"]
+    def num(v: float) -> str:      # 3 significant digits without e-notation, real minus sign
+        if not np.isfinite(v):
+            return "---"
+        txt = f"{v:.0f}" if abs(v) >= 100 else f"{v:.3g}"
+        return f"${txt}$"
+
+    for _, r in t.iterrows():
+        lines.append(rf"    {r['n_stars']:,} & {r['steps']:,} & {num(r['serial_ms_per_step'])} & "
+                     rf"{r['speedup_pmax']:.1f} & {100 * r['efficiency_pmax']:.0f}\,\% & "
+                     rf"{num(100 * r['s_fit'])}\,\% & {num(r['serial_ms_per_step_fit'])} & "
+                     rf"{num(100 * r['karp_flatt_first'])}\,\% $\to$ {num(100 * r['karp_flatt_pmax'])}\,\% \\")
+    lines += [r"    \bottomrule", r"  \end{tabular}", r"\end{table}"]
+    (out / f"by_N_{label}.tex").write_text("\n".join(lines) + "\n")
+    return t
+
+
+def print_by_n(t: pd.DataFrame) -> None:
+    label = t["label"].iloc[0]
+    print(f"\n=== {label}: step loop for every N (latest sweep per N)")
+    print(f"  {'N':>6} {'steps':>7} {'serial/step':>12} {'S(Pmax)':>8} {'E(Pmax)':>8} {'Amdahl s':>9} "
+          f"{'s*T_step':>10}   Karp-Flatt")
+    for _, r in t.iterrows():
+        st = f"{r['serial_ms_per_step_fit']:.3g} ms" if np.isfinite(r["serial_ms_per_step_fit"]) else "n/a"
+        print(f"  {r['n_stars']:>6,} {r['steps']:>7,} {r['serial_ms_per_step']:>9.4g} ms {r['speedup_pmax']:>8.1f} "
+              f"{100 * r['efficiency_pmax']:>7.0f}% {pct(r['s_fit']):>9} {st:>10}   "
+              f"{pct(r['karp_flatt_first'])} (P = {r['p_kf_first']:.0f}) -> {pct(r['karp_flatt_pmax'])} (P = {r['p_max']})")
+    print("  s*T_step: the time per step that Amdahl's fit treats as serial. Karp-Flatt rising with P means an\n"
+          "  overhead that grows with P (communication latency, uneven split of the stars), which Amdahl does not model.")
 
 
 # ------------------------------------------------------------------ report outputs
@@ -388,6 +505,11 @@ def main() -> None:
     res = pd.concat(all_res, ignore_index=True)
     for n in sorted(res["n_stars_start"].unique()):
         plot_versions(res, int(n), args.out)
+    for label in sorted(res["label"].unique()):
+        t = by_n_table(res, label, args.out)
+        if t is not None and len(t) > 1:
+            plot_by_n(res, label, args.out)
+            print_by_n(t)
     res[GROUP + [c for c in res.columns if c not in GROUP]].to_csv(args.out / "amdahl_summary.csv", index=False)
     print(f"\nWrote plots, LaTeX tables and amdahl_summary.csv to {args.out}")
 
