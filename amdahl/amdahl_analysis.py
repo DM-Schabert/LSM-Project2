@@ -4,6 +4,7 @@ Reads the shared results.csv (only rows whose run_name starts with "amdahl_") an
 amdahl/launch_times.csv, and writes to amdahl/out/:
 
     amdahl_summary.csv                  one row per version, N, time measure and P
+    lost_time_summary.csv               the bars of the lost-time plots: one row per sweep and P
     amdahl_table_<label>_N<n>.tex       LaTeX table for the report (booktabs)
     speedup_N<n>.png/.pdf               speed-up per version, with the Amdahl fit
     efficiency_N<n>.png/.pdf            parallel efficiency per version
@@ -13,17 +14,23 @@ amdahl/launch_times.csv, and writes to amdahl/out/:
     by_N_{speedup,efficiency,karp_flatt}_<label>.png/.pdf
                                         the step loop of all N in one plot (latest sweep per N)
     by_N_<label>.csv / .tex             one row per N: serial step time, S and E at the largest P,
-                                        Amdahl s, s times the serial step time, Karp-Flatt
+                                        Amdahl s (and its range over all runs), s times the
+                                        serial step time, Karp-Flatt
+    startup_<label>.png/.pdf/.csv       Python, import and MPI start-up per launch, against P
 
 Three wall-clock time measures:
-    loop     simulation_time_s: the step loop (slowest rank per step)
+    loop     simulation_time_s: the step loop (slowest rank per step). The main measure:
+             its efficiency does not depend on how many steps we run.
     program  total_time_s: program start (after the imports) to the end, on rank 0
     launch   launch_wall_s from launch_times.csv: the whole launch, including Python
-             start-up, imports and MPI start-up. This is the one Amdahl is about.
+             start-up, imports and MPI start-up. The start-up is a fixed cost of about
+             2 s, so its share, and with it the whole-launch efficiency, depends on how
+             long the run is. It is therefore reported on its own (startup_<label>).
 
 Amdahl:       S(P) = T(1) / T(P) = 1 / (s + (1 - s) / P)
 Karp-Flatt:   e(P) = (1/S - 1/P) / (1 - 1/P)    (the s that P alone would imply)
 The fitted s is the least-squares solution of 1/S - 1/P = s (1 - 1/P) over all P > 1.
+The same fit to the fastest and to the slowest runs gives the range of s: how much of it is noise.
 If e(P) stays flat, a fixed serial part explains the curve. If e(P) grows with P,
 an overhead that grows with P (communication, waiting) is at work, which Amdahl's
 model does not contain.
@@ -50,6 +57,7 @@ NAME_RE = r"^amdahl_(?P<label>[^_]+)_j(?P<job>[^_]+)_r(?P<rep>\d+)$"
 MEASURES = {"loop": "simulation_time_s", "program": "total_time_s", "launch": "launch_wall_s"}
 MEASURE_TEXT = {"loop": "step loop", "program": "program (after imports)", "launch": "whole launch"}
 MEASURE_SHORT = {"loop": "step loop", "program": "program", "launch": "whole launch"}   # for axis labels
+MAIN = "loop"     # the measure of the tables, the per-N plots and the lost-time plot
 
 # Colours: one per version / time measure, always in this order (checked for colour-blind
 # separation on white). Serial is never a series here: it is the baseline of every speed-up.
@@ -59,6 +67,10 @@ LOSS_PARTS = [("compute", "extra compute", "#2a78d6"),
               ("waiting", "waiting and other loop work", "#6250d6"),
               ("outside", "outside the step loop (load, distribute, output)", "#1baf7a"),
               ("startup", "Python and MPI start-up", "#eda100")]
+# which of these parts a measure contains
+PARTS_OF = {"loop": ["compute", "communication", "waiting"],
+            "program": ["compute", "communication", "waiting", "outside"],
+            "launch": ["compute", "communication", "waiting", "outside", "startup"]}
 INK, MUTED, GRID = "#121823", "#6f798b", "#dce1e8"
 GROUP = ["label", "job", "data_file", "n_stars_start", "steps_requested"]
 
@@ -106,6 +118,13 @@ def parts(row: pd.Series) -> Dict[str, float]:
 
 
 # ------------------------------------------------------------------ analysis
+def fit_s(p: np.ndarray, speedup: np.ndarray) -> float:
+    """Least-squares Amdahl s from the speed-ups at P > 1 (not clipped: below 0 means faster than ideal)."""
+    x, y = 1 - 1 / p, 1 / speedup - 1 / p
+    fit = p > 1
+    return float(np.sum(x[fit] * y[fit]) / np.sum(x[fit] ** 2)) if fit.any() else np.nan
+
+
 def analyse(g: pd.DataFrame) -> pd.DataFrame | None:
     """Speed-up, efficiency, Karp-Flatt and the Amdahl fit of one sweep, for every time measure."""
     serial, mpi = g[g["implementation"] == "serial"], g[g["implementation"] == "mpi"]
@@ -123,11 +142,17 @@ def analyse(g: pd.DataFrame) -> pd.DataFrame | None:
         p = per_p.index.to_numpy(dtype=float)
         s_of_p = t1 / per_p["median"].to_numpy()
         x, y = 1 - 1 / p, 1 / s_of_p - 1 / p
-        fit = p > 1
-        s_raw = float(np.sum(x[fit] * y[fit]) / np.sum(x[fit] ** 2)) if fit.any() else np.nan
+        s_raw = fit_s(p, s_of_p)
         # Amdahl's s lies between 0 and 1. Below 0 the runs scale ideally within the noise (s = 0);
         # above 1 the speed-up falls with P: an overhead, not a serial part, so there is no fit
         s_fit = max(s_raw, 0.0) if s_raw <= 1 else np.nan
+        # range of s: s grows with T(P)/T(1), so the fastest runs against the slowest baseline give the
+        # lowest s and the slowest runs against the fastest baseline the highest. Always brackets s_raw.
+        if per_p["count"].max() > 1 or base[col].count() > 1:
+            s_lo = fit_s(p, float(base[col].max()) / per_p["min"].to_numpy())
+            s_hi = fit_s(p, float(base[col].min()) / per_p["max"].to_numpy())
+        else:
+            s_lo = s_hi = np.nan
         for k, P in enumerate(p):
             rows.append({"measure": measure, "baseline": "serial" if base is serial else "mpi P=1",
                          "t1_s": t1, "n_ranks": int(P), "t_median_s": per_p["median"].iloc[k],
@@ -135,13 +160,9 @@ def analyse(g: pd.DataFrame) -> pd.DataFrame | None:
                          "repeats": int(per_p["count"].iloc[k]), "speedup": s_of_p[k],
                          "speedup_lo": t1 / per_p["max"].iloc[k], "speedup_hi": t1 / per_p["min"].iloc[k],
                          "efficiency": s_of_p[k] / P, "karp_flatt": y[k] / x[k] if P > 1 else np.nan,
-                         "s_fit": s_fit, "s_raw": s_raw,
+                         "s_fit": s_fit, "s_raw": s_raw, "s_lo": s_lo, "s_hi": s_hi,
                          "max_speedup_fit": 1 / s_fit if s_fit > 0 else (np.inf if s_fit == 0 else np.nan)})
     return pd.DataFrame(rows)
-
-
-def main_measure(res: pd.DataFrame) -> str:
-    return "launch" if (res["measure"] == "launch").any() else "program"
 
 
 # ------------------------------------------------------------------ plotting helpers
@@ -200,18 +221,14 @@ def plot_versions(res: pd.DataFrame, n: int, out: Path) -> None:
     sub = res[res["n_stars_start"] == n]
     keys = list(sub[["label", "job"]].drop_duplicates().itertuples(index=False))
     dup = sub.groupby("label")["job"].nunique()
-    # one time measure for all series: the whole launch only if every sweep has it
-    has_launch = all(((sub["label"] == label) & (sub["job"] == job) & (sub["measure"] == "launch")).any()
-                     for label, job in keys)
-    measure_key = "launch" if has_launch else "program"
     series = []
     for i, (label, job) in enumerate(keys):
-        d = sub[(sub["label"] == label) & (sub["job"] == job) & (sub["measure"] == measure_key)].sort_values("n_ranks")
+        d = sub[(sub["label"] == label) & (sub["job"] == job) & (sub["measure"] == MAIN)].sort_values("n_ranks")
         name = label if dup[label] == 1 else f"{label} (job {job})"
         series.append((name, d, SERIES[i % len(SERIES)]))
     p_all = sorted(sub["n_ranks"].unique())
     p_line = np.linspace(1, max(p_all), 200)
-    measure = MEASURE_SHORT[measure_key]
+    measure = MEASURE_SHORT[MAIN]
 
     # speed-up
     fig, ax = plt.subplots()
@@ -280,15 +297,16 @@ def plot_measures(res: pd.DataFrame, tag: str, out: Path) -> None:
     save(fig, out, f"measures_{tag}")
 
 
-def plot_lost_time(g: pd.DataFrame, res: pd.DataFrame, tag: str, out: Path) -> None:
-    """Lost core time P·T(P) − T(serial), split by cause, in % of the serial run (stacks to 1/E − 1)."""
-    measure = main_measure(res)
+def plot_lost_time(g: pd.DataFrame, res: pd.DataFrame, tag: str, out: Path) -> pd.DataFrame:
+    """Lost core time P·T(P) − T(serial), split by cause, in % of the serial run (stacks to 1/E − 1).
+
+    Returns the bars as a table: one row per P, the parts in % of the serial run, and the
+    communication time itself (seconds, mean over the ranks, median over the repeats)."""
+    measure = MAIN
     serial, mpi = g[g["implementation"] == "serial"], g[g["implementation"] == "mpi"]
     base = serial if not serial.empty else mpi[mpi["n_ranks"] == 1]
-    use = [p for p in LOSS_PARTS if not (p[0] == "startup" and measure != "launch")]
+    use = [p for p in LOSS_PARTS if p[0] in PARTS_OF[measure]]
     split = pd.DataFrame([parts(r) for _, r in g.iterrows()], index=g.index)
-    if measure != "launch":
-        split["startup"] = 0.0
     base_parts = split.loc[base.index].median()
     t1 = float(res.loc[res["measure"] == measure, "t1_s"].iloc[0])
     ps = sorted(mpi["n_ranks"].unique())
@@ -310,6 +328,11 @@ def plot_lost_time(g: pd.DataFrame, res: pd.DataFrame, tag: str, out: Path) -> N
     ax.set_xticks(xs, [str(P) for P in ps])
     ax.legend(loc="upper left", fontsize=8.5)
     save(fig, out, f"lost_time_{tag}")
+    table = lost[[key for key, _, _ in use]].rename(columns=lambda k: f"lost_{k}_pct")
+    table["lost_total_pct"] = [100 * (1 / total[P] - 1) for P in ps]
+    table["communication_s"] = [float(split.loc[mpi.index[(mpi["n_ranks"] == P).to_numpy()], "communication"].median())
+                                for P in ps]
+    return table.rename_axis("n_ranks").reset_index()
 
 
 # ------------------------------------------------------------------ all N of one version together
@@ -375,7 +398,8 @@ def by_n_table(res: pd.DataFrame, label: str, out: Path, measure: str = "loop") 
         rows.append({"label": label, "n_stars": n, "steps": steps, "job": d["job"].iloc[0],
                      "serial_ms_per_step": t_step, "p_max": int(last["n_ranks"]),
                      "speedup_pmax": float(last["speedup"]), "efficiency_pmax": float(last["efficiency"]),
-                     "s_fit": s, "serial_ms_per_step_fit": s * t_step if np.isfinite(s) else np.nan,
+                     "s_fit": s, "s_lo": float(d["s_lo"].iloc[0]), "s_hi": float(d["s_hi"].iloc[0]),
+                     "serial_ms_per_step_fit": s * t_step if np.isfinite(s) else np.nan,
                      "p_kf_first": p_kf, "karp_flatt_first": kf.get(p_kf, np.nan) if len(kf) else np.nan,
                      "karp_flatt_pmax": kf.iloc[-1] if len(kf) else np.nan})
     t = pd.DataFrame(rows)
@@ -386,12 +410,13 @@ def by_n_table(res: pd.DataFrame, label: str, out: Path, measure: str = "loop") 
     lines = [r"\begin{table}[htbp]", r"  \centering",
              rf"  \caption{{Strong scaling of the step loop of \texttt{{{label}}} for different $N$ (one fully "
              r"reserved node per $N$, medians over repeats). $T_\mathrm{step}$: serial time per step. "
-             r"$s$: Amdahl fit; $s\,T_\mathrm{step}$ is the time per step that the fit treats as serial. "
+             r"$s$: Amdahl fit, in brackets the same fit to the fastest and to the slowest runs; "
+             r"$s\,T_\mathrm{step}$ is the time per step that the fit treats as serial. "
              r"$e$: Karp--Flatt serial fraction; flat means a fixed serial part (Amdahl), rising means an "
              r"overhead that grows with $P$.}",
-             rf"  \label{{tab:amdahl_by_n_{label}}}", r"  \begin{tabular}{rrrrrrrr}", r"    \toprule",
-             rf"    $N$ & steps & $T_\mathrm{{step}}$ [ms] & $S({pm})$ & $E({pm})$ & $s$ & $s\,T_\mathrm{{step}}$ [ms] "
-             rf"& $e({pk}) \to e({pm})$ \\", r"    \midrule"]
+             rf"  \label{{tab:amdahl_by_n_{label}}}", r"  \begin{tabular}{rrrrrrrrr}", r"    \toprule",
+             rf"    $N$ & steps & $T_\mathrm{{step}}$ [ms] & $S({pm})$ & $E({pm})$ & $s$ & (runs) & "
+             rf"$s\,T_\mathrm{{step}}$ [ms] & $e({pk}) \to e({pm})$ \\", r"    \midrule"]
     def num(v: float) -> str:      # 3 significant digits without e-notation, real minus sign
         if not np.isfinite(v):
             return "---"
@@ -399,9 +424,11 @@ def by_n_table(res: pd.DataFrame, label: str, out: Path, measure: str = "loop") 
         return f"${txt}$"
 
     for _, r in t.iterrows():
+        rng = (rf"({num(100 * r['s_lo'])} to {num(100 * r['s_hi'])}\,\%)" if np.isfinite(r["s_lo"])
+               else "---")
         lines.append(rf"    {r['n_stars']:,} & {r['steps']:,} & {num(r['serial_ms_per_step'])} & "
                      rf"{r['speedup_pmax']:.1f} & {100 * r['efficiency_pmax']:.0f}\,\% & "
-                     rf"{num(100 * r['s_fit'])}\,\% & {num(r['serial_ms_per_step_fit'])} & "
+                     rf"{num(100 * r['s_fit'])}\,\% & {rng} & {num(r['serial_ms_per_step_fit'])} & "
                      rf"{num(100 * r['karp_flatt_first'])}\,\% $\to$ {num(100 * r['karp_flatt_pmax'])}\,\% \\")
     lines += [r"    \bottomrule", r"  \end{tabular}", r"\end{table}"]
     (out / f"by_N_{label}.tex").write_text("\n".join(lines) + "\n")
@@ -412,19 +439,71 @@ def print_by_n(t: pd.DataFrame) -> None:
     label = t["label"].iloc[0]
     print(f"\n=== {label}: step loop for every N (latest sweep per N)")
     print(f"  {'N':>6} {'steps':>7} {'serial/step':>12} {'S(Pmax)':>8} {'E(Pmax)':>8} {'Amdahl s':>9} "
-          f"{'s*T_step':>10}   Karp-Flatt")
+          f"{'s from all runs':>20} {'s*T_step':>10}   Karp-Flatt")
     for _, r in t.iterrows():
         st = f"{r['serial_ms_per_step_fit']:.3g} ms" if np.isfinite(r["serial_ms_per_step_fit"]) else "n/a"
+        rng = f"{pct(r['s_lo'])} .. {pct(r['s_hi'])}" if np.isfinite(r["s_lo"]) else "n/a"
         print(f"  {r['n_stars']:>6,} {r['steps']:>7,} {r['serial_ms_per_step']:>9.4g} ms {r['speedup_pmax']:>8.1f} "
-              f"{100 * r['efficiency_pmax']:>7.0f}% {pct(r['s_fit']):>9} {st:>10}   "
+              f"{100 * r['efficiency_pmax']:>7.0f}% {pct(r['s_fit']):>9} {rng:>20} {st:>10}   "
               f"{pct(r['karp_flatt_first'])} (P = {r['p_kf_first']:.0f}) -> {pct(r['karp_flatt_pmax'])} (P = {r['p_max']})")
     print("  s*T_step: the time per step that Amdahl's fit treats as serial. Karp-Flatt rising with P means an\n"
-          "  overhead that grows with P (communication latency, uneven split of the stars), which Amdahl does not model.")
+          "  overhead that grows with P (communication latency, uneven split of the stars), which Amdahl does not model.\n"
+          "  s from all runs: the fit to the fastest and to the slowest runs. Where it reaches below 0, s is not distinguishable from 0.")
+
+
+# ------------------------------------------------------------------ start-up
+def startup(df: pd.DataFrame, label: str, out: Path) -> pd.DataFrame | None:
+    """Python, import and MPI start-up of every launch: launch wall time minus the program's own total time.
+
+    It does not depend on N, so all sweeps of one version go into one plot, with a straight line
+    fitted to the mpirun launches: start-up(P) = a + b P.
+    """
+    d = df[(df["label"] == label) & df["launch_wall_s"].notna()].copy()
+    if d.empty:
+        return None
+    d["startup_s"] = d["launch_wall_s"] - d["total_time_s"]
+    t = (d.groupby(["n_stars_start", "implementation", "n_ranks"])["startup_s"]
+         .agg(["median", "min", "max", "count"]).reset_index())
+    t.insert(0, "label", label)
+    mpi, ser = t[t["implementation"] == "mpi"], t[t["implementation"] == "serial"]
+    b, a = np.polyfit(mpi["n_ranks"], mpi["median"], 1) if mpi["n_ranks"].nunique() > 1 else (np.nan, np.nan)
+    t.attrs.update(a=a, b=b)
+    t.to_csv(out / f"startup_{label}.csv", index=False)
+
+    fig, ax = plt.subplots()
+    p_all = sorted(int(p) for p in mpi["n_ranks"].unique())
+    for i, (n, g) in enumerate(mpi.groupby("n_stars_start")):
+        ax.plot(g["n_ranks"], g["median"], color=SERIES[i % len(SERIES)], marker="o", ms=5, label=f"N = {int(n):,}")
+    if np.isfinite(a):
+        ax.plot(p_all, a + b * np.array(p_all), color=MUTED, lw=1, ls=(0, (2, 2)),
+                label=f"fit: {a:.2f} s + {1000 * b:.0f} ms per rank")
+    if len(ser):
+        ax.plot(np.ones(len(ser)), ser["median"], ls="none", marker="D", ms=5, color=INK,
+                label="serial program (no mpirun)")
+    style(ax, "MPI ranks P", "Start-up per launch (s)", p_all)
+    ax.set_ylim(0, 1.2 * float(t["median"].max()))
+    ax.legend(loc="lower right", fontsize=8.5)
+    save(fig, out, f"startup_{label}")
+    return t
+
+
+def print_startup(t: pd.DataFrame) -> None:
+    label = t["label"].iloc[0]
+    print(f"\n=== {label}: start-up per launch (Python, imports, MPI) = launch wall time - the program's own time")
+    p_max = int(t.loc[t["implementation"] == "mpi", "n_ranks"].max())
+    print(f"  {'N':>6} {'serial':>8} {'P = 1':>8} {f'P = {p_max}':>8}")
+    for n, g in t.groupby("n_stars_start"):
+        g = g.set_index(["implementation", "n_ranks"])["median"]
+        print(f"  {int(n):>6,} {g.get(('serial', 1), np.nan):7.2f}s {g.get(('mpi', 1), np.nan):7.2f}s "
+              f"{g.get(('mpi', p_max), np.nan):7.2f}s")
+    if np.isfinite(t.attrs.get("a", np.nan)):
+        print(f"  mpirun launches: {t.attrs['a']:.2f} s + {1000 * t.attrs['b']:.0f} ms per rank, the same for every N.\n"
+              f"  A fixed cost per run: it matters in short runs like these sweeps, not in long production runs.")
 
 
 # ------------------------------------------------------------------ report outputs
 def latex_table(res: pd.DataFrame, info: pd.Series, out: Path, tag: str) -> None:
-    measure = main_measure(res)
+    measure = MAIN
     d = res[res["measure"] == measure].sort_values("n_ranks")
     s = d["s_fit"].iloc[0]
     lines = [r"\begin{table}[htbp]", r"  \centering",
@@ -456,12 +535,18 @@ def print_report(res: pd.DataFrame, info: pd.Series) -> None:
         s = d["s_fit"].iloc[0]
         fit = (f"Amdahl s = {pct(s):>8}   S_max = 1/s = {d['max_speedup_fit'].iloc[0]:.3g}" if np.isfinite(s)
                else f"no Amdahl fit (least squares gives s = {pct(d['s_raw'].iloc[0])}: the speed-up falls with P)")
+        if np.isfinite(d["s_lo"].iloc[0]):
+            fit += f"   (runs: {pct(d['s_lo'].iloc[0])} .. {pct(d['s_hi'].iloc[0])})"
         print(f"  {MEASURE_TEXT[measure]:<24} baseline {d['baseline'].iloc[0]} {d['t1_s'].iloc[0]:8.2f} s   {fit}")
-    d = res[res["measure"] == main_measure(res)].set_index("n_ranks").sort_index()
-    print(f"  {'P':>4} {'T [s]':>9} {'S':>7} {'E':>7} {'e(P)':>9}  repeats   ({MEASURE_TEXT[main_measure(res)]})")
+    d = res[res["measure"] == MAIN].set_index("n_ranks").sort_index()
+    print(f"  {'P':>4} {'T [s]':>9} {'S':>7} {'E':>7} {'e(P)':>9}  repeats   ({MEASURE_TEXT[MAIN]})")
     for P, r in d.iterrows():
         e = "" if P == 1 else pct(r["karp_flatt"])
         print(f"  {P:>4} {r['t_median_s']:9.2f} {r['speedup']:7.2f} {100 * r['efficiency']:6.1f}% {e:>9}  {r['repeats']:>7}")
+    if 1 in d.index and d["baseline"].iloc[0] == "serial" and abs(d.loc[1, "speedup"] - 1) > 0.02:
+        print(f"  the MPI program at P = 1 is {abs(d.loc[1, 'speedup'] - 1):.0%} "
+              f"{'faster' if d.loc[1, 'speedup'] > 1 else 'slower'} than the serial program (same force kernel); "
+              f"S and E are relative to the serial program")
     gains = [f"{P}→{2 * P}: ×{d.loc[2 * P, 'speedup'] / d.loc[P, 'speedup']:.2f}" for P in d.index if 2 * P in d.index]
     if gains:
         print("  doubling the ranks gives  " + "   ".join(gains))
@@ -484,7 +569,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
 
     df = load(args.results, args.launch, args.label, args.job)
-    all_res = []
+    all_res, all_lost = [], []
     for key, g in df.groupby(GROUP):
         res = analyse(g)
         if res is None:
@@ -492,12 +577,16 @@ def main() -> None:
         info = pd.Series(dict(zip(GROUP, key)) | {"hostname": g["hostname"].iloc[0]})
         for col in GROUP:
             res[col] = info[col]
+        res["hostname"] = info["hostname"]
         tag = f"{info['label']}_N{int(info['n_stars_start'])}"
         if df[(df["label"] == info["label"]) & (df["n_stars_start"] == info["n_stars_start"])]["job"].nunique() > 1:
             tag += f"_j{info['job']}"
         print_report(res, info)
         plot_measures(res, tag, args.out)
-        plot_lost_time(g, res, tag, args.out)
+        lost = plot_lost_time(g, res, tag, args.out)
+        for col in GROUP:
+            lost.insert(GROUP.index(col), col, info[col])
+        all_lost.append(lost)
         latex_table(res, info, args.out, tag)
         all_res.append(res)
     if not all_res:
@@ -510,8 +599,13 @@ def main() -> None:
         if t is not None and len(t) > 1:
             plot_by_n(res, label, args.out)
             print_by_n(t)
+    for label in sorted(df["label"].unique()):
+        t = startup(df, label, args.out)
+        if t is not None:
+            print_startup(t)
     res[GROUP + [c for c in res.columns if c not in GROUP]].to_csv(args.out / "amdahl_summary.csv", index=False)
-    print(f"\nWrote plots, LaTeX tables and amdahl_summary.csv to {args.out}")
+    pd.concat(all_lost, ignore_index=True).to_csv(args.out / "lost_time_summary.csv", index=False)
+    print(f"\nWrote plots, LaTeX tables, amdahl_summary.csv and lost_time_summary.csv to {args.out}")
 
 
 if __name__ == "__main__":
