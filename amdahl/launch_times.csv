@@ -1,0 +1,241 @@
+lsb_jobid,label,run_name,implementation,n_ranks,repeat,data_file,steps,host,mpirun_opts,exit_code,launch_wall_s,start_epoch
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,serial,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,88.0461,1794325383.228249
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,88.1098,1794325471.293010
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,2,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,46.0699,1794325559.419671
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,4,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,24.0966,1794325605.507918
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,8,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.1008,1794325629.622942
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,12,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.5949,1794325642.741477
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,16,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.9707,1794325652.354887
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r1,mpi,24,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.2649,1794325660.343637
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,24,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.5893,1794325666.632648
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,16,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.9417,1794325673.239789
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,12,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.6632,1794325681.199471
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,8,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.1735,1794325690.880594
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,4,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.5787,1794325704.071630
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,2,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.0183,1794325727.668371
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,mpi,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,87.0178,1794325772.704677
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r2,serial,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,86.6806,1794325859.740635
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,serial,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,88.4012,1794325946.439216
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,89.0132,1794326034.859063
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,2,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,57.5992,1794326123.889836
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,4,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,24.8286,1794326181.507263
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,8,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.0942,1794326206.354248
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,12,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.7828,1794326219.466545
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,16,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,8.0674,1794326229.267602
+29980070,v1-numpy,amdahl_v1-numpy_j29980070_r3,mpi,24,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.6663,1794326237.353062
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,serial,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"",0,78.2532,1794327362.416954
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,77.7696,1794327440.689215
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,serial,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.0675,1794327462.566447
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,2,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,40.1112,1794327518.475171
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,4,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,21.3375,1794327558.602976
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,8,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,12.1199,1794327579.956783
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,12,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,8.9523,1794327592.093499
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,16,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.0738,1794327601.062523
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r1,mpi,24,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.6780,1794327608.153002
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,24,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.6552,1794327613.853311
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,16,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.0861,1794327619.525491
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,12,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,8.5054,1794327626.628257
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,86.6653,1794327549.665187
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,8,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,11.5881,1794327635.150031
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,4,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,20.9371,1794327646.755760
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,2,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.2980,1794327636.348511
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,4,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,24.0947,1794327681.664301
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,2,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,40.2170,1794327667.709307
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,8,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,12.9777,1794327705.776777
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,12,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.5390,1794327718.772450
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,16,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.8661,1794327728.329470
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r1,mpi,24,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.2167,1794327736.213494
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,24,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.5070,1794327742.452727
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,16,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.8510,1794327748.978009
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,12,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.5644,1794327756.847203
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,8,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.1234,1794327766.429553
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,mpi,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,77.8478,1794327707.943577
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,4,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.6731,1794327779.571060
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,2,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.5148,1794327803.262449
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r2,serial,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"",0,77.0011,1794327785.808021
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,mpi,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,87.5407,1794327848.795060
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,serial,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"",0,76.9641,1794327862.825622
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,77.9255,1794327939.806314
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r2,serial,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.7617,1794327936.354146
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,2,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,39.6163,1794328017.748277
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,4,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,21.0267,1794328057.381719
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,8,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,11.7460,1794328078.424834
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,12,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,8.5798,1794328090.188084
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,16,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.1191,1794328098.784733
+29980220,v1-numpy,amdahl_v1-numpy_j29980220_r3,mpi,24,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.6595,1794328105.920321
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,serial,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.5366,1794328024.134229
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,87.9259,1794328111.689083
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,2,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.3028,1794328199.633104
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,4,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.5938,1794328244.954121
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,8,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,12.9803,1794328268.565922
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,12,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.5874,1794328281.563887
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,16,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.8709,1794328291.169105
+29980230,v1-numpy,amdahl_v1-numpy_j29980230_r3,mpi,24,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.3270,1794328299.058535
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,serial,1,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"",0,31.9245,1794328809.157192
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,serial,1,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,45.4856,1794328809.473754
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,1,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,32.5006,1794328841.099370
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,2,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,18.0445,1794328873.616757
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,1,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,43.8275,1794328854.977442
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,4,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,10.2032,1794328891.677805
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,8,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.9040,1794328901.896899
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,12,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.8565,1794328908.818312
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,16,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.7205,1794328914.691021
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,2,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,23.1889,1794328898.823307
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r1,mpi,24,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.1006,1794328920.428054
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,24,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,4.9815,1794328925.550117
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,4,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.4117,1794328922.030568
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,16,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.5529,1794328930.548432
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,12,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.7640,1794328936.118130
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,8,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.4436,1794328934.460096
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,12,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,6.0064,1794328941.921379
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,8,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.9644,1794328941.898767
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,16,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.2388,1794328947.945477
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r1,mpi,24,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.8310,1794328953.202890
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,4,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,10.1783,1794328948.879492
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,24,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.6031,1794328958.058278
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,16,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.2079,1794328962.679462
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,12,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,6.1668,1794328967.905425
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,2,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,17.8393,1794328959.073955
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,8,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.5431,1794328974.090324
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,4,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.8241,1794328981.651017
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,mpi,1,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,31.7609,1794328976.930009
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,2,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,22.4085,1794328994.493066
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r2,serial,1,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"",0,32.0493,1794329008.707354
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,mpi,1,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,44.5164,1794329016.920172
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,serial,1,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"",0,33.2977,1794329040.773506
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r2,serial,1,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,43.7313,1794329061.454465
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,1,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,33.0133,1794329074.088015
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,2,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,17.8707,1794329107.117802
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,4,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,10.2263,1794329125.005328
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,8,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.9224,1794329135.247945
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,12,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.7792,1794329142.186910
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,serial,1,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,43.7740,1794329105.204298
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,16,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.7011,1794329147.982367
+29980325,v1-numpy,amdahl_v1-numpy_j29980325_r3,mpi,24,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.1269,1794329153.700131
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,1,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,43.5560,1794329148.996428
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,2,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,22.9911,1794329192.570756
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,4,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.4872,1794329215.579893
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,8,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.4573,1794329228.085117
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,12,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.8680,1794329235.560402
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,16,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.2320,1794329241.446288
+29980326,v1-numpy,amdahl_v1-numpy_j29980326_r3,mpi,24,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.4500,1794329246.696343
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,serial,1,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"",0,32.9216,1794330198.646379
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,1,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,34.1376,1794330231.587328
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,2,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,17.6102,1794330265.742637
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,4,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,11.0722,1794330283.371150
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,8,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,7.8133,1794330294.460432
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,12,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.9772,1794330302.291528
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,16,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.7898,1794330309.286823
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r1,mpi,24,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.4749,1794330316.094562
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,24,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,12.8829,1794330322.593691
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,16,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.8461,1794330335.494869
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,12,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,7.1615,1794330342.359910
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,8,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,8.1172,1794330349.539407
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,4,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,10.9953,1794330357.674283
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,2,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,17.9233,1794330368.694929
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,mpi,1,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,31.5961,1794330386.636606
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r2,serial,1,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"",0,34.6308,1794330418.250039
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,serial,1,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"",0,33.1483,1794330452.898570
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,1,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,31.6087,1794330486.065444
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,2,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,18.0843,1794330517.692081
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,4,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,11.3173,1794330535.793954
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,8,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,7.7544,1794330547.128286
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,12,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.9154,1794330554.900277
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,16,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.5927,1794330561.833856
+29980450,v1-numpy,amdahl_v1-numpy_j29980450_r3,mpi,24,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-47,"--report-bindings --map-by core --bind-to core",0,6.5057,1794330568.444633
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,serial,1,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"",0,28.7655,1794386964.673878
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,serial,1,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"",0,40.9315,1794386964.753473
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,serial,1,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,44.6417,1794386964.757481
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,1,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,28.1998,1794386993.463795
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,2,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,15.6281,1794387021.684425
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,1,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,35.6750,1794387005.708986
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,4,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,9.7821,1794387037.333244
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,1,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,43.5218,1794387009.423560
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,8,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.0085,1794387047.135889
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,12,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.2787,1794387054.165301
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,2,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,19.7712,1794387041.406303
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,16,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.1707,1794387060.464375
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r1,mpi,24,1,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.8623,1794387066.656301
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,4,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,11.5718,1794387061.199541
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,2,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,22.6527,1794387052.968455
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,24,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.1042,1794387072.545176
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,8,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,8.1154,1794387072.793257
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,16,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.1014,1794387078.670597
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,12,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,6.2024,1794387080.931048
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,4,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.4625,1794387075.643810
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,12,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.1083,1794387084.792868
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,16,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,6.1278,1794387087.155731
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,8,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.4711,1794387088.127729
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,8,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.1070,1794387090.922231
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r1,mpi,24,1,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,5.5585,1794387093.305948
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,12,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.8796,1794387095.620670
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,24,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,5.6369,1794387098.893476
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,16,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.2482,1794387101.522423
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,4,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,10.2044,1794387098.049645
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,16,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,6.0632,1794387104.553103
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r1,mpi,24,1,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.4837,1794387106.793385
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,24,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.5991,1794387111.305959
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,12,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,6.4612,1794387110.638724
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,16,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.1886,1794387115.927879
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,2,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,15.5034,1794387108.274738
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,8,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,7.6570,1794387117.122818
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,12,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,6.5137,1794387121.141440
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,8,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.5183,1794387127.678165
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,4,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,11.3717,1794387124.802646
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,4,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.4204,1794387135.218487
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,mpi,1,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,28.1088,1794387123.800045
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,2,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,19.8540,1794387136.196301
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,2,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,22.6402,1794387147.661661
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r2,serial,1,2,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"",0,30.5112,1794387151.930089
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,mpi,1,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,35.6325,1794387156.073397
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,serial,1,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"",0,29.8189,1794387182.462252
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,mpi,1,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,43.8166,1794387170.324394
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r2,serial,1,2,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"",0,36.8616,1794387191.728309
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,1,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,27.7804,1794387212.302930
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,2,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,16.5895,1794387240.103579
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r2,serial,1,2,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,43.8787,1794387214.163170
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,serial,1,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"",0,36.2245,1794387228.612599
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,4,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,10.0024,1794387256.714025
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,8,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,7.1144,1794387266.737022
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,12,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.4002,1794387273.872817
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,16,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,6.0078,1794387280.293804
+29992752,v1-numpy,amdahl_v1-numpy_j29992752_r3,mpi,24,3,gaia_subsets/gaia_nearest_50.csv,20000,n-62-21-75,"--report-bindings --map-by core --bind-to core",0,5.8180,1794387286.530622
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,1,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,35.6313,1794387264.859386
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,serial,1,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"",0,44.1393,1794387258.064197
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,2,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,19.3837,1794387300.512877
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,4,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,13.2043,1794387319.919435
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,8,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,7.4054,1794387333.145617
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,1,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,43.2095,1794387302.226683
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,12,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,6.2607,1794387340.573505
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,16,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,5.9890,1794387346.856411
+29992753,v1-numpy,amdahl_v1-numpy_j29992753_r3,mpi,24,3,gaia_subsets/gaia_nearest_100.csv,10000,n-62-21-76,"--report-bindings --map-by core --bind-to core",0,5.6651,1794387352.867793
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,2,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,22.6641,1794387345.458431
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,4,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,12.4936,1794387368.145029
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,serial,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.5402,1794387295.948653
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,8,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,7.4132,1794387380.661240
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,12,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.9076,1794387388.096673
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,16,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,5.1937,1794387394.026696
+29992754,v1-numpy,amdahl_v1-numpy_j29992754_r3,mpi,24,3,gaia_subsets/gaia_nearest_1000.csv,300,n-62-21-48,"--report-bindings --map-by core --bind-to core",0,4.4387,1794387399.242867
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,1,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,88.4826,1794387383.512952
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,2,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.1258,1794387472.017735
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,4,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.5296,1794387517.165638
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,8,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.0993,1794387540.717003
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,12,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.7181,1794387553.838360
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,16,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.8587,1794387563.578821
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r1,mpi,24,1,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.3538,1794387571.459939
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,24,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.2332,1794387577.841962
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,16,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.8303,1794387584.097912
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,12,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.7092,1794387591.951045
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,8,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,16.0438,1794387601.683012
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,4,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.6353,1794387617.748989
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,2,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.1691,1794387641.406727
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,mpi,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,87.5144,1794387686.598455
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r2,serial,1,2,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.8209,1794387774.135024
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,serial,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"",0,87.5892,1794387861.980027
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,1,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,88.9547,1794387949.590532
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,2,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,45.7351,1794388038.567621
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,4,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,23.6302,1794388084.325030
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,8,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,13.2855,1794388107.977137
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,12,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,9.4817,1794388121.284312
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,16,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,7.9350,1794388130.788419
+29992755,v1-numpy,amdahl_v1-numpy_j29992755_r3,mpi,24,3,gaia_subsets/gaia_nearest_5000.csv,30,n-62-21-77,"--report-bindings --map-by core --bind-to core",0,6.2232,1794388138.746502

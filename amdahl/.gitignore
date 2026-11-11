@@ -1,0 +1,5 @@
+*.lock
+# generated: the analysis writes out/, the cluster jobs write logs/
+out/
+logs/*
+!logs/.gitkeep
