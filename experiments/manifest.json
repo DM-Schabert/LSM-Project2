@@ -1,0 +1,31 @@
+{
+  "experiment": "merge_balance_v1",
+  "original_source_manifest": "raw_evidence.zip:original_manifest.json",
+  "sha256": {
+    ".gitattributes": "ffe27c246951983f9a7c72c1b038554d30eeb6b624686fb0824e3bac5442809c",
+    ".gitignore": "dacd6ee41842e317fae42d1fade185a78476530ac4d7fb3027f3d2095c6f1c83",
+    "code/analyze.py": "33439fe24184ae275cfd233a5de8ef1bec4dfeef06fe64aab5089eaff35d9229",
+    "code/batch.sh": "7283c59cfb45f21e6b82f5f22b035f47740548bbb7536220471e3929eb2ec05d",
+    "code/common.py": "fa580c05e205617066e09f272466d9495ceb7ecf954117166ec2dd3122724bff",
+    "code/engine.py": "ae04be048ca6f6c71a80bcbcfb9954ff4c2dce0ec775a17cb1a3be09b5960ede",
+    "code/run_job.py": "3adb6fb33d30d8368297239bcfbeaaf9a597454fdb94d5d8fb7e8af1a3587128",
+    "code/SerialImplementation.py": "4af131732260a70a23d17c54bd0505b9ee80e6a2aa29db9dff22201b93181a3e",
+    "code/submit.py": "efbcd7741d6b7323364b3bb7a0751589c22b218c4ad5db5e52eb6f50ecc1a135",
+    "config.json": "37a9a235ba312931ed15a099ae554884b157c7704827161b1afb4bfca839fcad",
+    "data/fixture.csv": "a77a2fe0a4ef851ff95defd61885f28656e5e3eb4b93a1e5edd7f6df034f50c3",
+    "data/fixture_schedule.json": "21175e590db193bfe0e337787289f38d0903c7f84889875e66758c502b0c14a8",
+    "data/input.csv": "292be10beb5a3b2a9e9a1e672adf78c3716a0664e31af40ea9c51fdfd07c6e77",
+    "data/schedule.json": "6abdd79b904e2e7ab61bb086e6cf3b251ab7325ae8e5c746214d9b98eae959ea",
+    "raw_evidence.zip": "e5700514b4846708279276c7f4091a85dbe5d4b0e253f3ec6b00afec1f0a4a1a",
+    "README.md": "b480a958758837c10262efda645fa96d18d9a1474118d55e4edf26ad3a5af14a",
+    "results/diagnostic_steps.csv": "609fc082ab35f6f6bf4634608d670c42f4740a82c4510d4178ac4238e3f1c490",
+    "results/event_stage_mean_rank_ms.csv": "f46445087057f93cef7a4690ccc219b7e9c1c147175e5103daeaca31837f6dc1",
+    "results/event_stages.png": "acc9a039e90be43a9d0ad037821fb535f128804524c5e19a6ab8d8165f22bd37",
+    "results/FINDINGS.png": "1af264c4639508abdb0c0e544ca246392598358cb1922974077cb6e492793aba",
+    "results/merge_events.csv": "4b488b087c40f452b91a6b2564ed25bc574fd6b3f2c355a37d8e48ed660ee3f5",
+    "results/paired_comparison.csv": "775ed1d96ab9d28cb9f79e2d9503a3a393aa0dee0d3e092f354e448f9c70e957",
+    "results/REPORT.md": "4e0f6ee943f78eb4882a7c0c3270a57cd93bba3bb46880f72ec5c74f9fb414da",
+    "results/timing_runs.csv": "bad31efa6eef631f55eb57ec2b7cd879b92f9fa1f030d7ccd894dd04746eefbe",
+    "results/timing_summary.csv": "9481c6894bed49edcaad238642d3b393f8802ef842c664f18e89716a20dbb158"
+  }
+}

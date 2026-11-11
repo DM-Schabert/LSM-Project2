@@ -1,0 +1,32 @@
+{
+  "name": "merge_balance_v1",
+  "n_input": 1000,
+  "n_final_expected": 904,
+  "steps": 100,
+  "repeats": 5,
+  "ranks": [
+    4
+  ],
+  "slots": 24,
+  "walltime_min": 7,
+  "dt": 0.01,
+  "softening": 0.01,
+  "seed": 42,
+  "workload": "synthetic scheduled coalescence on Gaia initial positions",
+  "event_steps": [
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80
+  ],
+  "pairs_per_event": 12,
+  "policies": [
+    "immediate",
+    "retained"
+  ],
+  "initial_input": "gaia_nearest_1000.csv"
+}
