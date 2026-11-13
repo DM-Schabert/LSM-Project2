@@ -10,7 +10,7 @@ communication/out/bench/:
     report.txt           what is printed
 
 The ring is also predicted from the pingpong fit, (P - 1) (mu + b/B) with b the block size and
-mu, B of the slowest link it uses (the other node if the ring spans two nodes): the expectation
+mu, B of the slowest link it uses (all links shift at once): the expectation
 the measurement is compared with.
 
 Usage (from the repository root, needs pandas and matplotlib):
@@ -75,10 +75,25 @@ def main() -> None:
     if not files:
         raise SystemExit("No bench_*.csv in communication/results/. Copy them from the cluster first.")
     df = pd.concat([pd.read_csv(f, dtype={"job": str}) for f in files], ignore_index=True)
+    if "timing_mode" not in df:
+        df["timing_mode"] = np.nan
+    df["timing_mode"] = df["timing_mode"].fillna("batched")      # files from before 13 Nov 2026 only batched
     df["t"] = df["t_median_us"] * 1e-6
     args.out.mkdir(parents=True, exist_ok=True)
     lines: List[str] = []
     say = lambda s="": (print(s), lines.append(s))  # noqa: E731
+
+    # collectives: one call per repeat is the main measure; batched calls overlap (see comm_bench.py)
+    coll = df[df["pattern"] != "pingpong"]
+    single_jobs = set(coll.loc[coll["timing_mode"] == "single", "job"])
+    both = coll[coll["job"].isin(single_jobs)]
+    keep = (df["pattern"] == "pingpong") | (df["job"].isin(single_jobs) & (df["timing_mode"] == "single")) \
+        | (~df["job"].isin(single_jobs))
+    old = sorted(set(coll["job"]) - single_jobs)
+    if old:
+        print(f"Note: job(s) {', '.join(old)} timed collectives only back to back (batched), which is optimistic "
+              f"for small messages. Run C0 again to get single-call times.")
+    df = df[keep]
 
     # ------------------------------------------------------------ latency and bandwidth
     pp = df[df["pattern"] == "pingpong"]
@@ -97,7 +112,7 @@ def main() -> None:
             say(f"  job {f['job']:<20} {f['pair']:<24} mu = {f['mu_us']:6.2f} us   B = {f['bandwidth_GBps']:6.2f} GB/s"
                 f"   (8 B message: {f['t_8B_us']:.2f} us)")
         jobs = list(dict.fromkeys(pp["job"]))
-        fig, axes = plt.subplots(1, len(jobs), figsize=(6.2 * len(jobs), 4.0), squeeze=False)
+        fig, axes = plt.subplots(1, len(jobs), figsize=(6.2 * len(jobs), 4.0), squeeze=False, layout="constrained")
         for ax, job in zip(axes[0], jobs):
             g = pp[pp["job"] == job]
             for pair, h in g.groupby("pair"):
@@ -122,19 +137,20 @@ def main() -> None:
     sch["n_stars"] = sch["n_stars"].astype(int)
     jobs = list(dict.fromkeys(sch["job"]))
     if jobs:
-        fig, axes = plt.subplots(1, len(jobs), figsize=(6.2 * len(jobs), 4.0), squeeze=False)
+        fig, axes = plt.subplots(1, len(jobs), figsize=(6.2 * len(jobs), 4.0), squeeze=False, layout="constrained")
         for ax, job in zip(axes[0], jobs):
             g = sch[sch["job"] == job]
             pmax = int(g["n_ranks"].max())
             n_nodes = int(g["n_nodes"].iloc[0])
             say(f"\n=== Exchange per time step at P = {pmax}, {job_title(g)} (median, µs)")
             say(f"  {'N':>8} {'Allgatherv':>11} {'ring':>11} {'2D':>11} {'ring model':>11}")
-            link = "other node" if n_nodes > 1 else "neighbouring core"
-            f = fits[(fits["job"] == job) & (fits["pair"] == link)] if len(fits) else pd.DataFrame()
+            # all links of the ring shift at once, so a shift lasts as long as its slowest link: at the
+            # largest P the ring uses every kind of pair the job measured (other socket, other node)
+            f = fits[fits["job"] == job] if len(fits) else pd.DataFrame()
             table = g[g["n_ranks"] == pmax].pivot_table(index="n_stars", columns="pattern", values="t_median_us")
             ring_b = g[(g["n_ranks"] == pmax) & (g["pattern"] == "ring")].set_index("n_stars")["message_bytes"]
-            model = ((pmax - 1) * (f["mu_us"].iloc[0] + ring_b / (f["bandwidth_GBps"].iloc[0] * 1e3))
-                     if len(f) else pd.Series(dtype=float))
+            model = (pd.concat([(pmax - 1) * (l.mu_us + ring_b / (l.bandwidth_GBps * 1e3)) for l in f.itertuples()],
+                               axis=1).max(axis=1) if len(f) else pd.Series(dtype=float))
             for n, r in table.iterrows():
                 cells = [f"{r.get(p, np.nan):11.1f}" for p in ("allgatherv", "ring", "2d")]
                 say(f"  {n:>8,} " + " ".join(cells) + f" {model.get(n, np.nan):11.1f}")
@@ -153,7 +169,7 @@ def main() -> None:
             ax.legend(loc="upper left")
         save(fig, args.out, "schemes_N")
 
-        fig, axes = plt.subplots(len(jobs), 2, figsize=(12.4, 4.0 * len(jobs)), squeeze=False)
+        fig, axes = plt.subplots(len(jobs), 2, figsize=(12.4, 4.0 * len(jobs)), squeeze=False, layout="constrained")
         for row, job in zip(axes, jobs):
             g = sch[sch["job"] == job]
             ns = sorted(g["n_stars"].unique())
@@ -168,6 +184,19 @@ def main() -> None:
                 ax.set_title(f"{job_title(g)}, N = {n:,}", color=INK, fontsize=10)
                 ax.legend(loc="upper left")
         save(fig, args.out, "schemes_P")
+
+    if len(both):
+        say("\n=== How much the timing method matters: single call / back-to-back (batched), at the largest P")
+        for job, g in both.groupby("job"):
+            pmax = int(g["n_ranks"].max())
+            t = g[g["n_ranks"] == pmax].pivot_table(index=["pattern", "n_stars"], columns="timing_mode",
+                                                    values="t_median_us")
+            if {"single", "batched"} <= set(t.columns):
+                say(f"  {job_title(g)}, P = {pmax}:")
+                for (pattern, n), r in t.iterrows():
+                    label = "1 integer" if pattern == "allreduce" else f"N = {int(n):,}"
+                    say(f"    {pattern:<10} {label:<12} single {r['single']:9.1f} us   batched {r['batched']:9.1f} us"
+                        f"   ratio {r['single'] / r['batched']:5.2f}")
 
     ar = df[df["pattern"] == "allreduce"]
     if len(ar):

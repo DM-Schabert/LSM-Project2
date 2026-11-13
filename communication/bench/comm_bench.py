@@ -15,12 +15,18 @@ Times the communication patterns of our schemes on arrays shaped like ours (floa
                 row, Allreduce of ceil(N/p_r) forces in the row
 
 Method: every point gets a few untimed warm-up calls, then repeats until --target-s is used
-(between --min-reps and --max-reps). A repeat starts after a Barrier and runs as many calls back
-to back as last at least 0.1 ms, divided by their number (as the OSU benchmarks do; single calls
-of a few microseconds are below the timer's resolution). Every rank times it; a repeat counts
-with the slowest rank's time (Allreduce MAX). The CSV keeps the median and the quartiles over the
-repeats. Back-to-back calls can overlap a little, which real steps (with computing in between)
-do not, so the smallest times are slightly optimistic. With P ranks out of a larger job, the others wait without spinning.
+(between --min-reps and --max-reps). A repeat starts after a Barrier; every rank times it with
+time.perf_counter (nanosecond resolution), and it counts with the slowest rank's time (Allreduce
+MAX). The CSV keeps the median and the quartiles over the repeats. Two ways of timing, in the
+column timing_mode:
+    single    one call per repeat, as the OSU benchmarks time collectives. This is what a time
+              step sees, because a step computes between two exchanges. The main measure.
+    batched   as many calls back to back as last at least 0.1 ms, divided by their number, as
+              OSU's latency test does for pingpong. For collectives this is optimistic: a rank
+              that is done starts the next call while others are still in the last one, so the
+              calls overlap. Pingpong is only timed this way (its round trips cannot overlap);
+              for the collectives it is kept to show how much the method matters.
+With P ranks out of a larger job, the others wait without spinning.
 On several nodes, P ranks are spread evenly over the nodes.
 
 Output: one CSV (rank 0 appends a row per point, so a run cut short keeps what it has), by
@@ -48,7 +54,7 @@ STAR_BYTES = 24                     # one position: 3 doubles
 BATCH_S = 1e-4                      # a timed repeat lasts at least this long (see time_calls)
 REPO = Path(__file__).resolve().parents[2]
 COLUMNS = ["job", "started", "n_nodes", "hosts", "pattern", "pair", "n_ranks", "ranks_per_node",
-           "n_stars", "message_bytes", "received_bytes_per_rank", "timed", "reps", "calls_per_rep",
+           "n_stars", "message_bytes", "received_bytes_per_rank", "timed", "timing_mode", "reps", "calls_per_rep",
            "t_median_us", "t_p25_us", "t_p75_us", "t_min_us", "t_mean_us",
            "mpi_library", "mpi4py", "numpy", "cpu"]
 
@@ -80,22 +86,19 @@ def quiet_barrier(comm: MPI.Comm) -> None:
         time.sleep(0.0005)
 
 
-def time_calls(sub: MPI.Comm, op: Callable[[], None], args: argparse.Namespace) -> tuple:
+def time_calls(sub: MPI.Comm, op: Callable[[], None], args: argparse.Namespace, batched: bool) -> tuple:
     """Seconds per call for every repeat, each the slowest rank's (the same array on every rank of
-    `sub`), and the number of calls per repeat.
+    `sub`), and the number of calls per repeat (1 unless batched, see the module docstring)."""
+    clock = time.perf_counter
 
-    A repeat runs `inner` calls back to back after one Barrier and divides by `inner`, so that it
-    lasts at least BATCH_S: single calls of a few microseconds would be lost in the timer's
-    resolution and in the ranks leaving the Barrier at slightly different times.
-    """
     def run(reps: int, inner: int) -> np.ndarray:
         t = np.empty(reps)
         for k in range(reps):
             sub.Barrier()
-            t0 = MPI.Wtime()
+            t0 = clock()
             for _ in range(inner):
                 op()
-            t[k] = (MPI.Wtime() - t0) / inner
+            t[k] = (clock() - t0) / inner
         worst = np.empty_like(t)
         sub.Allreduce(t, worst, op=MPI.MAX)
         return worst
@@ -103,7 +106,7 @@ def time_calls(sub: MPI.Comm, op: Callable[[], None], args: argparse.Namespace) 
     for _ in range(args.warmup):
         op()
     probe = float(np.median(run(5, 1)))            # identical on all ranks, so all pick the same counts
-    inner = int(min(1000, max(1, math.ceil(BATCH_S / max(probe, 1e-7)))))
+    inner = int(min(1000, max(1, math.ceil(BATCH_S / max(probe, 1e-7))))) if batched else 1
     reps = int(min(args.max_reps, max(args.min_reps, args.target_s / max(probe * inner, 1e-7))))
     return run(reps, inner), inner
 
@@ -225,23 +228,27 @@ def main() -> None:
         sub = world.Split(0 if member else MPI.UNDEFINED, key=rank)
         if member:
             op, message, received, scale, extra = setup(sub, value)
-            t, inner = time_calls(sub, op, args)
-            t = t * scale * 1e6
+            # pingpong only batched (round trips cannot overlap); collectives both ways, single first
+            for mode in (["batched"] if pattern == "pingpong" else ["single", "batched"]):
+                t, inner = time_calls(sub, op, args, batched=(mode == "batched"))
+                t = t * scale * 1e6
+                if rank == 0:
+                    per_node = {h: sum(1 for r in ranks if hosts[r] == h) for h in nodes}
+                    row = dict(meta, pattern=pattern, pair=pair, n_ranks=len(ranks),
+                               ranks_per_node=max(per_node.values()),
+                               n_stars=value if pattern not in ("pingpong", "allreduce") else "",
+                               message_bytes=message, received_bytes_per_rank=received, timed=TIMED[pattern],
+                               timing_mode=mode, reps=len(t), calls_per_rep=inner,
+                               t_median_us=f"{np.median(t):.3f}", t_p25_us=f"{np.percentile(t, 25):.3f}",
+                               t_p75_us=f"{np.percentile(t, 75):.3f}", t_min_us=f"{t.min():.3f}", t_mean_us=f"{t.mean():.3f}")
+                    writer.writerow(row)
+                    fh.flush()
+                    what = {"pingpong": f"{pair}, {value:,} B", "allreduce": "1 integer"}.get(pattern, f"N = {value:,}")
+                    print(f"  {pattern:<10} P = {len(ranks):>3}  {what:<32} {mode:<8} {np.median(t):12.2f} us"
+                          f"  ({len(t)} x {inner} calls)", flush=True)
             for c in extra:
                 c.Free()
             sub.Free()
-            if rank == 0:
-                per_node = {h: sum(1 for r in ranks if hosts[r] == h) for h in nodes}
-                row = dict(meta, pattern=pattern, pair=pair, n_ranks=len(ranks),
-                           ranks_per_node=max(per_node.values()),
-                           n_stars=value if pattern not in ("pingpong", "allreduce") else "",
-                           message_bytes=message, received_bytes_per_rank=received, timed=TIMED[pattern],
-                           reps=len(t), calls_per_rep=inner, t_median_us=f"{np.median(t):.3f}", t_p25_us=f"{np.percentile(t, 25):.3f}",
-                           t_p75_us=f"{np.percentile(t, 75):.3f}", t_min_us=f"{t.min():.3f}", t_mean_us=f"{t.mean():.3f}")
-                writer.writerow(row)
-                fh.flush()
-                what = {"pingpong": f"{pair}, {value:,} B", "allreduce": "1 integer"}.get(pattern, f"N = {value:,}")
-                print(f"  {pattern:<10} P = {len(ranks):>3}  {what:<32} {np.median(t):12.2f} us  ({len(t)} x {inner} calls)", flush=True)
         quiet_barrier(world)
 
     patterns = args.patterns.split()

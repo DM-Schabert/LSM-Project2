@@ -81,7 +81,9 @@ git add communication/results/bench_*.csv && git commit -m "C0 results"
 
 The analysis writes `communication/out/bench/`: `pingpong` (latency and bandwidth with the fit T = μ + s/B), `schemes_N` and `schemes_P` (time of one exchange of each scheme against N and against P), `fits.csv` and `report.txt`. The report also predicts the ring from the pingpong fit, (P − 1)(μ + b/B), next to the measured times: expectation against measurement.
 
-What the benchmark does and how it times is described at the top of `bench/comm_bench.py`. In short: warm-up calls first; every repeat starts after a `Barrier`, runs as many calls as last at least 0.1 ms and counts with the slowest rank's time; median and quartiles over the repeats. The job's `.err` file shows where the ranks were bound (`--report-bindings`).
+What the benchmark does and how it times is described at the top of `bench/comm_bench.py`. In short: warm-up calls first; every repeat starts after a `Barrier` and counts with the slowest rank's time (`time.perf_counter`); median and quartiles over the repeats. Collectives are timed one call per repeat (`timing_mode = single`, the main measure, as OSU times collectives) and, for comparison, back to back (`batched`). Back-to-back collectives overlap and look faster than in a time step, where computing separates two exchanges. Pingpong is only timed back to back, as usual. The job's `.err` file shows where the ranks were bound (`--report-bindings`).
+
+The first C0 runs (jobs 30040944 and 30040946, 13 Nov 2026) timed the collectives only back to back. Their pingpong numbers are fine; their collective numbers are optimistic for small messages.
 
 Laptop test, no cluster needed (pretends there are two nodes):
 
