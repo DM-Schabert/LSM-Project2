@@ -1,4 +1,7 @@
 # made again from results/ by the analysis
 out/
+# LSF logs of the cluster jobs
+logs/*
+!logs/.gitkeep
 __pycache__/
 *.lock

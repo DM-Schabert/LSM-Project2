@@ -15,6 +15,7 @@ What we know from the Amdahl campaign (`amdahl/results.html`): on one node and w
 | `bench/` | communication alone, no physics: time per call against message size and P, to fit `T = μ + s/B` |
 | `jobs/` | LSF job scripts (one node, two nodes) |
 | `results/` | raw CSV rows of every run (in git) |
+| `logs/` | LSF `.out`/`.err` of the cluster jobs (not in git) |
 | `out/` | plots and tables, made again from `results/` (not in git) |
 
 ## Rules
@@ -55,6 +56,39 @@ Expectations to check:
 | C3 | The same across two nodes | 1 000, 5 000, 20 000 | 8 … 48 | 2 |
 | C4 | Overlap on and off (ring) | 50, 1 000 | 8, 24 | 1 and 2 |
 | C5 | Memory per rank against N (peak RSS) | up to the largest that fits | 24 | 1 |
+
+## Running C0 and getting the results off the cluster
+
+We cannot push from the cluster, so every job writes **one CSV file** that is copied to the laptop and committed there.
+
+On the cluster, from the repository root:
+
+```bash
+git pull
+bsub < communication/jobs/bench_1node.sh     # 24 ranks on one node, about 2 min
+bsub < communication/jobs/bench_2nodes.sh    # 2 x 24 ranks on two nodes, about 3 min
+bjobs                                        # PEND = waiting, RUN = running
+ls communication/results/                    # bench_<jobid>.csv, one per job
+```
+
+On the laptop, from the repository root (user name and repository path on the cluster as yours):
+
+```bash
+scp <user>@<login node>:<repo on the cluster>/communication/results/bench_*.csv communication/results/
+python3 communication/bench/analyse_bench.py   # needs pandas and matplotlib
+git add communication/results/bench_*.csv && git commit -m "C0 results"
+```
+
+The analysis writes `communication/out/bench/`: `pingpong` (latency and bandwidth with the fit T = μ + s/B), `schemes_N` and `schemes_P` (time of one exchange of each scheme against N and against P), `fits.csv` and `report.txt`. The report also predicts the ring from the pingpong fit, (P − 1)(μ + b/B), next to the measured times: expectation against measurement.
+
+What the benchmark does and how it times is described at the top of `bench/comm_bench.py`. In short: warm-up calls first; every repeat starts after a `Barrier`, runs as many calls as last at least 0.1 ms and counts with the slowest rank's time; median and quartiles over the repeats. The job's `.err` file shows where the ranks were bound (`--report-bindings`).
+
+Laptop test, no cluster needed (pretends there are two nodes):
+
+```bash
+mpirun -np 4 python3 communication/bench/comm_bench.py --fake-nodes 2 --sizes "50 1000" --target-s 0.02 --out /tmp/bench_test.csv
+python3 communication/bench/analyse_bench.py /tmp/bench_test.csv --out /tmp/bench_out
+```
 
 ## Status
 
