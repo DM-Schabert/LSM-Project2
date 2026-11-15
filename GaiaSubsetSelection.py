@@ -19,6 +19,8 @@ MPI benchmark reminder:
     the serial result for identical initial conditions.
 
 Usage examples:
+module load pandas/2.3.0-python-3.12.11
+python3 -c "import plotly" || pip install --user plotly
     python GaiaSubsetSelection.py
     python GaiaSubsetSelection.py --n 1000 5000 --no-plot --save
     python GaiaSubsetSelection.py --no-show            # save the plots without opening the browser
