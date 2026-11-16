@@ -11,6 +11,9 @@
 #      bash amdahl/run_all.sh                    # submit everything
 #      DRY_RUN=1 bash amdahl/run_all.sh          # only write and show the job scripts
 #      LABEL=v2-numba bash amdahl/run_all.sh     # the same campaign for a new code version
+#      LABEL=v3-2d-tile PROGRAM_ARGS="--decomposition 2d --tile-rows 0" bash amdahl/run_all.sh
+#                                                # another decomposition (options for the MPI runs only)
+#      NODES=2 LABEL=... bash amdahl/run_all.sh  # two full nodes, P up to 48
 #
 #  The DTU cluster does not pass your shell's environment on to jobs. So, like submit.sh,
 #  this script writes each sweep's settings as export lines into a copy of amdahl_batch.sh
@@ -22,7 +25,10 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 LABEL=${LABEL:-v1-numpy}                # name of the code version
 LABEL=${LABEL//_/-}                     # '_' separates the parts of run_name
-P_LIST=${P_LIST:-"1 2 4 8 12 16 24"}
+NODES=${NODES:-1}                       # 1 or 2 full nodes (24 cores each)
+if [ "$NODES" = 2 ]; then P_DEFAULT="1 2 4 8 12 16 24 32 48"; else P_DEFAULT="1 2 4 8 12 16 24"; fi
+P_LIST=${P_LIST:-$P_DEFAULT}
+PROGRAM_ARGS=${PROGRAM_ARGS:-""}        # options for ParallelImplementation.py only, e.g. "--decomposition ring"
 DRY_RUN=${DRY_RUN:-0}
 CAMPAIGN=${CAMPAIGN:-${LABEL}_$(date +%Y%m%d_%H%M)}
 
@@ -58,7 +64,7 @@ submit() {   # submit <job script> [bsub options]: prints the LSF job ID
     echo "$id"
 }
 
-echo "Campaign $CAMPAIGN   label $LABEL   P: $P_LIST"
+echo "Campaign $CAMPAIGN   label $LABEL   nodes: $NODES   P: $P_LIST   program options: ${PROGRAM_ARGS:-none}"
 ids=()
 while IFS= read -r line; do
     line=${line%%#*}
@@ -70,13 +76,19 @@ while IFS= read -r line; do
     fi
     # copy of amdahl_batch.sh with this sweep's settings as export lines before the settings block
     # (after the #BSUB lines: LSF ignores #BSUB lines after the first command)
-    exports=$(printf 'export LABEL=%q DATA=%q STEPS=%q REPEATS=%q WALLTIME_MIN=%q P_LIST=%q' \
-              "$LABEL" "$data" "$steps" "$reps" "$wall" "$P_LIST")
+    exports=$(printf 'export LABEL=%q DATA=%q STEPS=%q REPEATS=%q WALLTIME_MIN=%q P_LIST=%q PROGRAM_ARGS=%q' \
+              "$LABEL" "$data" "$steps" "$reps" "$wall" "$P_LIST" "$PROGRAM_ARGS")
     job=$LOGDIR/sweep_N$n.sh
     inserted=0
     while IFS= read -r l; do
         if [ "$inserted" = 0 ] && [ "$l" = "$MARKER" ]; then
             printf '# settings from run_all.sh (campaign %s)\n%s\n\n' "$CAMPAIGN" "$exports"; inserted=1
+        fi
+        if [ "$NODES" = 2 ]; then       # two full nodes: 48 slots, 24 per node
+            case "$l" in
+                "#BSUB -n 24") l="#BSUB -n 48" ;;
+                '#BSUB -R "span[hosts=1]"') l='#BSUB -R "span[ptile=24]"' ;;
+            esac
         fi
         printf '%s\n' "$l"
     done < "$BATCH" > "$job"
