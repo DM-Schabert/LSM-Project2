@@ -1,0 +1,68 @@
+Usage: /zhome/a7/8/77238/.lsbatch/1794739923.30059770.shell <label> [init options]   e.g. /zhome/a7/8/77238/.lsbatch/1794739923.30059770.shell v2-ring --note 'ring algorithm'
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30059770: <NONAME> in cluster <dcc> Exited
+
+Job <NONAME> was submitted from host <n-62-27-19> by user <s123142> in cluster <dcc> at Sun Nov 15 11:52:03 2026
+Job was executed on host(s) <n-62-31-24>, in queue <hpc>, as user <s123142> in cluster <dcc> at Sun Nov 15 11:52:04 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars/isoeff> was used as the working directory.
+Started at Sun Nov 15 11:52:04 2026
+Terminated at Sun Nov 15 11:52:05 2026
+Results reported at Sun Nov 15 11:52:05 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  Start an isoefficiency campaign for the current code (run on a login node,
+#  from anywhere; it works in the code folder that contains isoeff/).
+#
+#      ./isoeff/start.sh v2-ring --note "ring algorithm, week 7"
+#      ./isoeff/start.sh v2-ring --n0 1000 --growth 1.5
+#      ./isoeff/start.sh v3-2nodes --max-nodes 2
+#
+#  Everything after the label goes to 'controller.py init' (see its --help).
+#  The first job is submitted at once; every job submits the next one itself.
+#
+#  Follow it:   python3 isoeff/controller.py status --campaign isoeff/out/<label> [--log]
+#  Resume it:   python3 isoeff/controller.py next   --campaign isoeff/out/<label>
+#  First time:  chmod +x isoeff/start.sh
+# =============================================================================
+set -euo pipefail
+if [ $# -lt 1 ] || [[ "$1" == -* ]]; then
+    echo "Usage: $0 <label> [init options]   e.g. $0 v2-ring --note 'ring algorithm'" >&2
+    exit 1
+fi
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# pandas/numpy are needed to make the first subset (the controller itself is stdlib only)
+if command -v module >/dev/null 2>&1; then
+    module load pandas/2.3.0-python-3.12.11 >/dev/null 2>&1 || true
+fi
+
+label="$1"; shift
+python3 isoeff/controller.py init --label "$label" "$@" --submit
+
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   0.51 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     1024.00 MB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   1 sec.
+    Turnaround time :                            2 sec.
+
+The output (if any) is above this job summary.
+
