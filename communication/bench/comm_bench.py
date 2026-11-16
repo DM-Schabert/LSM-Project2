@@ -198,7 +198,7 @@ def main() -> None:
     out = args.out or REPO / "communication" / "results" / f"bench_{job}.csv"
     meta = {"job": job, "started": datetime.datetime.now().isoformat(timespec="seconds"),
             "n_nodes": len(nodes), "hosts": " ".join(nodes),
-            "mpi_library": MPI.Get_library_version().splitlines()[0].strip(),
+            "mpi_library": MPI.Get_library_version().replace("\x00", "").splitlines()[0].strip(),  # Open MPI ends it with a NUL
             "mpi4py": mpi4py.__version__, "numpy": np.__version__, "cpu": cpu_model()}
     if rank == 0:
         out.parent.mkdir(parents=True, exist_ok=True)
