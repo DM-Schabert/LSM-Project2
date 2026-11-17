@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2D-Kraftzerlegung</title>
+<title>2D force decomposition</title>
 <style>
-  /* Eine Lesespalte; links die Kräftetabelle, rechts das Rank-Gitter und der Text zum Schritt.
-     Farben: Blau = gewählter Rank, Grün = seine Zeile (row_comm), Violett = seine Spalte (col_comm). */
+  /* One reading column; the force table on the left, the rank grid and the text for the step on the right.
+     Colours: blue = selected rank, green = its row (row_comm), violet = its column (col_comm). */
   :root {
     --bg: #fbfbfa; --fg: #1b1f27; --muted: #5d6573; --panel: #f2f3f5; --line: #dcdfe4;
     --tile-a: #eceef2; --tile-b: #f6f7f9; --cell-line: #ffffff;
@@ -14,6 +14,9 @@
     --row: #1baf7a; --row-soft: #c9eedf;
     --col: #6250d6; --col-soft: #dcd7fa;
     --mark: #b8430f;
+    /* Measurements (C2): schemes and parts of a step; distances checked for colour-vision deficiency (OKLab, Machado 2009) */
+    --c-v1: #3d4350; --c-ring: #d0621f; --c-2d: #2a78d6; --grid: #e6e8ec;
+    --p-forces: #a3aab6; --p-comm: #1a9e74; --p-sync: #7c5ce6; --p-rest: #dde1e7;
     --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -25,6 +28,8 @@
       --row: #22a978; --row-soft: #1d4a3a;
       --col: #8b7ff0; --col-soft: #3a3366;
       --mark: #f08350;
+      --c-v1: #c5cad3; --c-ring: #f08350; --c-2d: #4a93ea; --grid: #2a2e35;
+      --p-forces: #6b7382; --p-comm: #22a978; --p-sync: #8b7ff0; --p-rest: #3a3f48;
       color-scheme: dark;
     }
   }
@@ -35,6 +40,8 @@
     --row: #22a978; --row-soft: #1d4a3a;
     --col: #8b7ff0; --col-soft: #3a3366;
     --mark: #f08350;
+    --c-v1: #c5cad3; --c-ring: #f08350; --c-2d: #4a93ea; --grid: #2a2e35;
+    --p-forces: #6b7382; --p-comm: #22a978; --p-sync: #8b7ff0; --p-rest: #3a3f48;
     color-scheme: dark;
   }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font); }
@@ -106,83 +113,138 @@
   .ln.on { background: var(--sel-soft); border-left-color: var(--sel); }
   .ln .cm { color: var(--muted); }
   @media (prefers-reduced-motion: no-preference) { .cell { transition: fill .18s ease-out; } }
+  a { color: var(--sel); }
+
+  /* ---------- Measurements (C2) */
+  .results { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .results h3 { margin: 14px 0 0; font-size: 16px; }
+  .text-table { min-width: 680px; }            /* on a phone: scroll sideways instead of very narrow columns */
+  .text-table td, .text-table th { white-space: normal; text-align: left; vertical-align: top; }
+  .text-table td:first-child { min-width: 9.5em; }
+  .text-table td:last-child { font-weight: 600; }
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 22px; }
+  .panel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .panel-title { font-size: 13.5px; font-weight: 600; }
+  .sw-line { width: 20px; height: 0; border-top: 2px solid; display: inline-block; }
+  .sw-line.dashed { border-top-style: dashed; }
+  .tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 340px; background: var(--bg); color: var(--fg);
+         border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; line-height: 1.4;
+         box-shadow: 0 6px 20px rgba(0, 0, 0, .14); font-variant-numeric: tabular-nums; }
+  .tip .t-head { font-weight: 600; margin-bottom: 4px; }
+  .tip .t-grid { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center; }
+  .tip .t-grid span:last-child, .tip .t-val { text-align: right; }
+  .tip .t-foot { color: var(--muted); margin-top: 4px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: 10px; }
 </style>
 </head>
 <body>
 <div class="page">
   <header class="lede">
-    <h1>2D-Kraftzerlegung</h1>
-    <p>Die Tabelle zeigt alle Kräfte eines Zeitschritts: Zeile i sind die Kräfte <em>auf</em> Stern i, Spalte j die Kräfte, die Stern j <em>ausübt</em>. Jedes Kästchen ist ein Sternpaar. Die Frage ist nur, welcher Rank welche Kästchen rechnet und welche Positionen er dafür kennen muss.</p>
-    <p class="muted">Rank anklicken (in der Tabelle oder im Gitter), dann die Schritte durchgehen. Mit „v1“ und „Ring“ siehst du dieselbe Tabelle in den anderen Zerlegungen.</p>
+    <h1>2D force decomposition</h1>
+    <p>The table shows all forces of one time step: row i holds the forces <em>on</em> star i, column j the forces that star j <em>exerts</em>. Every cell is one pair of stars. The only question is which rank computes which cells, and which positions it needs to know for that.</p>
+    <p class="muted">Click a rank (in the table or in the grid), then step through. “v1” and “Ring” show the same table in the other decompositions. At the bottom: <a href="#c2">what the measurements on the cluster showed</a>.</p>
   </header>
 
   <div class="controls">
-    <div class="group"><span class="group-label">Zerlegung</span>
-      <div class="seg" id="view-seg" role="group" aria-label="Zerlegung">
+    <div class="group"><span class="group-label">Decomposition</span>
+      <div class="seg" id="view-seg" role="group" aria-label="Decomposition">
         <button type="button" data-view="v1" aria-pressed="false">v1 (Allgather)</button>
         <button type="button" data-view="ring" aria-pressed="false">Ring</button>
         <button type="button" data-view="2d" aria-pressed="true">2D</button>
       </div>
     </div>
     <div class="group"><span class="group-label">Ranks P</span>
-      <div class="seg" id="p-seg" role="group" aria-label="Anzahl Ranks"></div>
+      <div class="seg" id="p-seg" role="group" aria-label="Number of ranks"></div>
     </div>
-    <div class="group"><span class="group-label">Sterne im Bild</span>
-      <div class="seg" id="n-seg" role="group" aria-label="Anzahl Sterne im Bild"></div>
+    <div class="group"><span class="group-label">Stars shown</span>
+      <div class="seg" id="n-seg" role="group" aria-label="Number of stars shown"></div>
     </div>
   </div>
 
-  <div class="steps" id="steps" aria-label="Schritte eines Zeitschritts"></div>
+  <div class="steps" id="steps" aria-label="Steps of one time step"></div>
 
   <div class="stage">
     <div class="figure">
-      <span class="axis-cap" id="axis-cap">Spalten j: Sterne, die eine Kraft ausüben · Zeilen i: Sterne, auf die sie wirkt</span>
-      <svg id="matrix" role="img" aria-label="Kräftetabelle, aufgeteilt auf die Ranks"></svg>
+      <span class="axis-cap" id="axis-cap">Columns j: stars that exert a force · Rows i: stars the force acts on</span>
+      <svg id="matrix" role="img" aria-label="Force table, split across the ranks"></svg>
     </div>
     <aside class="side">
       <div class="grid-wrap">
-        <h2 id="grid-title">Rank-Gitter</h2>
+        <h2 id="grid-title">Rank grid</h2>
         <div class="rankgrid" id="rankgrid"></div>
         <div class="legend" id="legend"></div>
       </div>
       <section class="explain" id="explain" aria-live="polite"></section>
       <div class="steps">
-        <button type="button" class="nav" id="prev">← zurück</button>
-        <button type="button" class="nav" id="next">weiter →</button>
+        <button type="button" class="nav" id="prev">← back</button>
+        <button type="button" class="nav" id="next">next →</button>
       </div>
     </aside>
   </div>
 
   <section class="code-sec">
-    <h2 id="code-title">Pseudocode</h2>
+    <h2 id="code-title">Pseudo code</h2>
     <p class="muted" id="code-note"></p>
-    <pre class="code" id="code" aria-label="Pseudocode"></pre>
+    <pre class="code" id="code" aria-label="Pseudo code"></pre>
   </section>
 
   <section class="compare">
-    <h2>Was das bei echten Größen heißt</h2>
-    <p class="muted">Pro Rank und Zeitschritt, gemittelt über die Ranks, für das oben gewählte P. Eine Position sind 24 Bytes (3 Doubles).</p>
-    <div class="group"><label class="group-label" for="real-n">Sterne N</label><input type="number" id="real-n" min="2" step="1" value="5000"></div>
+    <h2>What this means at real sizes</h2>
+    <p class="muted">Per rank and time step, averaged over the ranks, for the P chosen above. One position is 24 bytes (3 doubles).</p>
+    <div class="group"><label class="group-label" for="real-n">Stars N</label><input type="number" id="real-n" min="2" step="1" value="5000"></div>
     <div class="table-wrap"><table id="compare-table"></table></div>
     <p class="muted" id="compare-note"></p>
   </section>
+
+  <section class="results" id="c2">
+    <h2>Measured: all decompositions on one node (C2)</h2>
+    <p class="muted" id="c2-meta"></p>
+    <p id="c2-norm"></p>
+
+    <h3>Expectation against measurement</h3>
+    <p class="muted">The expectations were written into <code>communication/README.md</code> before the measurement, computed from C0 (communication only, no physics).</p>
+    <div class="table-wrap"><table class="text-table" id="c2-expect"></table></div>
+
+    <h3>Speed-up against P = 1</h3>
+    <div class="legend" id="c2-legend-lines"></div>
+    <div class="panels" id="c2-speedup"></div>
+    <p class="muted">S(P) = T(1) / T(P), both from the same node. Dashed: ideal, S = P. Each panel has its own y scale, because N = 50 barely gets above 2. Hover over a panel to see all values for one P.</p>
+
+    <h3>Where the time of a step goes</h3>
+    <div class="controls">
+      <div class="group"><span class="group-label">Ranks P</span><div class="seg" id="c2-p-seg" role="group" aria-label="Ranks for the breakdown"></div></div>
+    </div>
+    <div class="legend" id="c2-legend-parts"></div>
+    <div class="panels" id="c2-parts"></div>
+    <p class="muted" id="c2-parts-note">Unit: multiples of the ideal step time T(1)/P. At 1.0 (dashed) the scaling would be perfect; everything to the right of it is lost time. The parts are averaged over the ranks; the total length is the slowest rank. “Forces” above 1 means that all ranks together take longer for the same pairs than one rank alone. “Communication” includes waiting for the neighbour in the ring and waiting in the row Allreduce in 2D; “Waiting” is the stop Allreduce at the end of the step, where the rest of the load imbalance ends up.</p>
+
+    <details>
+      <summary>All numbers</summary>
+      <div class="table-wrap"><table id="c2-all"></table></div>
+      <p class="muted" style="margin-top:10px">Serial runs of the same jobs (they show how fast each node is):</p>
+      <div class="table-wrap"><table id="c2-serial"></table></div>
+    </details>
+  </section>
 </div>
+<div class="tip" id="c2-tip" role="tooltip"></div>
+<script id="c2-data" type="application/json">{"meta":{"made":"2026-11-17","source":"results.csv","labels":["v1-tile","v2-ring-tile","v2-ringblk-tile","v3-2d-tile"]},"runs":[{"label":"v1-tile","N":50,"P":1,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":291.64,"comm_us":10.07,"sync_us":7.83,"integrate_us":6.16,"forces_max_us":291.64,"step_us":321.86},{"label":"v1-tile","N":50,"P":2,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":187.52,"comm_us":14.09,"sync_us":13.1,"integrate_us":5.66,"forces_max_us":188.62,"step_us":224.04},{"label":"v1-tile","N":50,"P":4,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":132.52,"comm_us":21.86,"sync_us":17.11,"integrate_us":5.65,"forces_max_us":135.15,"step_us":179.95},{"label":"v1-tile","N":50,"P":8,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":101.91,"comm_us":23.98,"sync_us":19.75,"integrate_us":5.6,"forces_max_us":106.52,"step_us":152.69},{"label":"v1-tile","N":50,"P":12,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":92.5,"comm_us":28.05,"sync_us":21.25,"integrate_us":5.62,"forces_max_us":96.48,"step_us":149.41},{"label":"v1-tile","N":50,"P":16,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":89.09,"comm_us":31.52,"sync_us":36.69,"integrate_us":5.71,"forces_max_us":100.16,"step_us":160.63},{"label":"v1-tile","N":50,"P":24,"job":30083330,"host":"n-62-21-75","steps":20000,"repeats":3,"decomposition":"allgather_block","forces_us":82.01,"comm_us":36.73,"sync_us":39.43,"integrate_us":5.5,"forces_max_us":94.51,"step_us":163.26},{"label":"v1-tile","N":1000,"P":1,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":104755.29,"comm_us":27.01,"sync_us":24.82,"integrate_us":25.22,"forces_max_us":104755.29,"step_us":104843.52},{"label":"v1-tile","N":1000,"P":2,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":57600.6,"comm_us":61.09,"sync_us":216.15,"integrate_us":21.58,"forces_max_us":57780.14,"step_us":57909.48},{"label":"v1-tile","N":1000,"P":4,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":32019.15,"comm_us":61.84,"sync_us":538.7,"integrate_us":18.81,"forces_max_us":32222.92,"step_us":32379.68},{"label":"v1-tile","N":1000,"P":8,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":17147.81,"comm_us":99.35,"sync_us":590.13,"integrate_us":15.92,"forces_max_us":17672.48,"step_us":17857.8},{"label":"v1-tile","N":1000,"P":12,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":11960.37,"comm_us":116.04,"sync_us":457.79,"integrate_us":15.48,"forces_max_us":12283.52,"step_us":12544.7},{"label":"v1-tile","N":1000,"P":16,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":8815.74,"comm_us":119.77,"sync_us":759.62,"integrate_us":14.55,"forces_max_us":9452.86,"step_us":9739.45},{"label":"v1-tile","N":1000,"P":24,"job":30083331,"host":"n-62-21-46","steps":300,"repeats":3,"decomposition":"allgather_block","forces_us":5757.26,"comm_us":147.12,"sync_us":332.0,"integrate_us":12.99,"forces_max_us":5966.04,"step_us":6272.07},{"label":"v1-tile","N":5000,"P":1,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":2236719.09,"comm_us":44.58,"sync_us":48.5,"integrate_us":121.15,"forces_max_us":2236719.09,"step_us":2236942.92},{"label":"v1-tile","N":5000,"P":2,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":1185617.78,"comm_us":137.89,"sync_us":3819.83,"integrate_us":64.68,"forces_max_us":1189488.25,"step_us":1189759.96},{"label":"v1-tile","N":5000,"P":4,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":620593.68,"comm_us":195.77,"sync_us":3464.79,"integrate_us":38.92,"forces_max_us":624057.62,"step_us":624423.22},{"label":"v1-tile","N":5000,"P":8,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":328303.41,"comm_us":206.25,"sync_us":3762.77,"integrate_us":24.31,"forces_max_us":331359.13,"step_us":331958.4},{"label":"v1-tile","N":5000,"P":12,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":225466.24,"comm_us":251.46,"sync_us":4645.66,"integrate_us":21.93,"forces_max_us":232925.6,"step_us":233804.41},{"label":"v1-tile","N":5000,"P":16,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":172696.84,"comm_us":279.64,"sync_us":6925.04,"integrate_us":19.58,"forces_max_us":179061.15,"step_us":180155.57},{"label":"v1-tile","N":5000,"P":24,"job":30083332,"host":"n-62-21-48","steps":30,"repeats":3,"decomposition":"allgather_block","forces_us":120083.48,"comm_us":316.32,"sync_us":4194.33,"integrate_us":18.27,"forces_max_us":123180.24,"step_us":125586.43},{"label":"v2-ring-tile","N":50,"P":1,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":330.57,"comm_us":0.0,"sync_us":8.86,"integrate_us":6.4,"forces_max_us":330.57,"step_us":365.62},{"label":"v2-ring-tile","N":50,"P":2,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":275.66,"comm_us":13.78,"sync_us":17.02,"integrate_us":5.9,"forces_max_us":278.18,"step_us":342.44},{"label":"v2-ring-tile","N":50,"P":4,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":332.37,"comm_us":38.6,"sync_us":30.68,"integrate_us":5.91,"forces_max_us":341.09,"step_us":457.69},{"label":"v2-ring-tile","N":50,"P":8,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":520.28,"comm_us":85.82,"sync_us":59.93,"integrate_us":5.88,"forces_max_us":544.32,"step_us":768.63},{"label":"v2-ring-tile","N":50,"P":12,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":741.88,"comm_us":134.38,"sync_us":98.47,"integrate_us":5.9,"forces_max_us":791.67,"step_us":1120.62},{"label":"v2-ring-tile","N":50,"P":16,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":980.55,"comm_us":213.72,"sync_us":290.45,"integrate_us":6.01,"forces_max_us":1205.64,"step_us":1670.5},{"label":"v2-ring-tile","N":50,"P":24,"job":30083334,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"ring_overlap","forces_us":1406.61,"comm_us":373.74,"sync_us":481.58,"integrate_us":5.92,"forces_max_us":1740.63,"step_us":2544.64},{"label":"v2-ring-tile","N":1000,"P":1,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":106191.3,"comm_us":0.0,"sync_us":26.05,"integrate_us":19.5,"forces_max_us":106191.3,"step_us":106276.19},{"label":"v2-ring-tile","N":1000,"P":2,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":59887.4,"comm_us":243.27,"sync_us":113.1,"integrate_us":16.15,"forces_max_us":60062.39,"step_us":60324.04},{"label":"v2-ring-tile","N":1000,"P":4,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":33665.34,"comm_us":268.64,"sync_us":119.64,"integrate_us":11.25,"forces_max_us":33810.46,"step_us":34146.49},{"label":"v2-ring-tile","N":1000,"P":8,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":17528.54,"comm_us":497.6,"sync_us":136.42,"integrate_us":9.33,"forces_max_us":17784.75,"step_us":18367.0},{"label":"v2-ring-tile","N":1000,"P":12,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":9158.12,"comm_us":172.73,"sync_us":269.26,"integrate_us":7.19,"forces_max_us":9275.33,"step_us":9776.95},{"label":"v2-ring-tile","N":1000,"P":16,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":7422.58,"comm_us":239.16,"sync_us":405.93,"integrate_us":7.27,"forces_max_us":7640.99,"step_us":8292.01},{"label":"v2-ring-tile","N":1000,"P":24,"job":30083335,"host":"n-62-21-47","steps":300,"repeats":3,"decomposition":"ring_overlap","forces_us":5900.67,"comm_us":351.78,"sync_us":610.54,"integrate_us":6.54,"forces_max_us":6321.59,"step_us":7186.56},{"label":"v2-ring-tile","N":5000,"P":1,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":1983814.54,"comm_us":0.0,"sync_us":46.81,"integrate_us":81.6,"forces_max_us":1983814.54,"step_us":1984010.2},{"label":"v2-ring-tile","N":5000,"P":2,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":1066428.35,"comm_us":610.36,"sync_us":2475.26,"integrate_us":50.51,"forces_max_us":1068997.01,"step_us":1069501.3},{"label":"v2-ring-tile","N":5000,"P":4,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":620719.79,"comm_us":5147.21,"sync_us":2710.53,"integrate_us":26.77,"forces_max_us":629522.88,"step_us":629997.69},{"label":"v2-ring-tile","N":5000,"P":8,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":337816.4,"comm_us":4465.12,"sync_us":1968.52,"integrate_us":17.77,"forces_max_us":344005.29,"step_us":344999.99},{"label":"v2-ring-tile","N":5000,"P":12,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":260826.11,"comm_us":4208.03,"sync_us":1128.3,"integrate_us":15.3,"forces_max_us":264274.95,"step_us":266060.99},{"label":"v2-ring-tile","N":5000,"P":16,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":194852.24,"comm_us":13379.82,"sync_us":3486.75,"integrate_us":13.44,"forces_max_us":210167.12,"step_us":211661.83},{"label":"v2-ring-tile","N":5000,"P":24,"job":30083336,"host":"n-62-21-75","steps":30,"repeats":3,"decomposition":"ring_overlap","forces_us":134643.22,"comm_us":5370.39,"sync_us":1605.52,"integrate_us":12.12,"forces_max_us":136670.34,"step_us":141280.61},{"label":"v2-ringblk-tile","N":50,"P":1,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":328.45,"comm_us":0.0,"sync_us":8.81,"integrate_us":6.23,"forces_max_us":328.45,"step_us":362.68},{"label":"v2-ringblk-tile","N":50,"P":2,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":274.41,"comm_us":12.47,"sync_us":14.78,"integrate_us":5.97,"forces_max_us":275.96,"step_us":334.3},{"label":"v2-ringblk-tile","N":50,"P":4,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":329.28,"comm_us":32.84,"sync_us":19.84,"integrate_us":5.94,"forces_max_us":335.74,"step_us":434.84},{"label":"v2-ringblk-tile","N":50,"P":8,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":507.02,"comm_us":76.94,"sync_us":29.38,"integrate_us":5.81,"forces_max_us":522.52,"step_us":700.24},{"label":"v2-ringblk-tile","N":50,"P":12,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":711.86,"comm_us":126.63,"sync_us":43.93,"integrate_us":5.83,"forces_max_us":738.87,"step_us":1001.72},{"label":"v2-ringblk-tile","N":50,"P":16,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":941.29,"comm_us":273.12,"sync_us":148.03,"integrate_us":5.95,"forces_max_us":1139.39,"step_us":1513.23},{"label":"v2-ringblk-tile","N":50,"P":24,"job":30083338,"host":"n-62-21-46","steps":20000,"repeats":3,"decomposition":"ring_blocking","forces_us":1352.69,"comm_us":462.93,"sync_us":252.73,"integrate_us":5.84,"forces_max_us":1674.08,"step_us":2289.01},{"label":"v2-ringblk-tile","N":1000,"P":1,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":106013.08,"comm_us":0.0,"sync_us":24.09,"integrate_us":20.11,"forces_max_us":106013.08,"step_us":106095.2},{"label":"v2-ringblk-tile","N":1000,"P":2,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":59984.04,"comm_us":135.2,"sync_us":195.61,"integrate_us":16.7,"forces_max_us":60331.87,"step_us":60612.14},{"label":"v2-ringblk-tile","N":1000,"P":4,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":33281.19,"comm_us":185.11,"sync_us":112.17,"integrate_us":11.03,"forces_max_us":33455.05,"step_us":33678.28},{"label":"v2-ringblk-tile","N":1000,"P":8,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":17256.33,"comm_us":335.77,"sync_us":135.78,"integrate_us":9.28,"forces_max_us":17506.16,"step_us":17854.72},{"label":"v2-ringblk-tile","N":1000,"P":12,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":9140.1,"comm_us":344.88,"sync_us":162.0,"integrate_us":7.26,"forces_max_us":9361.6,"step_us":9788.4},{"label":"v2-ringblk-tile","N":1000,"P":16,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":7400.34,"comm_us":404.43,"sync_us":187.4,"integrate_us":7.17,"forces_max_us":7580.69,"step_us":8183.44},{"label":"v2-ringblk-tile","N":1000,"P":24,"job":30083339,"host":"n-62-21-76","steps":300,"repeats":3,"decomposition":"ring_blocking","forces_us":5883.31,"comm_us":814.18,"sync_us":463.96,"integrate_us":6.54,"forces_max_us":6333.23,"step_us":7437.93},{"label":"v2-ringblk-tile","N":5000,"P":1,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":2235711.85,"comm_us":0.0,"sync_us":45.78,"integrate_us":88.6,"forces_max_us":2235711.85,"step_us":2235913.81},{"label":"v2-ringblk-tile","N":5000,"P":2,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":1205020.21,"comm_us":1691.92,"sync_us":2162.66,"integrate_us":53.76,"forces_max_us":1205546.64,"step_us":1208927.08},{"label":"v2-ringblk-tile","N":5000,"P":4,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":696828.1,"comm_us":4366.27,"sync_us":3113.99,"integrate_us":30.46,"forces_max_us":705554.94,"step_us":706235.78},{"label":"v2-ringblk-tile","N":5000,"P":8,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":381658.11,"comm_us":4235.59,"sync_us":1747.35,"integrate_us":19.8,"forces_max_us":386938.17,"step_us":388286.46},{"label":"v2-ringblk-tile","N":5000,"P":12,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":288478.26,"comm_us":5164.81,"sync_us":1554.19,"integrate_us":17.05,"forces_max_us":295069.83,"step_us":296245.93},{"label":"v2-ringblk-tile","N":5000,"P":16,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":218658.17,"comm_us":13504.01,"sync_us":4010.85,"integrate_us":15.02,"forces_max_us":235098.36,"step_us":236579.65},{"label":"v2-ringblk-tile","N":5000,"P":24,"job":30083340,"host":"n-62-21-47","steps":30,"repeats":3,"decomposition":"ring_blocking","forces_us":152830.1,"comm_us":4450.11,"sync_us":1256.53,"integrate_us":13.58,"forces_max_us":155569.38,"step_us":159112.91},{"label":"v3-2d-tile","N":50,"P":1,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_1x1","forces_us":332.99,"comm_us":10.83,"sync_us":6.64,"integrate_us":7.26,"forces_max_us":332.99,"step_us":373.26},{"label":"v3-2d-tile","N":50,"P":2,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_2x1","forces_us":216.02,"comm_us":13.64,"sync_us":20.2,"integrate_us":7.0,"forces_max_us":222.49,"step_us":271.45},{"label":"v3-2d-tile","N":50,"P":4,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_2x2","forces_us":138.02,"comm_us":22.57,"sync_us":13.53,"integrate_us":7.27,"forces_max_us":145.79,"step_us":194.03},{"label":"v3-2d-tile","N":50,"P":8,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_4x2","forces_us":106.99,"comm_us":28.89,"sync_us":19.96,"integrate_us":7.35,"forces_max_us":116.2,"step_us":174.55},{"label":"v3-2d-tile","N":50,"P":12,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_4x3","forces_us":94.91,"comm_us":32.29,"sync_us":18.16,"integrate_us":7.14,"forces_max_us":104.01,"step_us":164.59},{"label":"v3-2d-tile","N":50,"P":16,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_4x4","forces_us":86.72,"comm_us":36.46,"sync_us":24.26,"integrate_us":7.44,"forces_max_us":99.08,"step_us":161.84},{"label":"v3-2d-tile","N":50,"P":24,"job":30083342,"host":"n-62-21-77","steps":20000,"repeats":3,"decomposition":"2d_6x4","forces_us":80.73,"comm_us":37.49,"sync_us":32.86,"integrate_us":7.31,"forces_max_us":92.56,"step_us":166.41},{"label":"v3-2d-tile","N":1000,"P":1,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_1x1","forces_us":103879.33,"comm_us":32.62,"sync_us":13.73,"integrate_us":21.34,"forces_max_us":103879.33,"step_us":103990.16},{"label":"v3-2d-tile","N":1000,"P":2,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_2x1","forces_us":57456.73,"comm_us":66.45,"sync_us":346.2,"integrate_us":18.93,"forces_max_us":57673.72,"step_us":57810.39},{"label":"v3-2d-tile","N":1000,"P":4,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_2x2","forces_us":31857.9,"comm_us":358.22,"sync_us":214.78,"integrate_us":20.39,"forces_max_us":32449.01,"step_us":32635.25},{"label":"v3-2d-tile","N":1000,"P":8,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_4x2","forces_us":17364.13,"comm_us":307.31,"sync_us":234.91,"integrate_us":17.92,"forces_max_us":17635.03,"step_us":17858.1},{"label":"v3-2d-tile","N":1000,"P":12,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_4x3","forces_us":13236.68,"comm_us":197.74,"sync_us":98.52,"integrate_us":20.41,"forces_max_us":13329.2,"step_us":13581.99},{"label":"v3-2d-tile","N":1000,"P":16,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_4x4","forces_us":9526.89,"comm_us":156.29,"sync_us":519.19,"integrate_us":18.63,"forces_max_us":9965.84,"step_us":10244.41},{"label":"v3-2d-tile","N":1000,"P":24,"job":30083343,"host":"n-62-21-48","steps":300,"repeats":3,"decomposition":"2d_6x4","forces_us":6254.48,"comm_us":257.11,"sync_us":185.87,"integrate_us":15.81,"forces_max_us":6449.2,"step_us":6740.28},{"label":"v3-2d-tile","N":5000,"P":1,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_1x1","forces_us":2232737.23,"comm_us":85.97,"sync_us":22.23,"integrate_us":88.52,"forces_max_us":2232737.23,"step_us":2232999.12},{"label":"v3-2d-tile","N":5000,"P":2,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_2x1","forces_us":1189103.41,"comm_us":165.88,"sync_us":2462.19,"integrate_us":50.04,"forces_max_us":1195015.86,"step_us":1195308.7},{"label":"v3-2d-tile","N":5000,"P":4,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_2x2","forces_us":613262.94,"comm_us":7836.57,"sync_us":4864.06,"integrate_us":51.93,"forces_max_us":625621.31,"step_us":626675.07},{"label":"v3-2d-tile","N":5000,"P":8,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_4x2","forces_us":322889.34,"comm_us":4421.32,"sync_us":2762.65,"integrate_us":30.44,"forces_max_us":330032.14,"step_us":330689.23},{"label":"v3-2d-tile","N":5000,"P":12,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_4x3","forces_us":242606.6,"comm_us":3246.18,"sync_us":1130.43,"integrate_us":33.4,"forces_max_us":246374.24,"step_us":247182.17},{"label":"v3-2d-tile","N":5000,"P":16,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_4x4","forces_us":181999.42,"comm_us":5111.15,"sync_us":11761.11,"integrate_us":32.99,"forces_max_us":198996.56,"step_us":199337.62},{"label":"v3-2d-tile","N":5000,"P":24,"job":30083344,"host":"n-62-21-76","steps":30,"repeats":3,"decomposition":"2d_6x4","forces_us":127110.52,"comm_us":2403.87,"sync_us":2490.39,"integrate_us":28.22,"forces_max_us":129528.18,"step_us":131926.31}],"serial":[{"label":"v1-tile","N":50,"job":30083330,"host":"n-62-21-75","step_us":1369.76},{"label":"v1-tile","N":1000,"job":30083331,"host":"n-62-21-46","step_us":139557.01},{"label":"v1-tile","N":5000,"job":30083332,"host":"n-62-21-48","step_us":2872661.6},{"label":"v2-ring-tile","N":50,"job":30083334,"host":"n-62-21-77","step_us":1525.31},{"label":"v2-ring-tile","N":1000,"job":30083335,"host":"n-62-21-47","step_us":140724.58},{"label":"v2-ring-tile","N":5000,"job":30083336,"host":"n-62-21-75","step_us":2527134.55},{"label":"v2-ringblk-tile","N":50,"job":30083338,"host":"n-62-21-46","step_us":1650.74},{"label":"v2-ringblk-tile","N":1000,"job":30083339,"host":"n-62-21-76","step_us":138276.92},{"label":"v2-ringblk-tile","N":5000,"job":30083340,"host":"n-62-21-47","step_us":2864250.18},{"label":"v3-2d-tile","N":50,"job":30083342,"host":"n-62-21-77","step_us":1551.4},{"label":"v3-2d-tile","N":1000,"job":30083343,"host":"n-62-21-48","step_us":139004.51},{"label":"v3-2d-tile","N":5000,"job":30083344,"host":"n-62-21-76","step_us":2878050.44}]}</script>
 
 <script>
 (() => {
   const P_OPTIONS = [4, 6, 12, 16, 24];
   const N_OPTIONS = [12, 24, 36];
   const STEPS_2D = [
-    { key: 'split', label: '1 Aufteilung' },
-    { key: 'column', label: '2 Spalte: Positionen holen' },
-    { key: 'compute', label: '3 Rechnen' },
-    { key: 'row', label: '4 Zeile: Kräfte summieren' },
-    { key: 'integrate', label: '5 Integrieren' },
+    { key: 'split', label: '1 Split' },
+    { key: 'column', label: '2 Column: gather positions' },
+    { key: 'compute', label: '3 Compute' },
+    { key: 'row', label: '4 Row: sum forces' },
+    { key: 'integrate', label: '5 Integrate' },
   ];
   const state = { view: '2d', P: 6, N: 12, step: 0, sel: 0 };
 
   // ---------- helpers
-  const fmt = (v) => Math.round(v).toLocaleString('de-DE');
+  const fmt = (v) => Math.round(v).toLocaleString('en-US');
   const dims = (P) => { for (let b = Math.floor(Math.sqrt(P)); b >= 1; b--) if (P % b === 0) return [P / b, b]; return [P, 1]; };
   const split = (n, k) => {            // like numpy.array_split: the first n % k blocks get one more
     const base = Math.floor(n / k), extra = n % k, out = [];
@@ -226,7 +288,7 @@
   document.getElementById('real-n').oninput = () => renderCompare();
 
   const stepsFor = () => (state.view === '2d' ? STEPS_2D
-    : state.view === 'ring' ? [{ key: 'ring', label: 'Runden des Rings' }] : [{ key: 'v1', label: 'Allgatherv, dann rechnen' }]);
+    : state.view === 'ring' ? [{ key: 'ring', label: 'Rounds of the ring' }] : [{ key: 'v1', label: 'Allgatherv, then compute' }]);
 
   // ---------- who computes which cell
   function layout() {
@@ -318,7 +380,7 @@
       }
       const hit = el('rect', { x, y, width: w, height: h, fill: 'transparent', style: 'cursor:pointer' });
       hit.addEventListener('click', () => { state.sel = rank; render(); });
-      const t = el('title', {}, view === '2d' ? `Rank ${rank} = (${r},${c}): Kräfte auf ${range(ib)} von ${range(jb)}` : `Rank ${rank}: Kräfte auf ${range(ib)}`);
+      const t = el('title', {}, view === '2d' ? `Rank ${rank} = (${r},${c}): forces on ${range(ib)} from ${range(jb)}` : `Rank ${rank}: forces on ${range(ib)}`);
       hit.append(t);
       svg.append(hit);
     }));
@@ -352,12 +414,12 @@
         });
       }
     } else {
-      band([[0, N]], true, () => 'alle Sterne', () => colors.sel);
+      band([[0, N]], true, () => 'all stars', () => colors.sel);
       band(L.I, false, (r) => `Block ${r}`, (r) => (r === sr ? colors.sel : null));
     }
     svg.setAttribute('aria-label', view === '2d'
-      ? `Kräftetabelle mit ${N} Sternen auf einem ${L.pr} mal ${L.pc} Gitter; gewählt ist Rank ${sel}`
-      : `Kräftetabelle mit ${N} Sternen, in ${P} Zeilenstreifen aufgeteilt; gewählt ist Rank ${sel}`);
+      ? `Force table with ${N} stars on a ${L.pr} by ${L.pc} grid; rank ${sel} is selected`
+      : `Force table with ${N} stars, split into ${P} row stripes; rank ${sel} is selected`);
   }
 
   // ---------- rank grid
@@ -377,7 +439,7 @@
       b.innerHTML = '';
       b.append(document.createTextNode(view === '2d' ? `(${r},${c})` : `Rank ${rank}`));
       const k = document.createElement('span'); k.className = 'k';
-      k.textContent = view === '2d' ? `Rank ${rank}` : (view === 'ring' ? `→ Rank ${(rank + 1) % P}` : 'alle Positionen');
+      k.textContent = view === '2d' ? `Rank ${rank}` : (view === 'ring' ? `→ Rank ${(rank + 1) % P}` : 'all positions');
       b.append(k);
       if (rank === sel) b.classList.add('is-sel');
       if (view === '2d' && (step === 'row' || step === 'integrate') && r === sr) b.classList.add('in-row');
@@ -387,11 +449,11 @@
       box.append(b);
     }
     document.getElementById('grid-title').textContent = view === '2d'
-      ? `Rank-Gitter ${L.pr} × ${L.pc} (Compute_dims(${P}, 2))` : view === 'ring' ? `Ring aus ${P} Ranks` : `${P} Ranks`;
+      ? `Rank grid ${L.pr} × ${L.pc} (Compute_dims(${P}, 2))` : view === 'ring' ? `Ring of ${P} ranks` : `${P} ranks`;
     const legend = document.getElementById('legend');
     const items = view === '2d'
-      ? [['--sel', 'gewählter Rank'], ['--row', 'seine Zeile (row_comm)'], ['--col', 'seine Spalte (col_comm)']]
-      : [['--sel', 'gewählter Rank']];
+      ? [['--sel', 'selected rank'], ['--row', 'its row (row_comm)'], ['--col', 'its column (col_comm)']]
+      : [['--sel', 'selected rank']];
     legend.replaceChildren(...items.map(([v, t]) => {
       const s = document.createElement('span'); s.className = 'key';
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = `var(${v})`;
@@ -413,21 +475,21 @@
 
     if (view === 'v1') {
       const ib = L.I[sel];
-      box.append(h(`v1: Rank ${sel} rechnet die Zeilen ${range(ib)}`),
-        p(`Jeder Rank besitzt einen Zeilenstreifen von etwa N/P = ${(N / P).toFixed(1)} Sternen. Um die Kräfte auf seine Sterne zu rechnen, braucht er aber jede Spalte, also die Positionen aller ${N} Sterne.`),
-        ul(['Positionen holen: ein Allgatherv über alle P Ranks, danach hat jeder alle N Positionen.',
-            'Rechnen: eigene Zeilen gegen alle N Spalten.',
-            'Integrieren: nur die eigenen Sterne bewegen.']),
+      box.append(h(`v1: rank ${sel} computes rows ${range(ib)}`),
+        p(`Every rank owns a row stripe of about N/P = ${(N / P).toFixed(1)} stars. To compute the forces on its stars, however, it needs every column, that is, the positions of all ${N} stars.`),
+        ul(['Gather positions: one Allgatherv over all P ranks; afterwards every rank has all N positions.',
+            'Compute: own rows against all N columns.',
+            'Integrate: move only the own stars.']),
         pre('comm.Allgatherv(my_positions, [positions, counts, displs, MPI.DOUBLE])'));
       return;
     }
     if (view === 'ring') {
       const ib = L.I[sel];
-      box.append(h(`Ring: Rank ${sel} rechnet die Zeilen ${range(ib)}, Block für Block`),
-        p(`Gleiche Zeilenstreifen wie v1, aber kein Rank hält alle Positionen. Die Positionsblöcke wandern im Kreis nach rechts. „R0“ … „R${P - 1}“ zeigt, in welcher Runde Rank ${sel} welchen Block rechnet: zuerst seinen eigenen, dann den seines linken Nachbarn und so weiter.`),
-        ul([`P = ${P} Runden Rechnen, P − 1 = ${P - 1} Übertragungen.`,
-            'Mit Überlappung wird der nächste Block per Isend/Irecv verschickt, während der aktuelle gerechnet wird.',
-            'Gesamte Datenmenge wie bei Allgatherv, aber in P − 1 kleinen Nachrichten nacheinander.']),
+      box.append(h(`Ring: rank ${sel} computes rows ${range(ib)}, block by block`),
+        p(`Same row stripes as v1, but no rank holds all positions. The position blocks travel around the ring to the right. “R0” … “R${P - 1}” shows in which round rank ${sel} computes which block: first its own, then that of its left neighbour, and so on.`),
+        ul([`P = ${P} rounds of computing, P − 1 = ${P - 1} transfers.`,
+            'With overlap, the next block is sent with Isend/Irecv while the current one is being computed.',
+            'Same total amount of data as Allgatherv, but in P − 1 small messages one after the other.']),
         pre('cart = comm.Create_cart([P], periods=[True])\nleft, right = cart.Shift(0, 1)\ncart.Sendrecv(current, dest=right, recvbuf=upcoming, source=left)'));
       return;
     }
@@ -437,124 +499,124 @@
     const rowRanks = Array.from({ length: L.pc }, (_, k) => r * L.pc + k);
     const colRanks = Array.from({ length: L.pr }, (_, k) => k * L.pc + c);
     if (step === 'split') {
-      box.append(h(`Rank ${sel} = (${r},${c}) rechnet die Kachel I${r} × J${c}`),
-        p(`Die ${N} Sterne werden zweimal aufgeteilt: in ${L.pr} Zeilenblöcke I (die Sterne, auf die gerechnet wird) und in ${L.pc} Spaltenblöcke J (die Sterne, die die Kraft ausüben). Jeder Rank bekommt genau eine Kachel.`),
-        ul([`Kräfte auf die Sterne ${range(ib)} (I${r}) von den Sternen ${range(jb)} (J${c}).`,
-            `Dafür braucht er nur ${len(ib)} + ${len(jb)} Positionen statt ${N}.`,
-            `Seine Zeile (gleiches I${r}): Ranks ${rowRanks.join(', ')}. Seine Spalte (gleiches J${c}): Ranks ${colRanks.join(', ')}.`]),
-        pre(`dims = MPI.Compute_dims(${P}, 2)          # [${L.pr}, ${L.pc}]\ncart = comm.Create_cart(dims, periods=[False, False])\nr, c = cart.Get_coords(cart.rank)\nrow_comm = cart.Sub([False, True])   # gleiche Zeile r\ncol_comm = cart.Sub([True, False])   # gleiche Spalte c`));
+      box.append(h(`Rank ${sel} = (${r},${c}) computes the tile I${r} × J${c}`),
+        p(`The ${N} stars are split twice: into ${L.pr} row blocks I (the stars the forces act on) and into ${L.pc} column blocks J (the stars that exert the force). Every rank gets exactly one tile.`),
+        ul([`Forces on stars ${range(ib)} (I${r}) from stars ${range(jb)} (J${c}).`,
+            `For that it needs only ${len(ib)} + ${len(jb)} positions instead of ${N}.`,
+            `Its row (same I${r}): ranks ${rowRanks.join(', ')}. Its column (same J${c}): ranks ${colRanks.join(', ')}.`]),
+        pre(`dims = MPI.Compute_dims(${P}, 2)          # [${L.pr}, ${L.pc}]\ncart = comm.Create_cart(dims, periods=[False, False])\nr, c = cart.Get_coords(cart.rank)\nrow_comm = cart.Sub([False, True])   # same row r\ncol_comm = cart.Sub([True, False])   # same column c`));
     } else if (step === 'column') {
       const parts = L.I.map((b, rr) => [rr, overlap(b, jb)]).filter(([, pt]) => len(pt) > 0);
-      box.append(h(`Schritt 2: Spalte ${c} setzt J${c} = Sterne ${range(jb)} zusammen`),
-        p(`Nach dem letzten Schritt kennt jeder Rank die aktuellen Positionen seines Zeilenblocks. Die Positionen von J${c} liegen also verteilt bei den Ranks der Spalte ${c}. Jeder steuert bei, was von J${c} in seinem Zeilenblock liegt (violett umrandet), und ein Allgatherv in der Spalte setzt es zusammen.`),
-        ul(parts.map(([rr, pt]) => `Rank ${rr * L.pc + c} = (${rr},${c}) liefert die Sterne ${range(pt)}.`)
-          .concat(L.I.length > parts.length ? [`Die anderen Ranks der Spalte liefern nichts (Anzahl 0).`] : [])),
-        pre('col_comm.Allgatherv(mein_teil_von_J, [J_positionen, counts, displs, MPI.DOUBLE])'),
-        p(`Bei einem quadratischen Gitter mit gleichen Blöcken liegt J${c} ganz in einem Zeilenblock. Dann liefert nur ein Rank, und das Allgatherv wird ein einfaches Bcast.`));
+      box.append(h(`Step 2: column ${c} assembles J${c} = stars ${range(jb)}`),
+        p(`After the previous time step, every rank knows the current positions of its row block. The positions of J${c} are therefore spread over the ranks of column ${c}. Each contributes the part of J${c} that lies in its row block (outlined in violet), and an Allgatherv within the column puts the pieces together.`),
+        ul(parts.map(([rr, pt]) => `Rank ${rr * L.pc + c} = (${rr},${c}) contributes stars ${range(pt)}.`)
+          .concat(L.I.length > parts.length ? [`The other ranks of the column contribute nothing (count 0).`] : [])),
+        pre('col_comm.Allgatherv(my_part_of_J, [J_positions, counts, displs, MPI.DOUBLE])'),
+        p(`On a square grid with equal blocks, J${c} lies entirely in one row block. Then only one rank contributes, and the Allgatherv becomes a plain Bcast.`));
     } else if (step === 'compute') {
       const pairs = len(ib) * len(jb) - len(overlap(ib, jb));
-      box.append(h(`Schritt 3: Rank ${sel} rechnet ${len(ib)} × ${len(jb)} Paare`),
-        p(`Alle Ranks rechnen gleichzeitig ihre Kachel, ganz ohne Kommunikation. Wo sich I${r} und J${c} überschneiden, wird die Kraft eines Sterns auf sich selbst ausgelassen (×).`),
-        ul([`${pairs} Paare (ohne Selbstkraft); über alle Ranks zusammen genau N·(N−1) = ${N * (N - 1)}, wie in v1.`,
-            `Das ist pro Rank N²/P, gleich viel Arbeit wie in v1.`,
-            `Ergebnis sind nur Teilkräfte auf I${r}: Die Beiträge der anderen Spaltenblöcke fehlen noch.`]),
-        pre(`acc_teil, _ = block_accelerations(\n    I_positionen, I_start, J_positionen, J_massen, J_start, softening, 0.0, tile_rows)`));
+      box.append(h(`Step 3: rank ${sel} computes ${len(ib)} × ${len(jb)} pairs`),
+        p(`All ranks compute their tile at the same time, without any communication. Where I${r} and J${c} overlap, the force of a star on itself is skipped (×).`),
+        ul([`${pairs} pairs (without self-force); over all ranks exactly N·(N−1) = ${N * (N - 1)}, as in v1.`,
+            `That is N²/P per rank, the same work as in v1.`,
+            `The result is only a partial force on I${r}: the contributions of the other column blocks are still missing.`]),
+        pre(`acc_part, _ = block_accelerations(\n    I_positions, I_start, J_positions, J_masses, J_start, softening, 0.0, tile_rows)`));
     } else if (step === 'row') {
-      box.append(h(`Schritt 4: Zeile ${r} summiert die Teilkräfte auf I${r}`),
-        p(`Die Kraft auf jeden Stern in I${r} ist auf die ${L.pc} Ranks der Zeile verteilt: Jeder hat den Beitrag seines Spaltenblocks. Ein Allreduce in der Zeile addiert sie.`),
-        ul([`Ranks ${rowRanks.join(', ')} schicken je ${len(ib)} × 3 Teilkräfte.`,
-            `Danach hat jeder Rank der Zeile die volle Kraft auf die Sterne ${range(ib)}.`]),
-        pre('row_comm.Allreduce(acc_teil, acc_voll, op=MPI.SUM)'));
+      box.append(h(`Step 4: row ${r} sums the partial forces on I${r}`),
+        p(`The force on every star in I${r} is spread over the ${L.pc} ranks of the row: each holds the contribution of its column block. An Allreduce within the row adds them up.`),
+        ul([`Ranks ${rowRanks.join(', ')} each send ${len(ib)} × 3 partial forces.`,
+            `Afterwards every rank of the row has the full force on stars ${range(ib)}.`]),
+        pre('row_comm.Allreduce(acc_part, acc_full, op=MPI.SUM)'));
     } else {
-      box.append(h(`Schritt 5: Zeile ${r} bewegt die Sterne ${range(ib)}`),
-        p(`Mit der vollen Kraft werden Geschwindigkeiten und Positionen von I${r} weitergerechnet (Kick, Drift). Damit kennt die Zeile die neuen Positionen ihres Blocks, und der nächste Zeitschritt beginnt wieder bei Schritt 2.`),
-        ul(['Variante A: alle Ranks der Zeile integrieren dieselben Sterne doppelt. Einfach, setzt aber bitgleiche Allreduce-Ergebnisse voraus.',
-            'Variante B: Reduce auf einen Besitzer, der integriert und per Bcast verteilt. Sicherer, eine Kollektive mehr.']),
-        pre('velocities += acc_voll * dt\npositions  += velocities * dt'));
+      box.append(h(`Step 5: row ${r} moves stars ${range(ib)}`),
+        p(`With the full force, the velocities and positions of I${r} are advanced (kick, drift). The row then knows the new positions of its block, and the next time step starts again at step 2.`),
+        ul(['Variant A: every rank of the row integrates the same stars. Simple, but it relies on bit-identical Allreduce results.',
+            'Variant B: Reduce to one owner, which integrates and distributes with Bcast. Safer, but one more collective.']),
+        pre('velocities += acc_full * dt\npositions  += velocities * dt'));
     }
   }
 
   // ---------- pseudo code; [text, step] where step is the 2D step a line belongs to (null: none)
   const CODE = {
     v1: [
-      ['# ---- einmal am Start ----', null],
-      ['blocks   = teile(N, P)                       # Zeilenstreifen, wie numpy.array_split', null],
-      ['mein     = blocks[rank]                      # [start, stop) meiner Sterne', null],
-      ['pos_alle = alle N Positionen (per Bcast)     # (N, 3) auf jedem Rank', null],
-      ['pos_mein, vel_mein = pos_alle[mein], vel_alle[mein]', null],
-      ['counts, displs = 3 * Länge und 3 * Start jedes Blocks   # in Doubles', null],
+      ['# ---- once at the start ----', null],
+      ['blocks   = split(N, P)                       # row stripes, like numpy.array_split', null],
+      ['mine     = blocks[rank]                      # [start, stop) of my stars', null],
+      ['pos_all  = all N positions (via Bcast)       # (N, 3) on every rank', null],
+      ['pos_mine, vel_mine = pos_all[mine], vel_all[mine]', null],
+      ['counts, displs = 3 * length and 3 * start of every block   # in doubles', null],
       ['', null],
-      ['# ---- jeder Zeitschritt ----', null],
-      ['für schritt in 1 … steps:', null],
-      ['    comm.Allgatherv(pos_mein, [pos_alle, counts, displs, DOUBLE])   # alle Positionen holen', null],
-      ['    acc = kraft(i = meine Sterne, j = alle N)                         # eigene Zeilen × alle Spalten', null],
-      ['    vel_mein += acc * dt                                              # Kick', null],
-      ['    pos_mein += vel_mein * dt                                         # Drift', null],
-      ['    stopp = comm.allreduce(mein_stopp, op=MAX)                        # gemeinsam aufhören', null],
+      ['# ---- every time step ----', null],
+      ['for step in 1 … steps:', null],
+      ['    comm.Allgatherv(pos_mine, [pos_all, counts, displs, DOUBLE])   # gather all positions', null],
+      ['    acc = force(i = my stars, j = all N)                           # own rows × all columns', null],
+      ['    vel_mine += acc * dt                                           # kick', null],
+      ['    pos_mine += vel_mine * dt                                      # drift', null],
+      ['    stop = comm.allreduce(my_stop, op=MAX)                         # stop together', null],
     ],
     ring: [
-      ['# ---- einmal am Start ----', null],
-      ['comm         = COMM_WORLD.Clone()', null],
-      ['cart         = comm.Create_cart([P], periods=[True], reorder=False)   # Ring: der letzte hat den ersten als Nachbarn', null],
-      ['links, rechts = cart.Shift(0, 1)                                     # von links empfangen, nach rechts senden', null],
-      ['blocks = teile(N, P);  mein = blocks[rank]', null],
-      ['pos_mein, vel_mein = nur meine Positionen und Geschwindigkeiten     # keine Kopie aller N', null],
+      ['# ---- once at the start ----', null],
+      ['comm        = COMM_WORLD.Clone()', null],
+      ['cart        = comm.Create_cart([P], periods=[True], reorder=False)   # ring: the last rank has the first as neighbour', null],
+      ['left, right = cart.Shift(0, 1)                                     # receive from the left, send to the right', null],
+      ['blocks = split(N, P);  mine = blocks[rank]', null],
+      ['pos_mine, vel_mine = only my positions and velocities             # no copy of all N', null],
       ['', null],
-      ['# ---- jeder Zeitschritt ----', null],
-      ['für schritt in 1 … steps:', null],
-      ['    aktuell  = kopie(pos_mein);  herkunft = rank;  acc = 0', null],
-      ['    für runde in 0 … P-1:', null],
-      ['        letzte = (runde == P-1)', null],
-      ['        wenn nicht letzte und overlap:                  # nächsten Block schon losschicken', null],
-      ['            req = [cart.Irecv(nächster, source=links), cart.Isend(aktuell, dest=rechts)]', null],
-      ['        acc += kraft(i = meine Sterne, j = blocks[herkunft], Positionen = aktuell)', null],
-      ['        wenn nicht letzte:', null],
+      ['# ---- every time step ----', null],
+      ['for step in 1 … steps:', null],
+      ['    current = copy(pos_mine);  origin = rank;  acc = 0', null],
+      ['    for round in 0 … P-1:', null],
+      ['        last = (round == P-1)', null],
+      ['        if not last and overlap:                         # send the next block right away', null],
+      ['            req = [cart.Irecv(upcoming, source=left), cart.Isend(current, dest=right)]', null],
+      ['        acc += force(i = my stars, j = blocks[origin], positions = current)', null],
+      ['        if not last:', null],
       ['            overlap:  Waitall(req)', null],
-      ['            sonst:    cart.Sendrecv(aktuell, dest=rechts, recvbuf=nächster, source=links)', null],
-      ['            tausche(aktuell, nächster);  herkunft = (herkunft - 1) mod P', null],
-      ['    vel_mein += acc * dt;  pos_mein += vel_mein * dt', null],
-      ['    stopp = cart.allreduce(mein_stopp, op=MAX)', null],
+      ['            else:     cart.Sendrecv(current, dest=right, recvbuf=upcoming, source=left)', null],
+      ['            swap(current, upcoming);  origin = (origin - 1) mod P', null],
+      ['    vel_mine += acc * dt;  pos_mine += vel_mine * dt', null],
+      ['    stop = cart.allreduce(my_stop, op=MAX)', null],
     ],
     '2d': [
-      ['# ---- einmal am Start ----', 'split'],
+      ['# ---- once at the start ----', 'split'],
       ['comm     = COMM_WORLD.Clone()', 'split'],
-      ['pr, pc   = Compute_dims(P, 2)                         # z. B. 6 × 4 bei P = 24', 'split'],
+      ['pr, pc   = Compute_dims(P, 2)                         # e.g. 6 × 4 at P = 24', 'split'],
       ['cart     = comm.Create_cart([pr, pc], periods=[False, False], reorder=False)', 'split'],
       ['r, c     = cart.Get_coords(cart.rank)', 'split'],
-      ['row_comm = cart.Sub([False, True])                    # alle mit meiner Zeile r (Rang darin = c)', 'split'],
-      ['col_comm = cart.Sub([True, False])                    # alle mit meiner Spalte c (Rang darin = r)', 'split'],
-      ['I_blocks = teile(N, pr);  J_blocks = teile(N, pc)', 'split'],
-      ['I = I_blocks[r];  J = J_blocks[c]                     # meine Kachel: Kräfte auf I von J', 'split'],
-      ['pos_I, vel_I = positionen[I], geschwindigkeiten[I]    # alle Ranks einer Zeile haben denselben Block', 'split'],
-      ['masse_J      = massen[J]                              # Massen ändern sich nicht (Merge aus)', 'split'],
-      ['mein_teil    = schnitt(I, J)                          # was ich zu J beitrage, evtl. leer', 'column'],
-      ['für jede Zeile k der Spalte:                          # Reihenfolge in col_comm = Zeilenindex', 'column'],
-      ['    counts[k] = 3 * länge(schnitt(I_blocks[k], J))', 'column'],
-      ['    displs[k] = 3 * (anfang(schnitt(I_blocks[k], J)) - J.start)', 'column'],
-      ['wenn merge_radius > 0:  Fehler("2D nur ohne Verschmelzen")', 'split'],
+      ['row_comm = cart.Sub([False, True])                    # everyone in my row r (my rank in it = c)', 'split'],
+      ['col_comm = cart.Sub([True, False])                    # everyone in my column c (my rank in it = r)', 'split'],
+      ['I_blocks = split(N, pr);  J_blocks = split(N, pc)', 'split'],
+      ['I = I_blocks[r];  J = J_blocks[c]                     # my tile: forces on I from J', 'split'],
+      ['pos_I, vel_I = positions[I], velocities[I]            # all ranks of a row hold the same block', 'split'],
+      ['mass_J       = masses[J]                              # masses do not change (merging off)', 'split'],
+      ['my_part      = intersect(I, J)                        # what I contribute to J, may be empty', 'column'],
+      ['for every row k of the column:                        # order in col_comm = row index', 'column'],
+      ['    counts[k] = 3 * length(intersect(I_blocks[k], J))', 'column'],
+      ['    displs[k] = 3 * (start(intersect(I_blocks[k], J)) - J.start)', 'column'],
+      ['if merge_radius > 0:  error("2D only without merging")', 'split'],
       ['', null],
-      ['# ---- jeder Zeitschritt ----', null],
-      ['für schritt in 1 … steps:', null],
-      ['    # 2  Spalte: die Positionen von J zusammensetzen', 'column'],
-      ['    sende = pos_I[mein_teil - I.start]                # mein Stück von J', 'column'],
-      ['    col_comm.Allgatherv(sende, [pos_J, counts, displs, DOUBLE])', 'column'],
+      ['# ---- every time step ----', null],
+      ['for step in 1 … steps:', null],
+      ['    # 2  column: assemble the positions of J', 'column'],
+      ['    send = pos_I[my_part - I.start]                   # my piece of J', 'column'],
+      ['    col_comm.Allgatherv(send, [pos_J, counts, displs, DOUBLE])', 'column'],
       ['', null],
-      ['    # 3  Rechnen: Teilkräfte auf I von J, ohne Kommunikation', 'compute'],
-      ['    acc_teil = block_accelerations(pos_I, I.start, pos_J, masse_J, J.start, softening)', 'compute'],
-      ['                                                      # globale Indizes: Selbstkraft fällt weg, wo i == j', 'compute'],
+      ['    # 3  compute: partial forces on I from J, no communication', 'compute'],
+      ['    acc_part = block_accelerations(pos_I, I.start, pos_J, mass_J, J.start, softening)', 'compute'],
+      ['                                                      # global indices: the self-force drops out where i == j', 'compute'],
       ['', null],
-      ['    # 4  Zeile: die Teilkräfte der pc Spaltenblöcke addieren', 'row'],
-      ['    row_comm.Allreduce(acc_teil, acc, op=SUM)', 'row'],
+      ['    # 4  row: add up the partial forces of the pc column blocks', 'row'],
+      ['    row_comm.Allreduce(acc_part, acc, op=SUM)', 'row'],
       ['', null],
-      ['    # 5  Integrieren (Variante A: jeder Rank der Zeile, identisch)', 'integrate'],
+      ['    # 5  integrate (variant A: every rank of the row, identically)', 'integrate'],
       ['    vel_I += acc * dt', 'integrate'],
       ['    pos_I += vel_I * dt', 'integrate'],
       ['', null],
-      ['    stopp = cart.allreduce(mein_stopp, op=MAX)        # gemeinsam aufhören, wie v1', null],
+      ['    stop = cart.allreduce(my_stop, op=MAX)            # stop together, as in v1', null],
       ['', null],
-      ['# ---- am Ende ----', null],
-      ['Endzustand: nur Spalte 0 (c == 0) schickt ihren Block I per Gatherv an Rank 0;', null],
-      ['            die anderen Ranks einer Zeile haben dieselben Werte und schicken 0 Sterne', null],
+      ['# ---- at the end ----', null],
+      ['final state: only column 0 (c == 0) sends its block I to rank 0 with Gatherv;', null],
+      ['             the other ranks of a row hold the same values and send 0 stars', null],
     ],
   };
 
@@ -576,10 +638,10 @@
       return line;
     }));
     document.getElementById('code-title').textContent =
-      view === '2d' ? 'Pseudocode: 2D-Kraftzerlegung' : view === 'ring' ? 'Pseudocode: Ring' : 'Pseudocode: v1 (Allgather)';
+      view === '2d' ? 'Pseudo code: 2D force decomposition' : view === 'ring' ? 'Pseudo code: ring' : 'Pseudo code: v1 (Allgather)';
     document.getElementById('code-note').textContent = view === '2d'
-      ? 'Hervorgehoben sind die Zeilen zum gewählten Schritt. teile(N, k) teilt N Sterne wie numpy.array_split in k Blöcke; schnitt(a, b) ist der gemeinsame Bereich zweier Blöcke.'
-      : 'teile(N, k) teilt N Sterne wie numpy.array_split in k Blöcke; kraft(i, j) ist der Kernel für einen i-Bereich gegen einen j-Bereich.';
+      ? 'The lines of the selected step are highlighted. split(N, k) splits N stars into k blocks like numpy.array_split; intersect(a, b) is the range two blocks have in common.'
+      : 'split(N, k) splits N stars into k blocks like numpy.array_split; force(i, j) is the kernel for an i range against a j range.';
   }
 
   // ---------- numbers for a real N
@@ -598,12 +660,12 @@
     const own = N / P;
     const rows = [
       ['', 'v1 (Allgather)', 'Ring', `2D (${pr} × ${pc})`],
-      ['Positionen empfangen', fmt(N - own), fmt(N - own), `${fmt(colRecv)} + ${fmt(N / pr)} Kräfte`],
-      ['Bytes empfangen', fmt(24 * (N - own)), fmt(24 * (N - own)), fmt(24 * colRecv + 24 * (N / pr))],
-      ['Kommunikation', '1 Allgatherv, P Ranks', `${P - 1} Sendrecv nacheinander`, `Allgatherv (${pr} Ranks) + Allreduce (${pc} Ranks)`],
-      ['Positionen im Speicher', fmt(N), fmt(3 * own), fmt(held2d)],
-      ['Kraftpaare', fmt(N * N / P), fmt(N * N / P), fmt(N * N / P)],
-      ['Python-Zeilen (tile 1)', fmt(own), fmt(N), fmt(rows2d)],
+      ['Positions received', fmt(N - own), fmt(N - own), `${fmt(colRecv)} + ${fmt(N / pr)} forces`],
+      ['Bytes received', fmt(24 * (N - own)), fmt(24 * (N - own)), fmt(24 * colRecv + 24 * (N / pr))],
+      ['Communication', '1 Allgatherv, P ranks', `${P - 1} Sendrecv in sequence`, `Allgatherv (${pr} ranks) + Allreduce (${pc} ranks)`],
+      ['Positions in memory', fmt(N), fmt(3 * own), fmt(held2d)],
+      ['Force pairs', fmt(N * N / P), fmt(N * N / P), fmt(N * N / P)],
+      ['Python rows (tile 1)', fmt(own), fmt(N), fmt(rows2d)],
     ];
     const t = document.getElementById('compare-table');
     t.replaceChildren();
@@ -615,7 +677,7 @@
     });
     t.append(thead, tbody);
     document.getElementById('compare-note').textContent =
-      `Python-Zeilen: wie oft die Schleife des Kernels mit --tile-rows 1 pro Schritt läuft. Im Ring P-mal so oft wie in v1, in 2D ${pc}-mal so oft; deshalb Varianten nur mit --tile-rows 0 vergleichen. Ring: eigener Block plus zwei Puffer.`;
+      `Python rows: how often the loop of the kernel runs per step with --tile-rows 1. In the ring P times as often as in v1, in 2D ${pc} times as often; so compare the schemes only with --tile-rows 0. Ring memory: own block plus two buffers.`;
   }
 
   function render() {
@@ -642,6 +704,306 @@
   }
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
   render();
+})();
+</script>
+<script>
+// ---------- Measurements (C2). The numbers are in the c2-data block; rewrite it with: python3 communication/make_page.py
+(() => {
+  const DATA = JSON.parse(document.getElementById('c2-data').textContent || '{}');
+  const section = document.getElementById('c2');
+  if (!DATA.runs || !DATA.runs.length) {
+    section.querySelector('#c2-meta').textContent = 'No data yet: run python3 communication/make_page.py.';
+    return;
+  }
+  const SCHEMES = [
+    { label: 'v1-tile', name: 'v1 (Allgather)', short: 'v1', color: '--c-v1', dashed: false },
+    { label: 'v2-ring-tile', name: 'Ring, overlap', short: 'Ring', color: '--c-ring', dashed: false },
+    { label: 'v2-ringblk-tile', name: 'Ring, blocking', short: 'Ring blocking', color: '--c-ring', dashed: true },
+    { label: 'v3-2d-tile', name: '2D', short: '2D', color: '--c-2d', dashed: false },
+  ].filter((s) => DATA.runs.some((r) => r.label === s.label));
+  const PARTS = [
+    { key: 'forces', name: 'Forces', color: '--p-forces' },
+    { key: 'comm', name: 'Communication', color: '--p-comm' },
+    { key: 'sync', name: 'Waiting (stop Allreduce)', color: '--p-sync' },
+    { key: 'rest', name: 'Rest (integration, Python in between)', color: '--p-rest' },
+  ];
+
+  // ---------- helpers
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs = {}, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const num = (v, d = 0) => Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (v) => { const r = Math.round(Math.abs(v) * 100); return r === 0 ? '±0%' : `${v > 0 ? '+' : '−'}${r}%`; };
+  const us = (v) => (v >= 1000 ? `${num(v / 1000, v < 10000 ? 2 : 1)} ms` : v >= 100 ? `${num(v, 0)} µs` : `${num(v, 1)} µs`);
+  const times = (v) => `${num(v, v < 10 ? 2 : v < 100 ? 1 : 0)}×`;
+  const uniq = (a) => [...new Set(a)].sort((x, y) => x - y);
+  const Ns = uniq(DATA.runs.map((r) => r.N));
+  const get = (label, N, P) => DATA.runs.find((r) => r.label === label && r.N === N && r.P === P);
+  const Ps = (label, N) => uniq(DATA.runs.filter((r) => r.label === label && r.N === N).map((r) => r.P));
+  const speedup = (label, N, P) => { const a = get(label, N, 1), b = get(label, N, P); return a && b ? a.step_us / b.step_us : NaN; };
+  const stepsOf = (N) => DATA.runs.find((r) => r.N === N).steps;
+  const Pmax = Math.max(...DATA.runs.map((r) => r.P));
+  const niceMax = (v) => {
+    for (const s of [0.25, 0.5, 1, 2, 5, 10, 20, 25, 50, 100]) if (v / s <= 6) return { max: Math.ceil(v / s) * s, step: s };
+    return { max: v, step: v / 5 };
+  };
+  const swatch = (s) => { const e = h('span', 'sw-line' + (s.dashed ? ' dashed' : '')); e.style.borderTopColor = `var(${s.color})`; return e; };
+  const square = (p) => {
+    const e = h('span', 'sw'); e.style.background = `var(${p.color})`;
+    if (p.key === 'rest') e.style.outline = '1px dashed var(--muted)';
+    return e;
+  };
+  const toSvg = (svg, ev) => new DOMPoint(ev.clientX, ev.clientY).matrixTransform(svg.getScreenCTM().inverse());
+
+  // ---------- tooltip
+  const tip = document.getElementById('c2-tip');
+  const showTip = (ev, nodes) => {
+    tip.replaceChildren(...nodes);
+    tip.style.display = 'block';
+    const w = tip.offsetWidth, ht = tip.offsetHeight;
+    let left = ev.clientX + 14, top = ev.clientY + 14;
+    if (left + w > innerWidth - 8) left = Math.max(8, ev.clientX - 14 - w);
+    if (top + ht > innerHeight - 8) top = Math.max(8, ev.clientY - 14 - ht);
+    tip.style.left = `${left}px`; tip.style.top = `${top}px`;
+  };
+  const hideTip = () => { tip.style.display = 'none'; };
+  const tipGrid = (rows) => { const g = h('div', 't-grid'); rows.forEach(([sw, name, val]) => g.append(sw || h('span'), h('span', '', name), h('span', 't-val', val))); return g; };
+
+  // ---------- text above the charts
+  const jobs = uniq(DATA.runs.map((r) => r.job));
+  const reps = Math.min(...DATA.runs.map((r) => r.repeats));
+  section.querySelector('#c2-meta').textContent =
+    `Jobs ${jobs[0]}–${jobs[jobs.length - 1]} (${jobs.length} sweeps), data of ${DATA.meta.made} from ${DATA.meta.source}. ` +
+    `N = ${Ns.map((n) => num(n)).join(', ')}; P = ${uniq(DATA.runs.map((r) => r.P)).join(', ')} on one node with 24 cores; ` +
+    `${reps} repeats, median; force kernel everywhere with --tile-rows 0.`;
+  let spread = 0, fast = '';
+  Ns.forEach((N) => {
+    const s = DATA.serial.filter((x) => x.N === N);
+    if (s.length < 2) return;
+    const lo = Math.min(...s.map((x) => x.step_us)), hi = Math.max(...s.map((x) => x.step_us));
+    if (hi / lo - 1 > spread) { spread = hi / lo - 1; fast = s.find((x) => x.step_us === lo).host; }
+  });
+  section.querySelector('#c2-norm').textContent =
+    `Every sweep (one N, all P and the serial run) ran on a node of its own, and the nodes do not compute equally fast: ` +
+    `the same serial run takes up to ${Math.round(spread * 100)}% longer depending on the node (fastest: ${fast}). ` +
+    `That is why every scheme is compared here with its own run at P = 1: same node, same force kernel, and at P = 1 all four schemes compute the same thing.`;
+
+  // ---------- expectation against measurement
+  function renderExpect() {
+    const rows = [['', 'Expected (before the measurement)', 'Measured', 'Correct?']];
+    const has = (l, N, P) => !!get(l, N, P) && !!get(l, N, 1);
+    if (has('v2-ring-tile', 50, 24) && has('v1-tile', 50, 24)) {
+      const a = get('v2-ring-tile', 50, 24), b = get('v1-tile', 50, 24), extra = a.step_us - b.step_us;
+      rows.push(['Ring, N = 50, P = 24', 'about 26 µs more per step than v1: 23 messages in sequence instead of one Allgatherv',
+        `${us(extra)} more (${us(a.step_us)} instead of ${us(b.step_us)} per step)`,
+        extra > 52 ? `no, ${num(extra / 26, 0)} times as much` : 'yes']);
+    }
+    if (has('v3-2d-tile', 50, 24) && has('v1-tile', 50, 24)) {
+      const s2 = speedup('v3-2d-tile', 50, 24), s1 = speedup('v1-tile', 50, 24), rel = s2 / s1 - 1;
+      rows.push(['2D, N = 50, P = 24', 'faster than v1: Allgatherv only within a column, more even tiles (largest 1.12 instead of 1.44 × mean)',
+        `speed-up ${num(s2, 2)} instead of ${num(s1, 2)} (${pct(rel)})`, rel > 0.03 ? 'yes' : rel < -0.03 ? 'no' : 'no difference']);
+    }
+    const big = Ns.filter((N) => N >= 1000 && has('v1-tile', N, 24));
+    if (big.length) {
+      const others = SCHEMES.filter((s) => s.label !== 'v1-tile');
+      const worst = {};
+      const parts = big.map((N) => `N = ${num(N)}: ` + others.filter((s) => has(s.label, N, 24)).map((s) => {
+        const rel = speedup(s.label, N, 24) / speedup('v1-tile', N, 24) - 1;
+        worst[s.short] = Math.max(worst[s.short] || 0, Math.abs(rel));
+        return `${s.short} ${pct(rel)}`;
+      }).join(', '));
+      rows.push([`large N, P = 24`, 'all within a few per cent of v1; communication is below 1% of the step there',
+        `speed-up relative to v1 · ${parts.join(' · ')}`,
+        Object.entries(worst).map(([k, v]) => `${k}: ${v <= 0.1 ? 'yes' : 'no'}`).join(' · ')]);
+    }
+    const ov = Ns.filter((N) => has('v2-ring-tile', N, 24) && has('v2-ringblk-tile', N, 24));
+    if (ov.length) {
+      const rel = (N) => speedup('v2-ring-tile', N, 24) / speedup('v2-ringblk-tile', N, 24) - 1;
+      const small = rel(ov[0]);
+      rows.push(['Overlap in the ring, P = 24', 'helps on one node at most at small N, where communication matters',
+        `speed-up with against without overlap · ` + ov.map((N) => `N = ${num(N)}: ${pct(rel(N))}`).join(' · '),
+        small > 0.05 ? 'yes' : 'no, no gain even at small N']);
+    }
+    const t = document.getElementById('c2-expect');
+    const thead = h('thead'), tbody = h('tbody');
+    rows.forEach((row, k) => {
+      const tr = h('tr');
+      row.forEach((v) => tr.append(h(k ? 'td' : 'th', '', v)));
+      (k ? tbody : thead).append(tr);
+    });
+    t.replaceChildren(thead, tbody);
+  }
+
+  // ---------- panels
+  const panel = (box, title, label) => {
+    const wrap = h('div', 'panel');
+    const svg = el('svg', { role: 'img', 'aria-label': label });
+    wrap.append(h('div', 'panel-title', title), svg);
+    box.append(wrap);
+    return svg;
+  };
+  const colors = () => ({ fg: css('--fg'), muted: css('--muted'), bg: css('--bg'), grid: css('--grid') });
+
+  // ---------- speed-up against P
+  function renderSpeedup() {
+    const box = document.getElementById('c2-speedup');
+    box.replaceChildren();
+    const C = colors();
+    Ns.forEach((N) => {
+      const series = SCHEMES.map((s) => ({ s, pts: Ps(s.label, N).map((P) => ({ P, S: speedup(s.label, N, P) })).filter((p) => isFinite(p.S)) }))
+        .filter((x) => x.pts.length);
+      const pm = Math.max(...series.flatMap((x) => x.pts.map((p) => p.P)));
+      const label = `Speed-up at N = ${num(N)}, P = ${pm}: ` + series.map(({ s }) => `${s.name} ${num(speedup(s.label, N, pm), 2)}`).join(', ');
+      const svg = panel(box, `N = ${num(N)} · ${num(stepsOf(N))} steps`, label);
+      const W = 360, H = 236, m = { l: 34, r: 14, t: 10, b: 30 };
+      const top = niceMax(Math.max(...series.flatMap((x) => x.pts.map((p) => p.S))) * 1.08);
+      const x = (P) => m.l + (P / pm) * (W - m.l - m.r);
+      const y = (S) => H - m.b - (S / top.max) * (H - m.t - m.b);
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      for (let v = 0; v <= top.max + 1e-9; v += top.step) {
+        svg.append(el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: C.grid, 'stroke-width': 1 }));
+        svg.append(el('text', { x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: C.muted }, num(v, top.step < 1 ? (top.step < 0.5 ? 2 : 1) : 0)));
+      }
+      [1, 4, 8, 12, 16, 24, 32, 48].filter((P) => P <= pm).forEach((P) =>
+        svg.append(el('text', { x: x(P), y: H - m.b + 15, 'text-anchor': 'middle', 'font-size': 11, fill: C.muted }, P)));
+      svg.append(el('text', { x: W - m.r, y: H - 2, 'text-anchor': 'end', 'font-size': 11, fill: C.muted }, 'Ranks P'));
+      // ideal S = P, cut at the top of the panel
+      const pEnd = Math.min(pm, top.max);
+      svg.append(el('line', { x1: x(1), y1: y(1), x2: x(pEnd), y2: y(pEnd), stroke: C.muted, 'stroke-width': 1.25, 'stroke-dasharray': '3 4' }));
+      svg.append(el('text', { x: x(pEnd) - 6, y: y(pEnd) + (pEnd < pm ? 14 : -4), 'text-anchor': 'end', 'font-size': 11, fill: C.muted }, 'ideal'));
+      series.forEach(({ s, pts }) => {
+        const col = css(s.color);
+        svg.append(el('polyline', { points: pts.map((p) => `${x(p.P)},${y(p.S)}`).join(' '), fill: 'none', stroke: col, 'stroke-width': 2,
+                                    'stroke-dasharray': s.dashed ? '6 4' : 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+        pts.forEach((p) => svg.append(el('circle', { cx: x(p.P), cy: y(p.S), r: 4, fill: s.dashed ? C.bg : col,
+                                                     stroke: s.dashed ? col : C.bg, 'stroke-width': s.dashed ? 1.75 : 1.5 })));
+      });
+      // hover: crosshair at the nearest P
+      const cross = el('line', { y1: m.t, y2: H - m.b, stroke: C.muted, 'stroke-width': 1, visibility: 'hidden' });
+      svg.append(cross);
+      const allP = uniq(series.flatMap((x) => x.pts.map((p) => p.P)));
+      const hit = el('rect', { x: m.l, y: 0, width: W - m.l - m.r, height: H - m.b, fill: 'transparent' });
+      const move = (ev) => {
+        const px = toSvg(svg, ev).x;
+        const P = allP.reduce((a, b) => (Math.abs(x(b) - px) < Math.abs(x(a) - px) ? b : a));
+        cross.setAttribute('x1', x(P)); cross.setAttribute('x2', x(P)); cross.setAttribute('visibility', 'visible');
+        showTip(ev, [h('div', 't-head', `N = ${num(N)}, P = ${P}`),
+          tipGrid(series.map(({ s }) => { const r = get(s.label, N, P); return r ? [swatch(s), s.name, `S ${num(speedup(s.label, N, P), 2)} · ${us(r.step_us)}`] : null; }).filter(Boolean)),
+          h('div', 't-foot', `ideal: S = ${P}; time per step of the slowest rank`)]);
+      };
+      hit.addEventListener('pointermove', move);
+      hit.addEventListener('pointerdown', move);
+      hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); hideTip(); });
+      svg.append(hit);
+    });
+    document.getElementById('c2-legend-lines').replaceChildren(...SCHEMES.map((s) => {
+      const k = h('span', 'key'); k.append(swatch(s), document.createTextNode(s.name)); return k;
+    }));
+  }
+
+  // ---------- where the time of a step goes
+  const stateParts = { P: Pmax };
+  const roundedRight = (x, y, w, ht, r) => {
+    r = Math.max(0, Math.min(r, w / 2, ht / 2));
+    return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + ht - r}Q${x + w},${y + ht} ${x + w - r},${y + ht}H${x}Z`;
+  };
+  function renderParts() {
+    const P = stateParts.P;
+    document.querySelectorAll('#c2-p-seg button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.p === P));
+    const box = document.getElementById('c2-parts');
+    box.replaceChildren();
+    const C = colors();
+    Ns.forEach((N) => {
+      const rows = SCHEMES.map((s) => {
+        const r = get(s.label, N, P), r1 = get(s.label, N, 1);
+        if (!r || !r1) return null;
+        const k = P / r1.step_us;                       // µs -> multiples of the ideal step time T(1)/P
+        const parts = { forces: r.forces_us * k, comm: r.comm_us * k, sync: r.sync_us * k };
+        const total = r.step_us * k;
+        parts.rest = Math.max(0, total - parts.forces - parts.comm - parts.sync);
+        const restUs = Math.max(0, r.step_us - r.forces_us - r.comm_us - r.sync_us);
+        return { s, r, r1, parts, total, restUs, kernel: (P * r.forces_us) / r1.forces_us };
+      }).filter(Boolean);
+      if (!rows.length) return;
+      const label = `Time per step at N = ${num(N)}, P = ${P}, in multiples of the ideal time: ` + rows.map((x) => `${x.s.name} ${times(x.total)}`).join(', ');
+      const svg = panel(box, `N = ${num(N)}, P = ${P}`, label);
+      const W = 360, rowH = 34, m = { l: 114, r: 46, t: 20, b: 34 }, H = m.t + rows.length * rowH + m.b;
+      const top = niceMax(Math.max(1, ...rows.map((x) => x.total)) * 1.02);
+      const x = (v) => m.l + (v / top.max) * (W - m.l - m.r);
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      for (let v = 0; v <= top.max + 1e-9; v += top.step) {
+        svg.append(el('line', { x1: x(v), x2: x(v), y1: m.t - 4, y2: H - m.b, stroke: C.grid, 'stroke-width': 1 }));
+        svg.append(el('text', { x: x(v), y: H - m.b + 15, 'text-anchor': 'middle', 'font-size': 11, fill: C.muted }, num(v, top.step < 1 ? 1 : 0)));
+      }
+      svg.append(el('line', { x1: x(1), x2: x(1), y1: m.t - 6, y2: H - m.b, stroke: C.fg, 'stroke-width': 1.25, 'stroke-dasharray': '3 3', opacity: 0.7 }));
+      svg.append(el('text', { x: x(1) + 4, y: m.t - 8, 'font-size': 11, fill: C.muted }, 'ideal'));
+      svg.append(el('text', { x: W - m.r, y: H - 2, 'text-anchor': 'end', 'font-size': 11, fill: C.muted }, 'multiples of T(1)/P'));
+      rows.forEach((row, i) => {
+        const bh = 18, y0 = m.t + i * rowH + (rowH - bh) / 2;
+        svg.append(el('text', { x: m.l - 8, y: y0 + 13, 'text-anchor': 'end', 'font-size': 12, fill: C.fg }, row.s.name));
+        const vis = PARTS.filter((p) => row.parts[p.key] > 0);
+        let acc = 0;
+        vis.forEach((p, j) => {
+          const x0 = x(acc), w = x(acc + row.parts[p.key]) - x0;
+          const attrs = { fill: css(p.color), stroke: p.key === 'rest' ? C.muted : C.bg, 'stroke-width': 1 };
+          if (p.key === 'rest') attrs['stroke-dasharray'] = '2 2';
+          svg.append(j === vis.length - 1 ? el('path', { d: roundedRight(x0, y0, w, bh, 4), ...attrs }) : el('rect', { x: x0, y: y0, width: w, height: bh, ...attrs }));
+          acc += row.parts[p.key];
+        });
+        svg.append(el('text', { x: x(row.total) + 6, y: y0 + 13, 'font-size': 11, fill: C.muted }, times(row.total)));
+        const hit = el('rect', { x: 0, y: m.t + i * rowH, width: W, height: rowH, fill: 'transparent' });
+        const move = (ev) => showTip(ev, [
+          h('div', 't-head', `${row.s.name} · N = ${num(N)}, P = ${P} (${row.r.decomposition})`),
+          tipGrid([...PARTS.map((p) => [square(p), p.name,
+            `${us(p.key === 'rest' ? row.restUs : row.r[`${p.key}_us`])} · ${times(row.parts[p.key])}`]),
+            [null, 'Step (slowest rank)', `${us(row.r.step_us)} · ${times(row.total)}`]]),
+          h('div', 't-foot', `ideal: ${us(row.r1.step_us / P)} = T(1)/P. Force kernel of all ranks together: ${times(row.kernel)} as long as at P = 1.`)]);
+        hit.addEventListener('pointermove', move);
+        hit.addEventListener('pointerdown', move);
+        hit.addEventListener('pointerleave', hideTip);
+        svg.append(hit);
+      });
+    });
+    document.getElementById('c2-legend-parts').replaceChildren(...PARTS.map((p) => {
+      const k = h('span', 'key'); k.append(square(p), document.createTextNode(p.name)); return k;
+    }));
+  }
+  const pSeg = document.getElementById('c2-p-seg');
+  uniq(DATA.runs.map((r) => r.P)).filter((P) => P > 1).forEach((P) => {
+    const b = h('button', '', String(P));
+    b.type = 'button'; b.dataset.p = P;
+    b.onclick = () => { stateParts.P = P; renderParts(); };
+    pSeg.append(b);
+  });
+
+  // ---------- all numbers
+  function renderTables() {
+    const fill = (id, rows) => {
+      const t = document.getElementById(id), thead = h('thead'), tbody = h('tbody');
+      rows.forEach((row, k) => { const tr = h('tr'); row.forEach((v) => tr.append(h(k ? 'td' : 'th', '', v))); (k ? tbody : thead).append(tr); });
+      t.replaceChildren(thead, tbody);
+    };
+    const all = [['Scheme', 'N', 'P', 'Grid', 'Step', 'Speed-up', 'Forces', 'Communication', 'Waiting', 'Integration', 'Node', 'Job']];
+    Ns.forEach((N) => SCHEMES.forEach((s) => Ps(s.label, N).forEach((P) => {
+      const r = get(s.label, N, P);
+      all.push([s.name, num(N), P, r.decomposition, us(r.step_us), num(speedup(s.label, N, P), 2), us(r.forces_us), us(r.comm_us), us(r.sync_us), us(r.integrate_us), r.host, r.job]);
+    })));
+    fill('c2-all', all);
+    const ser = [['Scheme', 'N', 'Job', 'Node', 'Serial step']];
+    Ns.forEach((N) => SCHEMES.forEach((s) => DATA.serial.filter((x) => x.label === s.label && x.N === N)
+      .forEach((x) => ser.push([s.name, num(N), x.job, x.host, us(x.step_us)]))));
+    fill('c2-serial', ser);
+  }
+
+  const renderAll = () => { renderExpect(); renderSpeedup(); renderParts(); renderTables(); };
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+  renderAll();
 })();
 </script>
 </body>

@@ -11,7 +11,8 @@ What we know from the Amdahl campaign (`amdahl/results.html`): on one node and w
 | Folder | What goes in |
 |---|---|
 | `../ParallelImplementation.py` | **all three schemes**, chosen with `--decomposition allgather` (v1, default), `ring` (Pelle) or `2d`. One program, so every scheme shares loading, timers, the stop logic and the results row |
-| `2d_decomposition.html` | interactive explanation of the 2D decomposition, with pseudo code; open it in a browser |
+| `2d_decomposition.html` | interactive explanation of the 2D decomposition, with pseudo code, and at the bottom the C2 measurements (expectation against measurement, speed-up, where the time of a step goes); open it in a browser |
+| `make_page.py` | writes the C2 numbers from `../results.csv` into the data block of `2d_decomposition.html` |
 | `tests/` | C1: `validate.sh` runs every scheme and compares its final state with the serial run (`compare_states.py`) |
 | `bench/` | communication alone, no physics: time per call against message size and P, to fit `T = μ + s/B` |
 | `jobs/` | LSF job scripts (one node, two nodes) |
@@ -132,10 +133,16 @@ NODES=2 LABEL=v3-2d-tile-2n PROGRAM_ARGS="--decomposition 2d --tile-rows 0" bash
 
 Every campaign also starts its own analysis job. To compare the schemes, copy `results.csv` and `amdahl/launch_times.csv` to the laptop and run, for example, `python3 amdahl/amdahl_analysis.py --label v1-tile v2-ring-tile v2-ringblk-tile v3-2d-tile --out amdahl/out/schemes`: the per-N plots then show all schemes together. The `decomposition` column in `results.csv` says which scheme and grid each MPI row used (`allgather_block`, `ring_overlap`, `ring_blocking`, `2d_6x4`, …).
 
+For the page, `python3 communication/make_page.py` (default: the four labels above) takes the latest job per label and N and writes the medians into `2d_decomposition.html`. The page compares every scheme with its own run at P = 1, because each sweep ran on a different node and the nodes differ by up to 21 % (serial run at N = 50).
+
 ## Status
+
+C1 on the cluster (job 30082644, `results/validate_30082644.csv`): 228 runs, N = 5, 100, 1 000, P = 1 … 24, 20 steps, all passed. The positions agree exactly after 20 steps (they move too little to show a difference); the velocities carry the difference. At N = 1 000 every scheme that sums in a different order ends at the same 1.3e-13: rounding differences of about 1e-16 grow over the 20 steps, most likely through a close pair of stars, and the growth is the same whatever the summation order. That is four orders of magnitude below the tolerance.
 
 | Scheme | Expectation written | Implemented | Correct (C1) | Measured, 1 node | Measured, 2 nodes |
 |---|---|---|---|---|---|
-| Allgather (v1) | yes (`docs/Parallel_Plan_v1(1).md`, §3; C0) | yes | yes, bit-identical to serial (laptop, P = 1 … 6) | yes (`amdahl/`, `--tile-rows 1`) | no |
-| Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | laptop: ≤ 6.2e-16 relative (N = 5, 100, 1 000; P = 1 … 6) | no | no |
-| 2D force decomposition | yes (above, from C0) | yes (16 Nov) | laptop: bit-identical for p_c = 1, else ≤ 6.2e-16 relative; row copies identical | no | no |
+| Allgather (v1) | yes (`docs/Parallel_Plan_v1(1).md`, §3; C0) | yes | **cluster: bit-identical** to serial, 30/30 runs (job 30082644) | yes (`amdahl/`, `--tile-rows 1`) | no |
+| Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | **cluster: 90/90 passed**, ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083334–40): N = 50 collapses, about 70 µs per kernel call × P calls per step; N ≥ 1 000 12–21 % below v1 | no |
+| 2D force decomposition | yes (above, from C0) | yes (16 Nov) | **cluster: 78/78 passed**, bit-identical for p_c = 1, else ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083342–44): N = 50 14 % better than v1, N ≥ 1 000 5–8 % below | no |
+
+C2 on one node (jobs 30083330–30083344, `--tile-rows 0`, `v1-tile` as the reference) is shown at the bottom of `2d_decomposition.html`. The C0 prediction for the ring missed by a factor of about 90 at N = 50: C0 timed the messages only, but the ring calls the force kernel P times per step and each call has a fixed cost of about 70 µs in Python. At large N the differences between the schemes also come from the kernel (summed kernel time of all ranks at N = 5 000, P = 24, relative to P = 1: v1 1.29, 2D 1.37, ring 1.63), not from the bytes sent.
