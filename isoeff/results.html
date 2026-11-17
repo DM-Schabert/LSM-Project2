@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Isoefficiency</title>
+<!-- Made by isoeff/make_page.py: only the data block below changes when it runs. Open this file in a browser. -->
+<style>
+  /* One reading column; charts span it. Same style as amdahl/ and gustafson/results.html. */
+  :root {
+    --color-bg: #fcfcfb; --color-fg: #1b1f27; --color-fg-muted: #5d6573; --color-panel: #f3f4f6; --color-border-line: #e2e5ea;
+    --cds-text-secondary: #5d6573; --cds-chart-grid: #eceef2; --cds-chart-axis: #9aa1ac; --cds-chart-reference: #8a919d;
+    --cds-surface-popover: #ffffff; --cds-border: #dde1e6; --cds-shadow-popover: 0 6px 20px rgba(20, 24, 32, .12);
+    --c0: #2a78d6; --c1: #eb6834; --c2: #1baf7a; --c3: #eda100; --c4: #e87ba4; --c5: #6250d6;
+    --q0: #86b6ef; --q1: #5598e7; --q2: #2a78d6; --q3: #1c5cab; --q4: #104281;
+    --p0: #2a78d6; --p1: #eb6834; --p2: #6250d6; --p3: #b4b9c2;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --cds-font-size-caption: 12.5px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 36px;
+    --cds-pad-sm: 6px; --cds-pad-md: 10px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+      --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+      --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+      --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+      --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+      --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+    --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+    --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+    --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+    --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+    --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: var(--cds-font-size-body)/1.5 var(--font-sans); }
+  .iso-page { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .iso-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
+  .iso-select:focus-visible, .iso-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
+  .iso-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+</style>
+<style>
+  .iso { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
+  .iso-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .iso-title { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.2; text-wrap: balance; }
+  .iso-lede { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 68ch; }
+  .iso-meta { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-num { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+
+  .iso-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); min-height: 120px; }
+  .iso-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .iso-tile-n { display: flex; align-items: center; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+  .iso-tile-big { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .iso-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+  .iso-sec { display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .iso-sec-h { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-p { margin: 0; line-height: 1.55; max-width: 72ch; }
+  .iso-note { margin: 0; line-height: 1.5; max-width: 72ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-axis-label { margin: var(--cds-gap-xs) 0 0; color: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+
+  .iso-chart { position: relative; min-height: 260px; }
+  .iso-chart--short { min-height: 190px; }
+  .iso-svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .iso-svg text { font-family: var(--font-sans); }
+  .iso-axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-axis .domain, .iso-axis line { stroke: none; }
+  .iso-baseline { stroke: var(--cds-chart-axis) !important; }
+  .iso-grid line { stroke: var(--cds-chart-grid); stroke-width: 1; }
+  .iso-ref { fill: none; stroke: var(--cds-chart-reference); stroke-width: 1.25; stroke-dasharray: 4 4; }
+  .iso-zero { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .iso-fit { fill: none; stroke-width: 1.25; stroke-dasharray: 2 3; opacity: .9; }
+  .iso-bound { fill: none; stroke-width: 1.25; stroke-dasharray: 6 4; opacity: .75; }
+  .iso-dot { stroke: var(--color-bg); stroke-width: 2; }
+  .iso-whisker { stroke-width: 1.5; }
+  .iso-end { fill: var(--color-fg); font-size: var(--cds-font-size-caption); }
+  .iso-cross { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-total { stroke: var(--color-fg); stroke-width: 2.5; }
+  .iso-ink { fill: var(--color-fg); }
+  .iso-ring { fill: var(--color-bg); stroke: var(--color-fg); stroke-width: 2; }
+  .iso-link { stroke: var(--cds-chart-reference); stroke-width: 2; }
+  .iso-vlabel { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-hit { fill: transparent; cursor: crosshair; }
+
+  .iso-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); margin-bottom: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .iso-key { display: inline-flex; align-items: center; gap: 6px; }
+  .iso-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .iso-swatch--ref { width: 16px; height: 0; border-top: 1.5px dashed var(--cds-chart-reference); border-radius: 0; }
+  .iso-swatch--fit { width: 16px; height: 0; border-top: 1.5px dotted var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--bound { width: 16px; height: 0; border-top: 1.5px dashed var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--total { width: 14px; height: 0; border-top: 2.5px solid var(--color-fg); border-radius: 0; }
+  .iso-swatch--ink { background: var(--color-fg); transform: rotate(45deg); width: 8px; height: 8px; border-radius: 1px; }
+  .iso-swatch--dot { background: var(--color-fg); border-radius: 50%; }
+  .iso-swatch--ring { background: var(--color-bg); border: 2px solid var(--color-fg); border-radius: 50%; width: 8px; height: 8px; }
+
+  .iso-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); line-height: 1.5; min-width: 150px; max-width: 260px; font-variant-numeric: tabular-nums; }
+  .iso-tip-h { font-weight: var(--cds-font-weight-medium); margin-bottom: 2px; }
+  .iso-tip-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .iso-tip-row span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--cds-text-secondary); }
+  .iso-empty { margin: 0; padding: var(--cds-pad-lg) 0; color: var(--color-fg-muted); }
+
+  .iso-controls { display: flex; align-items: center; gap: var(--cds-gap-sm); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+  .iso-table-wrap { overflow-x: auto; min-width: 0; }
+  .iso-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-table th { text-align: right; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table th:first-child, .iso-table td:first-child { text-align: left; }
+  .iso-table .iso-left { text-align: left; }
+  .iso-now td { font-weight: var(--cds-font-weight-medium); }
+
+  .iso-details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+  .iso-details summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .iso-details ul { margin: var(--cds-gap-sm) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 76ch; }
+  .iso-details code { font-size: .95em; }
+  .iso-hidden { display: none !important; }
+  .iso-sec[hidden] { display: none; }
+  .iso-sec-h3 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-fail { fill: none; stroke-width: 1.75; }
+  .iso-swatch--fail { background: transparent; border: 1.75px solid var(--color-fg-muted); border-radius: 50%; width: 9px; height: 9px; }
+  .iso-log { margin: var(--cds-gap-sm) 0 0; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line);
+             border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); line-height: 1.5; white-space: pre-wrap; overflow-x: auto; }
+  .iso-controls span { color: var(--color-fg-muted); }
+  .iso-table td.iso-wrap { white-space: normal; min-width: 14ch; max-width: 36ch; }
+  .iso-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
+  </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+<script id="isoeff-data" type="application/json">{"points": "label,N,P,jobs,serial_ms,mpi_ms,speedup,efficiency,marginal_eff,karp_flatt,verdict,hosts\nv2-ring,500,1,1,36.970,36.703,1.0073,1.0073,,,baseline,n-62-21-75\nv2-ring,500,2,1,40.509,20.442,1.9817,0.9908,0.9836,0.00926,ok,n-62-21-76\nv2-ring,500,4,1,41.149,10.382,3.9635,0.9909,1.0001,0.00307,ok,n-62-21-48\nv2-ring,500,8,1,37.147,4.764,7.7980,0.9748,0.9837,0.00370,ok,n-62-21-75\nv2-ring,500,12,1,40.570,3.654,11.1042,0.9253,0.9493,0.00733,ok,n-62-21-77\nv2-ring,500,16,1,41.123,2.953,13.9236,0.8702,0.9404,0.00994,ok,n-62-21-47\nv2-ring,500,24,1,39.393,2.143,18.3824,0.7659,0.8802,0.01329,ok,n-62-21-46\n", "thresholds": "label,N,P_star,P_fail,marginal_eff,E_at_fail,E_at_P_star\n", "breakdown": "label,N,P,forces,comm,sync,other,imbalance,mpi_ms,s_lo,s_hi,repeats\nv2-ring,500,1,0.99921,0.00033,0.00024,0.00021,1.0000,36.7025,0.9852,1.0173,3\nv2-ring,500,2,0.99805,0.00096,0.01819,0.00000,1.0088,20.4419,1.9625,1.9878,3\nv2-ring,500,4,0.99410,0.00281,0.02444,0.00000,1.0118,10.3820,3.8851,3.9766,3\nv2-ring,500,8,0.98850,0.00741,0.05714,0.00000,1.0370,4.7636,7.6841,7.8781,3\nv2-ring,500,12,0.97564,0.01525,0.07460,0.00000,1.0379,3.6536,11.0734,11.1045,3\nv2-ring,500,16,0.97360,0.01838,0.12985,0.00000,1.1101,2.9535,13.5012,14.1200,3\nv2-ring,500,24,0.92032,0.03457,0.19978,0.00000,1.1244,2.1430,18.2839,18.8049,3\n", "campaigns": [{"label": "v1", "note": "allgather", "created": "2026-11-15T19:04:16", "n0": 300, "growth": 1.4142135623730951, "max_nodes": 1, "cores_per_node": 24, "marginal": 0.8, "efficiency": 0.5, "confirm": true, "at_max_p": "stop", "mpi_args": "", "walltime_min": 7, "mpi_reps": 3, "merge_radius": 0.001, "queue": "hpcintro", "map_opts": "", "steps0": null, "run_limit_min": 7, "max_walltime_min": 30, "mode": "capacity", "steps": 10000, "continued_label": null, "start_n": null, "start_p": null, "p_list": [1, 2, 4, 8, 12, 16, 24], "done": "reached the largest P (24) with every step still paying off; N_max = 1697", "log": "# campaign v1 (capacity mode) - 2026-11-15T20:15:27\n# every run: 10000 steps in a 7-min job (fits within 300 s); P list [1, 2, 4, 8, 12, 16, 24]; N grid 300 x1.414; rule: marginal >= 0.8; merge radius 0.001 pc\nP=1 N=300: 10000 steps in 192 s -> fits\nP=1 N=424: 10000 steps would take ~377 s -> too big\nN_max(P=1) = 300\nstep 1->2 at N=300: 192 s -> 110 s, marginal 87% -> pays off\nP=2 N=300: 10000 steps in 110 s -> fits\nP=2 N=424: 10000 steps in 164 s -> fits\nP=2 N=600: 10000 steps would take ~322 s -> too big\nN_max(P=2) = 424\nstep 2->4 at N=424: 164 s -> 94 s, marginal 87% -> pays off\nP=4 N=424: 10000 steps in 94 s -> fits\nP=4 N=600: 10000 steps in 150 s -> fits\nP=4 N=849: 10000 steps would take ~296 s -> too big\nN_max(P=4) = 600\nstep 4->8 at N=600: 150 s -> 83 s, marginal 90% -> pays off\nP=8 N=600: 10000 steps in 83 s -> fits\nP=8 N=849: 10000 steps in 150 s -> fits\nP=8 N=1200: 10000 steps in 267 s -> fits\nP=8 N=1697: 10000 steps would take ~501 s -> too big\nN_max(P=8) = 1200\nstep 8->12 at N=1200: 267 s -> 182 s, marginal 98% -> pays off\nP=12 N=1200: 10000 steps in 182 s -> fits\nP=12 N=1697: 10000 steps would take ~334 s -> too big\nN_max(P=12) = 1200\nstep 12->16 at N=1200: 182 s -> 142 s, marginal 96% -> pays off\nP=16 N=1200: 10000 steps in 142 s -> fits\nP=16 N=1697: 10000 steps in 264 s -> fits\nP=16 N=2400: 10000 steps would take ~485 s -> too big\nN_max(P=16) = 1697\nstep 16->24 at N=1697: 264 s -> 179 s, marginal 98% -> pays off\nP=24 N=1697: 10000 steps in 179 s -> fits\nP=24 N=2400: 10000 steps would take ~336 s -> too big\nN_max(P=24) = 1697\nDONE: reached the largest P (24) with every step still paying off; N_max = 1697\n", "jobs": 19, "cpu": "Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz"}, {"label": "v2-ring", "note": "ring algorithm", "created": "2026-11-15T12:43:11", "n0": 500, "growth": 2.0, "max_nodes": 1, "cores_per_node": 24, "marginal": 0.8, "efficiency": 0.5, "confirm": true, "at_max_p": "stop", "mpi_args": null, "walltime_min": 7, "mpi_reps": 3, "merge_radius": 0.0, "queue": "hpcintro", "map_opts": "", "steps0": null, "run_limit_min": null, "max_walltime_min": null, "mode": "time", "steps": null, "continued_label": null, "start_n": null, "start_p": null, "p_list": [1, 2, 4, 8, 12, 16, 24], "done": "reached the largest P (24) and it is still cost-effective at N=500: Amdahl's limit lies beyond 1 node(s)", "log": "# campaign v2-ring - 2026-11-15T13:37:56\n# rule: marginal >= 0.8, E >= 0.5, P list [1, 2, 4, 8, 12, 16, 24], N0=500 x2.0\n# serial cost fit: T(N) = 2.347e-05*N + 1.151e-07*N^2 s\nN=500 P=1: S=1.01 (MPI with one rank vs. serial)\nN=500 P=1->2: S 1.01->1.98, marginal 98%, E=99% -> cost-effective\nN=500 P=2->4: S 1.98->3.96, marginal 100%, E=99% -> cost-effective\nN=500 P=4->8: S 3.96->7.80, marginal 98%, E=97% -> cost-effective\nN=500 P=8->12: S 7.80->11.10, marginal 95%, E=93% -> cost-effective\nN=500 P=12->16: S 11.10->13.92, marginal 94%, E=87% -> cost-effective\nN=500 P=16->24: S 13.92->18.38, marginal 88%, E=77% -> cost-effective\nDONE: reached the largest P (24) and it is still cost-effective at N=500: Amdahl's limit lies beyond 1 node(s)\n", "jobs": 7, "cpu": "Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz"}], "capacity": "label,P,N_max,time_s,marginal_in,verdict\nv1,1,300,191.82,,useful\nv1,2,424,163.83,0.8700,useful\nv1,4,600,150.46,0.8743,useful\nv1,8,1200,266.84,0.9046,useful\nv1,12,1200,181.84,0.9783,useful\nv1,16,1697,264.13,0.9599,useful\nv1,24,1697,179.00,0.9837,useful\n", "cap_points": "label,N,P,runs,fits,time_s,ms_per_step,verdict,hosts\nv1,300,1,1,True,191.82,19.1824,fits,n-62-21-75\nv1,424,1,1,False,377.33,37.7330,too big,n-62-21-48\nv1,300,2,1,True,110.25,11.0245,step ok,n-62-21-76\nv1,424,2,1,True,163.83,16.3825,fits,n-62-21-75\nv1,600,2,1,False,322.27,32.2275,too big,n-62-21-48\nv1,424,4,1,True,93.69,9.3687,step ok,n-62-21-46\nv1,600,4,1,True,150.46,15.0456,fits,n-62-21-75\nv1,849,4,1,False,296.10,29.6097,too big,n-62-21-48\nv1,600,8,1,True,83.16,8.3157,step ok,n-62-21-46\nv1,849,8,1,True,149.86,14.9863,fits,n-62-21-77\nv1,1200,8,1,True,266.84,26.6841,fits,n-62-21-48\nv1,1697,8,1,False,500.57,50.0572,too big,n-62-21-76\nv1,1200,12,1,True,181.84,18.1839,step ok,n-62-21-47\nv1,1697,12,1,False,334.01,33.4013,too big,n-62-21-48\nv1,1200,16,1,True,142.08,14.2084,step ok,n-62-21-76\nv1,1697,16,1,True,264.13,26.4125,fits,n-62-21-47\nv1,2400,16,1,False,484.65,48.4653,too big,n-62-21-48\nv1,1697,24,1,True,179.00,17.8998,step ok,n-62-21-76\nv1,2400,24,1,False,336.13,33.6130,too big,n-62-21-47\n", "cap_thresholds": "label,P_last,P_fail,N,marginal\n", "meta": {"made": "2026-11-15"}}</script>
+<script>
+  /* The page's data and a small view layer: computed values (view.calc) and drawings (view.draw). */
+  const ISO_DATA = JSON.parse(document.getElementById('isoeff-data').textContent);
+  const ISO_EMPTY = !ISO_DATA.campaigns;
+  const view = (() => {
+    const store = {}, calcs = [], draws = {}, params = {};
+    const V = {
+      colors: ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'],
+      data: (id) => (id in store ? { status: 'ok', data: store[id] } : { status: 'missing', data: [] }),
+      calc: (id, o) => { calcs.push([id, o]); },
+      draw: (name, fn) => { draws[name] = fn; },
+      params: () => params,
+      setParams: (p) => { Object.assign(params, p); V.run(); },
+      compute: () => {
+        if (ISO_DATA.campaigns) {  /* every table exists once there is data, possibly empty */
+          for (const k of ['points', 'thresholds', 'breakdown', 'capacity', 'cap_points', 'cap_thresholds'])
+            store[k] = ISO_DATA[k] ? d3.csvParse(ISO_DATA[k]) : [];
+          store.campaigns = ISO_DATA.campaigns;
+        }
+        let left = calcs.slice();
+        for (let pass = 0; left.length && pass < 20; pass++) {
+          left = left.filter(([id, o]) => {
+            if (!o.inputs.every((i) => i in store)) return true;
+            try { store[id] = o.fn(...o.inputs.map((i) => store[i])); } catch (e) { console.error('calc ' + id, e); }
+            return false;
+          });
+        }
+      },
+      run: () => {
+        document.querySelectorAll('[data-draw]').forEach((el) => {
+          const fn = draws[el.dataset.draw];
+          if (fn) try { fn(el); } catch (e) { console.error('drawing ' + el.dataset.draw, e); }
+        });
+      },
+    };
+    return V;
+  })();
+</script>
+<div class="iso-page">
+
+<div class="iso">
+  <header class="iso-head" id="summary-head">
+    <h1 class="iso-title">Isoefficiency: how far each version scales, and how much N it needs</h1>
+    <p class="iso-lede" data-draw="showIf" data-source="cap">Each version runs <b class="iso-num" data-draw="cfg" data-key="steps_fmt">—</b> time steps in a <b class="iso-num" data-draw="cfg" data-key="walltime_min">—</b>-minute job. At each number of ranks the problem grows until it no longer finishes in time, and the next ranks are added only while they pay off: the step must give at least <b class="iso-num" data-draw="cfg" data-key="marginal" data-fmt="pct">—</b>&nbsp;% of the ideal extra speed-up. <span data-draw="capLede">—</span></p>
+    <p class="iso-lede" data-draw="showIf" data-source="pts">Each version keeps N fixed and adds ranks while a step still pays off: doubling the ranks must give at least <b class="iso-num" data-draw="cfg" data-key="marginal" data-fmt="pct">—</b>&nbsp;% of the ideal extra speed-up, and the efficiency must stay at or above <b class="iso-num" data-draw="cfg" data-key="efficiency" data-fmt="pct">—</b>&nbsp;%. When a step fails, N grows and the same step is tried again. <span data-draw="lede">—</span></p>
+    <p class="iso-meta">Versions <span data-draw="meta" data-key="labels">—</span> · <span data-draw="meta" data-key="cpu">—</span> · up to <span data-draw="meta" data-key="nodes">—</span> · <span data-draw="meta" data-key="how">—</span> · page made <span data-draw="meta" data-key="made">—</span></p>
+    <p class="iso-offline" id="iso-offline" hidden>The charts need d3 from cdnjs.cloudflare.com. Open this page with an internet connection.</p>
+  </header>
+
+  <div class="iso-tiles" id="tiles" data-draw="tiles" data-source="camp_view"></div>
+
+  <section class="iso-sec" id="capacity" data-draw="showIf" data-source="cap">
+    <h2 class="iso-sec-h">How many ranks and how many stars each version handles</h2>
+    <p class="iso-p">For every number of ranks P, the largest number of stars N whose time steps still finish within the job. Each line stops at the last P that was worth adding. A hollow ring marks the next step, which was measured and did not pay off. Higher and further to the right is better: more stars, on more ranks. Both axes are logarithmic.</p>
+    <p class="iso-axis-label">Largest N that finishes in time</p>
+    <div class="iso-chart" id="capacity-chart" data-draw="capChart" data-source="cap"></div>
+  </section>
+
+  <section class="iso-sec" id="cap-marginal" data-draw="showIf" data-source="cap">
+    <h2 class="iso-sec-h">Does each step up in ranks pay off?</h2>
+    <p class="iso-p">For the step from P′ to P, both on the largest N that P′ could handle: (T(P′) / T(P)) / (P / P′), the share of the ideal extra speed-up that the extra ranks delivered. Only MPI runs are compared, no serial run. Below the dotted line the step does not pay off and the campaign stops.</p>
+    <p class="iso-axis-label">Marginal efficiency of the step up to P (%)</p>
+    <div class="iso-chart" id="cap-marginal-chart" data-draw="capMargChart" data-source="cap"></div>
+  </section>
+
+  <section class="iso-sec" id="cap-versions" data-draw="showIf" data-source="cap">
+    <h2 class="iso-sec-h">All versions</h2>
+    <div class="iso-table-wrap">
+      <table class="iso-table" id="cap-versions-table" data-source="cap_view" data-row-key="label">
+        <thead><tr><th class="iso-left">Version</th><th class="iso-left">MPI options</th><th>Useful P</th><th>Nodes</th><th>Largest N</th><th>Ranks gained</th><th>Stars gained</th><th class="iso-left">Continues</th><th>Jobs</th><th class="iso-left">Stopped because</th></tr></thead>
+        <tbody data-draw="capVersionRows"></tbody>
+      </table>
+    </div>
+    <p class="iso-note">Useful P: the largest number of ranks that was still worth adding. Largest N: the most stars that finished in time, on the useful P. Gained: against the version listed before it (ranks: the difference; stars: the ratio of the largest N). A version that continues another starts a few N steps below where that one stopped, so the two share points.</p>
+  </section>
+
+  <section class="iso-sec" id="path" data-draw="showIf" data-source="pts">
+    <h2 class="iso-sec-h">The isoefficiency path: how fast N must grow to keep adding ranks</h2>
+    <p class="iso-p">For every P, the smallest N at which the step up to P was cost-effective. A flat line means the version scales at a fixed problem size (Amdahl's limit is beyond the hardware). The steeper the line, the faster the problem must grow for more ranks to pay off (Gustafson). Hollow rings: steps that were measured and were not cost-effective at that N. Both axes double per grid line.</p>
+    <p class="iso-axis-label">Stars N at which the step up to P became cost-effective</p>
+    <div class="iso-chart" id="path-chart" data-draw="pathChart" data-source="path"></div>
+  </section>
+
+  <section class="iso-sec" id="versions" data-draw="showIf" data-source="pts">
+    <h2 class="iso-sec-h">All versions</h2>
+    <div class="iso-table-wrap">
+      <table class="iso-table" id="versions-table" data-source="camp_view" data-row-key="label">
+        <thead><tr><th class="iso-left">Version</th><th class="iso-left">MPI options</th><th>Best P</th><th>from N</th><th>E (%)</th><th class="iso-left">Thresholds (N: good P → failing P)</th><th>Points</th><th>Jobs</th><th class="iso-left">Stopped because</th></tr></thead>
+        <tbody data-draw="versionRows"></tbody>
+      </table>
+    </div>
+    <p class="iso-note">Best P: the largest cost-effective number of ranks, first reached at N stars with efficiency E. A threshold is where a step from P to the next P was not cost-effective; the campaign then grew N. "Still cost-effective at the largest P" means the version's Amdahl limit lies beyond the nodes that were used.</p>
+  </section>
+
+  <section class="iso-sec" id="detail-head">
+    <h2 class="iso-sec-h">One version in detail</h2>
+    <div class="iso-controls"><label for="iso-camp-pick">Version</label><select id="iso-camp-pick" class="iso-select" data-draw="campPick" data-param="camp" aria-label="Version" data-source="camp_view"></select> <span data-draw="campNote"></span></div>
+  </section>
+
+  <section class="iso-sec" id="speedup" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Speed-up at fixed N (Amdahl)</h3>
+    <p class="iso-p">S = serial time per step over MPI time per step, both on N stars in the same job. One line per N, along the P values the campaign measured at that N. Bars run from the slowest to the fastest MPI repeat. Rings mark the steps that were not cost-effective.</p>
+    <p class="iso-axis-label">Speed-up S of the step loop</p>
+    <div class="iso-chart" id="speedup-chart" data-draw="speedChart" data-source="pts"></div>
+  </section>
+
+  <section class="iso-sec" id="efficiency" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Parallel efficiency</h3>
+    <p class="iso-p">E = S / P. The dotted line is the efficiency rule; below it, adding ranks wastes more than half of every new core.</p>
+    <p class="iso-axis-label">Parallel efficiency E of the step loop (%)</p>
+    <div class="iso-chart" id="efficiency-chart" data-draw="effChart" data-source="pts"></div>
+  </section>
+
+  <section class="iso-sec" id="marginal" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Marginal efficiency: what the last step bought</h3>
+    <p class="iso-p">For a step from P′ to P: (S(P) / S(P′)) / (P / P′), the share of the ideal extra speed-up the extra ranks delivered. It reacts sooner than E, which averages over all ranks so far. The dotted line is the marginal rule.</p>
+    <p class="iso-axis-label">Marginal efficiency of the step to P (%)</p>
+    <div class="iso-chart" id="marginal-chart" data-draw="margChart" data-source="pts"></div>
+  </section>
+
+  <section class="iso-sec" id="karp-flatt" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Serial fraction implied by each P (Karp–Flatt)</h3>
+    <p class="iso-p">e = (1/S − 1/P) / (1 − 1/P): the serial fraction that Amdahl's law would need to explain each measured speed-up. Flat: a fixed serial part. Rising with P: a cost that grows with the number of ranks, such as communication or waiting for the slowest rank. Falling with N: the fixed costs matter less for bigger problems, which is what makes growing N work.</p>
+    <p class="iso-axis-label">Karp–Flatt serial fraction e (%)</p>
+    <div class="iso-chart" id="kf-chart" data-draw="kfChart" data-source="pts"></div>
+  </section>
+
+  <section class="iso-sec" id="breakdown" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Where the MPI step time goes</h3>
+    <p class="iso-p">Share of the slowest rank's step loop per section. Compute: forces and integration of the own stars. Communication: the Allgatherv, or the exposed ring traffic. Waiting: the stop-flag and pair-count Allreduces, which mostly measure faster ranks waiting for the slowest one. Other: everything else in the step loop.</p>
+    <div class="iso-controls"><label for="iso-n-pick">Stars</label><select id="iso-n-pick" class="iso-select" data-draw="nPick" data-param="bd_n" aria-label="Stars" data-source="bd"></select></div>
+    <p class="iso-axis-label">Share of the MPI step time (%)</p>
+    <div class="iso-chart" id="breakdown-chart" data-draw="bdChart" data-source="bd"></div>
+  </section>
+
+  <section class="iso-sec" id="cap-runs" data-draw="showMode" data-mode="capacity">
+    <h3 class="iso-sec-h3">Every run of this version</h3>
+    <div class="iso-table-wrap">
+      <table class="iso-table" id="cap-runs-table" data-source="cap_pts" data-row-key="key">
+        <thead><tr><th>P</th><th>N</th><th>Runs</th><th>Time (s)</th><th>ms per step</th><th class="iso-left">Finished in time</th><th class="iso-left">Verdict</th><th class="iso-left">Hosts</th></tr></thead>
+        <tbody data-draw="capRunRows"></tbody>
+      </table>
+    </div>
+    <p class="iso-note">Time: all time steps of the run (medians over repeated runs); for runs that did not finish, estimated from their time per step. Verdict: fits, too big (did not finish in time), step ok (the step up in ranks paid off), threshold (it did not).</p>
+  </section>
+
+  <section class="iso-sec" id="points" data-draw="showMode" data-mode="classic">
+    <h3 class="iso-sec-h3">Every measured point</h3>
+    <div class="iso-table-wrap">
+      <table class="iso-table" id="points-table" data-source="pts" data-row-key="key">
+        <thead><tr><th>N</th><th>P</th><th>Jobs</th><th>Serial (ms)</th><th>MPI (ms)</th><th>S</th><th>E (%)</th><th>Marginal (%)</th><th>Karp–Flatt (%)</th><th>Comm. (%)</th><th>Imbalance</th><th>Steps</th><th class="iso-left">Verdict</th><th class="iso-left">Hosts</th></tr></thead>
+        <tbody data-draw="pointRows"></tbody>
+      </table>
+    </div>
+    <p class="iso-note">Times are per step (medians). Steps: steps per run at this N (step mode; empty in time mode). Marginal: against the previous P at the same N. Comm.: communication share of the MPI step loop. Imbalance: slowest over mean rank's force time. Verdict: baseline (one rank against serial), ok (cost-effective), reference (the lower P of a step measured at a new N), threshold (not cost-effective), at max P (weak scaling at the largest P).</p>
+  </section>
+
+  <details class="iso-details" id="log">
+    <summary>Decision log of this version</summary>
+    <pre class="iso-log" data-draw="logText" data-source="camp_view"></pre>
+  </details>
+
+  <details class="iso-details" id="cap-method" data-draw="showIf" data-source="cap">
+    <summary>How the capacity numbers were made, and what they leave out</summary>
+    <ul>
+      <li><code>isoeff/controller.py</code> (capacity mode) ran each version as a chain of LSF jobs on whole reserved nodes. Every job was one MPI run of <span data-draw="cfg" data-key="steps_fmt">—</span> time steps; it counts as finished in time when it completed all of them within its own time limit (the <span data-draw="cfg" data-key="walltime_min">—</span>-minute walltime minus two minutes for saving). Merge radius <span data-draw="cfg" data-key="merge_radius">—</span> pc: every run at one N follows the same trajectory, merges included.</li>
+      <li>The rule, replayed from the runs before every job: at each P, N grows along a grid (×√2) until the run no longer finishes in time. Then the next P is timed on the largest N the previous P managed; the step is kept when its marginal efficiency reaches the rule, otherwise it is measured once more and the campaign stops.</li>
+      <li>There is no serial run: the code's correctness is checked separately, and speed-ups are only taken between MPI runs. Each run is its own job, so the two runs of a step can land on different nodes, which differed by up to about 16&nbsp;%; a failing step is therefore measured twice.</li>
+      <li>The numbers are embedded in this file by <code>isoeff/make_page.py</code> from each campaign's <code>capacity.csv</code>, <code>cap_points.csv</code>, <code>thresholds.csv</code> and <code>decisions.log</code>.</li>
+    </ul>
+  </details>
+
+  <details class="iso-details" id="method" data-draw="showIf" data-source="pts">
+    <summary>How the numbers were made, and what they leave out</summary>
+    <ul>
+      <li><code>isoeff/controller.py</code> ran each version as a chain of LSF jobs on whole reserved nodes (<span data-draw="cfg" data-key="job_text">—</span>). Every job measured one point: the serial program on N stars, then <span data-draw="cfg" data-key="mpi_reps">—</span> MPI repeats with P ranks on the same node. <span data-draw="cfg" data-key="steps_text"></span> Merge radius <span data-draw="cfg" data-key="merge_radius">—</span> pc.</li>
+      <li>The rule, replayed from the measurements before every job: step P up through the P list while the step is cost-effective; at a threshold, multiply N by <span data-draw="cfg" data-key="growth">—</span> and test the same step again. A failing step was measured a second time before it was accepted<span data-draw="cfg" data-key="confirm" data-fmt="confirm"></span>.</li>
+      <li>Speed-ups are medians over the jobs of a point, each job's speed-up taken against its own serial run on the same node, because nodes of the same type differed by up to about 16&nbsp;%. The serial program always uses the v1 force kernel, so versions with a faster kernel (<code>--tile-rows</code>) report the kernel gain inside S.</li>
+      <li>The numbers are embedded in this file by <code>isoeff/make_page.py</code> from each campaign's <code>points.csv</code>, <code>thresholds.csv</code>, <code>decisions.log</code> and <code>results.csv</code>.</li>
+      <li>Not covered: N beyond what a serial step allows in one job (about 16,000 stars at 7 minutes), start-up and loading (only the step loop is timed), and correctness (each version was validated separately with <code>batch.sh MODE=validate</code>).</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+  /* shared drawing helpers */
+  window.iso = (() => {
+    const A = {};
+    A.state = (...ids) => {
+      const s = ids.map((id) => view.data(id).status);
+      if (s.every((x) => x === 'ok')) return 'ok';
+      if (s.some((x) => x === 'error' || x === 'missing' || x === 'declined')) return 'error';
+      return 'loading';
+    };
+    A.rows = (id) => { const g = view.data(id); return g.status === 'ok' && Array.isArray(g.data) ? g.data : []; };
+    A.wait = (el, st) => {
+      el.replaceChildren();
+      
+      const p = document.createElement('p');
+      p.className = 'iso-empty';
+      p.textContent = st !== 'error' ? '—' : (ISO_EMPTY ? 'No numbers yet: run isoeff/make_page.py with the campaign folders.' : 'Failed to load');
+      el.append(p);
+    };
+    A.fmt = (v) => {
+      if (v === null || v === undefined || v === '') return '—';
+      if (typeof v === 'number') return Number.isInteger(v) && Math.abs(v) >= 1000 ? d3.format(',')(v) : String(v);
+      return String(v);
+    };
+    A.nfmt = (n) => d3.format(',')(n);
+    A.nColor = (ns) => {
+      const order = [...new Set(ns)].sort((a, b) => a - b);
+      return (n) => view.colors[order.indexOf(n) % view.colors.length];
+    };
+    A.tip = (el) => {
+      const t = document.createElement('div');
+      t.className = 'iso-tip';
+      t.hidden = true;
+      el.append(t);
+      return {
+        show(px, py, head, rows) {
+          t.replaceChildren();
+          const h = document.createElement('div'); h.className = 'iso-tip-h'; h.textContent = head; t.append(h);
+          rows.forEach(([label, value, color]) => {
+            const r = document.createElement('div'); r.className = 'iso-tip-row';
+            const a = document.createElement('span');
+            if (color) { const sw = document.createElement('span'); sw.className = 'iso-swatch'; sw.style.background = color; a.append(sw); }
+            a.append(document.createTextNode(label));
+            const b = document.createElement('span'); b.textContent = value;
+            r.append(a, b); t.append(r);
+          });
+          t.hidden = false;
+          const W = el.clientWidth, tw = t.offsetWidth, th = t.offsetHeight;
+          let left = px + 14; if (left + tw > W) left = Math.max(0, px - tw - 14);
+          t.style.left = left + 'px';
+          t.style.top = Math.max(0, py - th / 2) + 'px';
+        },
+        hide() { t.hidden = true; },
+      };
+    };
+    A.legend = (el, items) => {
+      const box = document.createElement('div'); box.className = 'iso-legend';
+      items.forEach((it) => {
+        const k = document.createElement('span'); k.className = 'iso-key';
+        const sw = document.createElement('span'); sw.className = 'iso-swatch' + (it.kind ? ' iso-swatch--' + it.kind : '');
+        if (it.color) sw.style.background = it.color;
+        k.append(sw, document.createTextNode(it.label)); box.append(k);
+      });
+      el.append(box);
+    };
+    A.measure = (svg, texts, cls) => {
+      const g = svg.append('g').attr('class', cls);
+      let w = 0;
+      texts.forEach((s) => { const t = g.append('text').text(s); w = Math.max(w, t.node().getComputedTextLength() || s.length * 7); });
+      g.remove();
+      return Math.ceil(w);
+    };
+    /* line chart over P: o = {series:[{label,color,points:[{x,y,lo,hi}]}], xTicks, xLog, yDomain, yLog, yTicks, yFormat,
+       aria, legendExtra, refs:[{points, cls}], rings:[{x,y,color}], extra(svg,x,y), tipRows(xv), tipHead(xv)} */
+    A.lineChart = (el, o) => {
+      el.replaceChildren();
+      
+      A.legend(el, o.series.map((s) => ({ label: s.label, color: s.color })).concat(o.legendExtra || []));
+      const W = Math.max(260, Math.round(el.clientWidth || 640));
+      const H = o.height || Math.round(Math.max(230, Math.min(320, W * 0.48)));
+      const svg = d3.select(el).append('svg').attr('class', 'iso-svg').attr('viewBox', `0 0 ${W} ${H}`)
+        .attr('role', 'img').attr('aria-label', o.aria);
+      const top = 10, bottom = 28;
+      const y = (o.yLog ? d3.scaleLog().base(2) : d3.scaleLinear()).domain(o.yDomain).range([H - bottom, top]);
+      const yTicks = o.yTicks || y.ticks(5), yFormat = o.yFormat || d3.format('~g');
+      const left = A.measure(svg, yTicks.map(yFormat), 'iso-axis') + 12;
+      const ends = o.endLabels !== false;
+      const right = ends ? A.measure(svg, o.series.map((s) => s.label), 'iso-end') + 12 : 12;
+      const xs = o.xLog ? d3.scaleLog().base(2) : d3.scaleLinear();
+      const xd = d3.extent(o.xTicks);
+      const x = xs.domain(xd[0] === xd[1] ? [xd[0] / 1.5, xd[1] * 1.5] : xd).range([left, W - right]);
+      svg.append('g').attr('class', 'iso-grid').selectAll('line').data(yTicks).join('line')
+        .attr('x1', left).attr('x2', W - right).attr('y1', (d) => y(d)).attr('y2', (d) => y(d));
+      svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(${left},0)`)
+        .call(d3.axisLeft(y).tickValues(yTicks).tickSize(0).tickPadding(8).tickFormat(yFormat));
+      svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(0,${H - bottom})`)
+        .call(d3.axisBottom(x).tickValues(o.xTicks).tickSize(0).tickPadding(9).tickFormat(d3.format('d')));
+      svg.append('line').attr('class', 'iso-baseline').attr('x1', left).attr('x2', W - right).attr('y1', H - bottom).attr('y2', H - bottom);
+      const line = d3.line().x((p) => x(p.x)).y((p) => y(p.y));
+      (o.refs || []).forEach((r) => {
+        svg.append('path').attr('class', r.cls || 'iso-ref').attr('d', line(r.points)).style('stroke', r.color || null);
+      });
+      if (o.extra) o.extra(svg, x, y);
+      o.series.forEach((s) => {
+        const pts = s.points.filter((p) => p.y != null && isFinite(p.y));
+        svg.append('g').selectAll('line').data(pts.filter((p) => p.lo != null && p.hi != null)).join('line')
+          .attr('class', 'iso-whisker').attr('x1', (p) => x(p.x)).attr('x2', (p) => x(p.x))
+          .attr('y1', (p) => y(p.lo)).attr('y2', (p) => y(p.hi)).style('stroke', s.color);
+        svg.append('path').attr('class', 'iso-line').attr('d', line(pts)).style('stroke', s.color);
+        svg.append('g').selectAll('circle').data(pts).join('circle').attr('class', 'iso-dot')
+          .attr('cx', (p) => x(p.x)).attr('cy', (p) => y(p.y)).attr('r', 4).style('fill', s.color);
+      });
+      svg.append('g').selectAll('circle').data(o.rings || []).join('circle').attr('class', 'iso-fail')
+        .attr('cx', (p) => x(p.x)).attr('cy', (p) => y(p.y)).attr('r', 7.5).style('stroke', (p) => p.color);
+      /* direct labels at the line ends, pushed apart */
+      if (ends) {
+        const lab = o.series.filter((s) => s.points.some((p) => p.y != null))
+          .map((s) => { const q = s.points.filter((p) => p.y != null); return { s, y: y(q[q.length - 1].y), x: x(q[q.length - 1].x) }; })
+          .sort((a, b) => a.y - b.y);
+        for (let i = 1; i < lab.length; i++) if (lab[i].y - lab[i - 1].y < 14) lab[i].y = lab[i - 1].y + 14;
+        const over = lab.length ? lab[lab.length - 1].y - (H - bottom - 4) : 0;
+        if (over > 0) lab.forEach((e) => { e.y -= over; });
+        svg.append('g').selectAll('text').data(lab).join('text').attr('class', 'iso-end')
+          .attr('x', W - right + 8).attr('y', (e) => e.y).attr('dy', '0.35em').text((e) => e.s.label);
+      }
+      /* hover: crosshair at the nearest P and a tooltip with every series */
+      const cross = svg.append('line').attr('class', 'iso-cross').attr('y1', top).attr('y2', H - bottom).style('display', 'none');
+      const tip = A.tip(el);
+      svg.append('rect').attr('class', 'iso-hit').attr('x', left).attr('y', top).attr('width', Math.max(0, W - right - left)).attr('height', H - bottom - top)
+        .on('pointermove', (ev) => {
+          const [mx] = d3.pointer(ev);
+          const xv = o.xTicks.reduce((best, t) => (Math.abs(x(t) - mx) < Math.abs(x(best) - mx) ? t : best), o.xTicks[0]);
+          cross.attr('x1', x(xv)).attr('x2', x(xv)).style('display', null);
+          const scale = el.querySelector('svg').getBoundingClientRect().width / W;
+          const [, py] = d3.pointer(ev, el);
+          tip.show(x(xv) * scale, py, o.tipHead ? o.tipHead(xv) : 'P = ' + xv, o.tipRows(xv));
+        })
+        .on('pointerleave', () => { cross.style('display', 'none'); tip.hide(); });
+    };
+    return A;
+  })();
+</script>
+<script>
+  /* rounded, display-ready views of the campaign files */
+  const isoNum = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
+  const isoRound = (v, k) => { const x = isoNum(v); return x == null ? null : Math.round(x * 10 ** k) / 10 ** k; };
+  const isoPct = (v, k) => { const x = isoNum(v); return x == null ? null : Math.round(100 * x * 10 ** k) / 10 ** k; };
+  const isoPctSig = (v, k) => { const x = isoNum(v); return x == null ? null : +(100 * x).toPrecision(k); };
+  const isoMs = (v) => { const x = isoNum(v); return x == null ? null : (x >= 100 ? Math.round(x) : +x.toPrecision(3)); };
+  const ISO_GOOD = new Set(['ok', 'reference', 'baseline', 'at max P']);
+  const isoStopKind = (done) => {
+    if (!done) return 'still running';
+    if (/still cost-effective/.test(done)) return 'still cost-effective at the largest P';
+    if (/does not fit/.test(done)) return 'next N does not fit in one job';
+    if (/failed/.test(done)) return 'a point failed twice';
+    if (/n_max/.test(done)) return 'N reached n_max';
+    if (/max_jobs/.test(done)) return 'job limit reached';
+    return done;
+  };
+
+  view.calc('pts', {
+    title: 'Measured points, all versions',
+    description: 'One row per version, N and P: times per step in ms, S, E, marginal efficiency and Karp-Flatt in %, the spread of S over the MPI repeats, and the communication share from the time split.',
+    inputs: ['points', 'breakdown'],
+    fn: (points, breakdown) => {
+      const bd = new Map(breakdown.map((d) => [d.label + '|' + d.N + '|' + d.P, d]));
+      return points.map((d) => {
+        const b = bd.get(d.label + '|' + d.N + '|' + d.P) || {};
+        return {
+          key: d.label + '|' + d.N + '|' + d.P, label: d.label, N: +d.N, P: +d.P, jobs: +d.jobs,
+          serial_ms: isoMs(d.serial_ms), mpi_ms: isoMs(d.mpi_ms),
+          S: isoRound(d.speedup, 2), S_lo: isoRound(b.s_lo, 2), S_hi: isoRound(b.s_hi, 2),
+          E: isoPct(d.efficiency, 1), E_lo: b.s_lo ? isoPct(b.s_lo / d.P, 1) : null, E_hi: b.s_hi ? isoPct(b.s_hi / d.P, 1) : null,
+          M: isoPct(d.marginal_eff, 1), KF: isoPctSig(d.karp_flatt, 2), verdict: d.verdict, hosts: d.hosts,
+          comm: isoPct(b.comm, 1), imbalance: isoRound(b.imbalance, 3),
+          steps: isoNum(d.steps),
+        };
+      });
+    },
+  });
+
+  view.calc('camp_view', {
+    title: 'One row per version',
+    description: 'The settings of each campaign, the largest cost-effective P with the smallest N at which it was reached and the efficiency there, the thresholds, and why the campaign stopped.',
+    inputs: ['campaigns', 'pts', 'thresholds', 'cap'],
+    fn: (campaigns, pts, thresholds, cap) => campaigns.map((c, i) => {
+      const mine = pts.filter((d) => d.label === c.label);
+      const good = mine.filter((d) => ISO_GOOD.has(d.verdict));
+      const bestP = good.length ? Math.max(...good.map((d) => d.P)) : null;
+      const at = good.filter((d) => d.P === bestP).sort((a, b) => a.N - b.N)[0];
+      const th = thresholds.filter((d) => d.label === c.label).sort((a, b) => +a.N - +b.N);
+      return {
+        label: c.label, idx: i, color: view.colors[i % view.colors.length], note: c.note || '',
+        mpi_args: c.mpi_args || 'allgather, v1 kernel', n0: c.n0, growth: c.growth,
+        nodes: c.max_nodes, p_list: c.p_list, cpu: c.cpu || '', jobs: c.jobs, done: c.done || '',
+        stop: isoStopKind(c.done), best_p: bestP, best_n: at ? at.N : null, best_e: at ? at.E : null,
+        thresholds: th.length ? th.map((t) => d3.format(',')(+t.N) + ': ' + t.P_star + ' → ' + t.P_fail).join(' · ') : 'none',
+        n_thresholds: th.length, points: mine.length, log: c.log || '',
+        marginal: c.marginal, efficiency: c.efficiency, walltime_min: c.walltime_min, mpi_reps: c.mpi_reps,
+        merge_radius: c.merge_radius, confirm: c.confirm,
+        steps0: c.steps0, mode: c.mode || (c.steps0 ? 'steps' : 'time'),
+        steps: c.steps, steps_fmt: c.steps ? d3.format(',')(c.steps) : '—', continued_label: c.continued_label || '',
+        cap_rows: cap.filter((d) => d.label === c.label),
+        steps_text: c.steps0
+          ? 'Every run at one N did the same number of steps, serial and MPI alike (' + d3.format(',')(c.steps0) + ' at N = ' + d3.format(',')(c.n0) + ', fewer for larger N so the serial run always took about as long), so they followed the same trajectory, merges included.'
+          : 'Each run was stopped by its own time limit and compared per step; this is only fair while no stars merge.',
+        job_text: c.steps0 ? 'at most ' + c.run_limit_min + ' minutes per run' : c.walltime_min + ' minutes per job',
+      };
+    }),
+  });
+
+  view.calc('path', {
+    title: 'The isoefficiency path of each version',
+    description: 'For every version and P: the smallest N at which the step up to P was cost-effective (P = 1: the first N). fails lists the steps that were not cost-effective.',
+    inputs: ['pts'],
+    fn: (pts) => {
+      const out = [];
+      const labels = [...new Set(pts.map((d) => d.label))];
+      labels.forEach((label) => {
+        const mine = pts.filter((d) => d.label === label);
+        const ps = [...new Set(mine.map((d) => d.P))].sort((a, b) => a - b);
+        ps.forEach((P) => {
+          const ok = mine.filter((d) => d.P === P && (d.verdict === 'ok' || d.verdict === 'baseline' || d.verdict === 'at max P'));
+          const fails = mine.filter((d) => d.P === P && d.verdict === 'threshold').map((d) => d.N);
+          out.push({ key: label + '|' + P, label, P, N: ok.length ? Math.min(...ok.map((d) => d.N)) : null, fails: fails.join(' ') });
+        });
+      });
+      return out;
+    },
+  });
+
+  view.calc('cap', {
+    title: 'Capacity per version and P',
+    description: 'Capacity mode: for every version and number of ranks, the largest N that finished all steps in time, the time it took in s, the marginal efficiency of the step up to this P in %, and the verdict.',
+    inputs: ['capacity'],
+    fn: (capacity) => capacity.map((d) => ({
+      key: d.label + '|' + d.P, label: d.label, P: +d.P, N_max: +d.N_max, time_s: isoRound(d.time_s, 1),
+      marginal: d.marginal_in === '' ? null : isoPct(d.marginal_in, 1), verdict: d.verdict,
+    })),
+  });
+
+  view.calc('cap_pts', {
+    title: 'Every capacity run',
+    description: 'Capacity mode: one row per version, N and P: number of runs, whether the run finished in time, the time of all steps in s and per step in ms, the verdict and the hosts.',
+    inputs: ['cap_points'],
+    fn: (rows) => rows.map((d) => ({
+      key: d.label + '|' + d.N + '|' + d.P, label: d.label, N: +d.N, P: +d.P, runs: +d.runs,
+      fits: d.fits === 'True' ? 'yes' : 'no', time_s: isoRound(d.time_s, 1), ms: isoMs(d.ms_per_step),
+      verdict: d.verdict, hosts: d.hosts,
+    })),
+  });
+
+  view.calc('cap_th', {
+    title: 'Steps up in ranks that did not pay off',
+    description: 'Capacity mode: per version, the last useful P, the P that did not pay off, the N of the step and its marginal efficiency in %.',
+    inputs: ['cap_thresholds'],
+    fn: (rows) => rows.map((d) => ({ label: d.label, P_last: +d.P_last, P_fail: +d.P_fail, N: +d.N, marginal: isoPct(d.marginal, 1) })),
+  });
+
+  view.calc('cap_view', {
+    title: 'Capacity per version, compared',
+    description: 'Capacity mode: per version, the largest useful P, its nodes, the largest N there, and the gain over the version listed before it: extra ranks and the ratio of the largest N.',
+    inputs: ['camp_view', 'cap', 'cap_th'],
+    fn: (camps, cap, th) => {
+      const out = [];
+      camps.filter((c) => c.mode === 'capacity').forEach((c) => {
+        const rows = cap.filter((d) => d.label === c.label);
+        if (!rows.length) { out.push({ ...c, useful_p: null, n_max: null, nodes_used: null, gain_p: null, gain_n: null }); return; }
+        const top = rows.reduce((a, b) => (b.P > a.P ? b : a));
+        const prev = out.length ? out[out.length - 1] : null;
+        const cpn = 24;
+        out.push({ ...c, useful_p: top.P, n_max: top.N_max, nodes_used: Math.ceil(top.P / cpn),
+          gain_p: prev && prev.useful_p != null ? (top.P - prev.useful_p >= 0 ? '+' : '') + (top.P - prev.useful_p) : '—',
+          gain_n: prev && prev.n_max ? '×' + (top.N_max / prev.n_max).toFixed(2) : '—',
+          continues: c.continued_label || '—', fail: th.find((t) => t.label === c.label) || null });
+      });
+      return out;
+    },
+  });
+
+  view.calc('bd', {
+    title: 'Time split of the MPI step loop',
+    description: 'Per version, N and P: the median share of the slowest rank\'s step loop spent in compute, communication, waiting (the Allreduces) and the rest, in %.',
+    inputs: ['breakdown'],
+    fn: (breakdown) => breakdown.map((d) => ({
+      key: d.label + '|' + d.N + '|' + d.P, label: d.label, N: +d.N, P: +d.P,
+      compute: isoPct(d.forces, 1), communication: isoPct(d.comm, 1), waiting: isoPct(d.sync, 1), other: isoPct(d.other, 1),
+      imbalance: isoRound(d.imbalance, 3), mpi_ms: isoMs(d.mpi_ms), repeats: +d.repeats,
+    })),
+  });
+</script>
+
+<script>
+  /* single values in the text */
+  view.draw('val', (el) => {
+    const g = view.data(el.dataset.source);
+    if (g.status !== 'ok' || !Array.isArray(g.data)) { el.textContent = '—'; return; }
+    const where = (el.dataset.where || '').split('&').filter(Boolean).map((p) => p.split('='));
+    const row = g.data.find((d) => where.every(([k, v]) => String(d[k]) === v));
+    el.textContent = row ? iso.fmt(row[el.dataset.field]) : '—';
+  });
+  view.draw('showIf', (el) => { el.hidden = !iso.rows(el.dataset.source).length; });
+  view.draw('showMode', (el) => {
+    const c = isoPicked();
+    const capacity = !!c && c.mode === 'capacity';
+    el.hidden = !c || (el.dataset.mode === 'capacity') !== capacity;
+  });
+  /* settings: from the version picked below, or the first one */
+  const isoPicked = () => {
+    const rows = iso.rows('camp_view');
+    const cur = view.params().camp;
+    return rows.find((d) => d.label === cur) || rows[0];
+  };
+  view.draw('cfg', (el) => {
+    const c = isoPicked();
+    if (!c) { el.textContent = '—'; return; }
+    const v = c[el.dataset.key];
+    if (el.dataset.fmt === 'pct') el.textContent = v == null ? '—' : Math.round(100 * v);
+    else if (el.dataset.fmt === 'confirm') el.textContent = v === false ? ' (switched off for this version)' : '';
+    else el.textContent = iso.fmt(v);
+  });
+  view.draw('capLede', (el) => {
+    const rows = iso.rows('cap_view');
+    if (!rows.length) { el.textContent = ''; return; }
+    el.replaceChildren(document.createTextNode('Largest useful number of ranks: '));
+    rows.forEach((d, i) => {
+      if (i) el.append(document.createTextNode(i === rows.length - 1 ? ' and ' : ', '));
+      const b = document.createElement('b'); b.className = 'iso-num'; b.textContent = d.useful_p == null ? '—' : String(d.useful_p);
+      el.append(document.createTextNode(d.label + ' '), b,
+        document.createTextNode(d.n_max == null ? '' : ' (up to N = ' + iso.nfmt(d.n_max) + ')'));
+    });
+    el.append(document.createTextNode('.'));
+  });
+  view.draw('lede', (el) => {
+    const rows = iso.rows('camp_view');
+    if (!rows.length) { el.textContent = ''; return; }
+    el.replaceChildren(document.createTextNode('Largest cost-effective number of ranks: '));
+    rows.forEach((d, i) => {
+      if (i) el.append(document.createTextNode(i === rows.length - 1 ? ' and ' : ', '));
+      const b = document.createElement('b'); b.className = 'iso-num'; b.textContent = d.best_p == null ? '—' : String(d.best_p);
+      el.append(document.createTextNode(d.label + ' '), b,
+        document.createTextNode(d.best_n == null ? '' : ' (from N = ' + iso.nfmt(d.best_n) + (d.stop.startsWith('still') ? ', and still going' : '') + ')'));
+    });
+    el.append(document.createTextNode('.'));
+  });
+  view.draw('meta', (el) => {
+    const rows = iso.rows('camp_view');
+    const k = el.dataset.key;
+    if (k === 'made') { el.textContent = (ISO_DATA.meta || {}).made || '—'; return; }
+    if (!rows.length) { el.textContent = '—'; return; }
+    if (k === 'labels') el.textContent = rows.map((d) => d.label).join(', ');
+    else if (k === 'how') {
+      const modes = new Set(rows.map((d) => d.mode));
+      el.textContent = modes.has('capacity') && modes.size === 1 ? 'MPI runs only, one per job'
+        : modes.has('capacity') ? 'capacity and serial-baseline campaigns' : 'serial baseline in the same job on the same node · medians of the repeats';
+    }
+    else if (k === 'cpu') el.textContent = [...new Set(rows.map((d) => d.cpu).filter(Boolean))].join(', ') || 'CPU not recorded';
+    else if (k === 'nodes') { const n = Math.max(...rows.map((d) => +d.nodes || 1)); el.textContent = n + (n === 1 ? ' node' : ' nodes') + ' (' + Math.max(...rows.flatMap((d) => d.p_list || [1])) + ' ranks)'; }
+  });
+
+  /* one card per version */
+  view.draw('tiles', (el) => {
+    const st = iso.state('camp_view');
+    if (st !== 'ok') { iso.wait(el, st); return; }
+    const capOf = new Map(iso.rows('cap_view').map((d) => [d.label, d]));
+    el.replaceChildren(...iso.rows('camp_view').map((d) => {
+      const card = document.createElement('div'); card.className = 'iso-tile'; card.id = 'tile-' + d.label;
+      if (d.mode === 'capacity') {
+        const c = capOf.get(d.label) || {};
+        const head = document.createElement('div'); head.className = 'iso-tile-n';
+        const sw = document.createElement('span'); sw.className = 'iso-swatch'; sw.style.background = d.color;
+        head.append(sw, document.createTextNode(d.label + ' · useful ranks'));
+        const big = document.createElement('div'); big.className = 'iso-tile-big'; big.textContent = c.useful_p == null ? '—' : String(c.useful_p);
+        const sub = document.createElement('div'); sub.className = 'iso-tile-sub';
+        sub.textContent = c.n_max == null ? '' : 'up to N = ' + iso.nfmt(c.n_max) + ' in ' + d.walltime_min + ' min'
+          + (c.gain_n && c.gain_n !== '—' ? ' · ' + c.gain_p + ' ranks, ' + c.gain_n + ' stars' : '');
+        const why = document.createElement('div'); why.className = 'iso-tile-sub';
+        why.textContent = !d.done ? 'still running' : c.fail ? 'step to ' + c.fail.P_fail + ' ranks did not pay off (' + c.fail.marginal + ' %)'
+          : /largest P/.test(d.done) ? 'still paying off at the largest P' : d.stop;
+        card.append(head, big, sub, why);
+        return card;
+      }
+      const head = document.createElement('div'); head.className = 'iso-tile-n';
+      const sw = document.createElement('span'); sw.className = 'iso-swatch'; sw.style.background = d.color;
+      head.append(sw, document.createTextNode(d.label + ' · largest cost-effective P'));
+      const big = document.createElement('div'); big.className = 'iso-tile-big'; big.textContent = d.best_p == null ? '—' : String(d.best_p);
+      const sub = document.createElement('div'); sub.className = 'iso-tile-sub';
+      sub.textContent = d.best_n == null ? '' : 'from N = ' + iso.nfmt(d.best_n) + ', E = ' + iso.fmt(d.best_e) + ' %';
+      const why = document.createElement('div'); why.className = 'iso-tile-sub'; why.textContent = d.stop;
+      card.append(head, big, sub, why);
+      return card;
+    }));
+  });
+</script>
+
+<script>
+  /* charts over P */
+  const isoQ = () => {
+    const css = getComputedStyle(document.documentElement);
+    return [0, 1, 2, 3, 4].map((i) => css.getPropertyValue('--q' + i).trim());
+  };
+  /* N colours: an ordered blue ramp, light (small N) to dark (large N); spread over the ramp, interpolated past five */
+  const isoNColor = (ns) => {
+    const order = [...new Set(ns)].sort((a, b) => a - b), q = isoQ(), k = order.length;
+    const pick = k <= 1 ? () => q[2] : k <= q.length
+      ? (i) => q[Math.round(i * (q.length - 1) / (k - 1))]
+      : (i) => d3.piecewise(d3.interpolateLab, q)(i / (k - 1));
+    return (n) => pick(order.indexOf(n));
+  };
+  const isoCampRows = () => { const c = isoPicked(); return c ? iso.rows('pts').filter((d) => d.label === c.label) : []; };
+  const isoSeries = (rows, field, withSpread, keep) => {
+    const ns = [...new Set(rows.map((d) => d.N))].sort((a, b) => a - b);
+    const color = isoNColor(ns);
+    return ns.map((n) => ({
+      n, label: 'N = ' + iso.nfmt(n), color: color(n),
+      points: rows.filter((d) => d.N === n && (!keep || keep(d))).sort((a, b) => a.P - b.P).map((d) => ({
+        x: d.P, y: d[field], row: d,
+        lo: withSpread ? d[field + '_lo'] : null, hi: withSpread ? d[field + '_hi'] : null,
+      })),
+    })).filter((s) => s.points.some((p) => p.y != null));
+  };
+  const isoTicks = (series) => [...new Set(series.flatMap((s) => s.points.map((p) => p.x)))].sort((a, b) => a - b);
+  const isoFails = (series) => series.flatMap((s) => s.points.filter((p) => p.row.verdict === 'threshold' && p.y != null)
+    .map((p) => ({ x: p.x, y: p.y, color: s.color })));
+  const isoFlat = (ticks, y) => [{ x: ticks[0], y }, { x: ticks[ticks.length - 1], y }];
+  const isoRowsAt = (series, xv, fmt) => series.map((s) => {
+    const p = s.points.find((q) => q.x === xv);
+    return [s.label, p && p.y != null ? fmt(p) : '—', s.color];
+  });
+  const isoNeed = (el, series) => {
+    if (series.length) return true;
+    el.replaceChildren(); const p = document.createElement('p'); p.className = 'iso-empty'; p.textContent = 'No measured points for this version yet.'; el.append(p);
+    return false;
+  };
+
+  view.draw('pathChart', (el) => {
+    const st = iso.state('path', 'camp_view');
+    if (st !== 'ok') { iso.wait(el, st); return; }
+    const camps = iso.rows('camp_view'), rows = iso.rows('path');
+    const series = camps.map((c) => ({
+      label: c.label, color: c.color,
+      points: rows.filter((d) => d.label === c.label && d.N != null).sort((a, b) => a.P - b.P).map((d) => ({ x: d.P, y: d.N, row: d })),
+    })).filter((s) => s.points.length);
+    if (!isoNeed(el, series)) return;
+    const fails = camps.flatMap((c) => rows.filter((d) => d.label === c.label && d.fails)
+      .flatMap((d) => d.fails.split(' ').map((n) => ({ x: d.P, y: +n, color: c.color }))));
+    const ticks = [...new Set(rows.map((d) => d.P))].sort((a, b) => a - b);
+    const ns = [...new Set(series.flatMap((s) => s.points.map((p) => p.y)).concat(fails.map((f) => f.y)))].sort((a, b) => a - b);
+    iso.lineChart(el, {
+      series, xTicks: ticks, xLog: true, yLog: true, yTicks: ns,
+      yDomain: [ns[0] / 1.25, ns[ns.length - 1] * 1.25], yFormat: d3.format(','),
+      aria: 'For each version, the number of stars at which each number of ranks became cost-effective; rings mark steps that were not cost-effective',
+      legendExtra: [{ label: 'step not cost-effective', kind: 'fail' }],
+      rings: fails,
+      tipRows: (xv) => camps.map((c) => {
+        const d = rows.find((r) => r.label === c.label && r.P === xv);
+        const v = !d ? '—' : (d.N != null ? 'from N = ' + iso.nfmt(d.N) : 'never') + (d.fails ? ' (not at ' + d.fails.split(' ').map((n) => iso.nfmt(+n)).join(', ') + ')' : '');
+        return [c.label, v, c.color];
+      }),
+    });
+  });
+
+  view.draw('capChart', (el) => {
+    const st = iso.state('cap', 'camp_view', 'cap_th');
+    if (st !== 'ok') { iso.wait(el, st); return; }
+    const camps = iso.rows('camp_view').filter((c) => c.mode === 'capacity'), rows = iso.rows('cap'), th = iso.rows('cap_th');
+    const series = camps.map((c) => ({ label: c.label, color: c.color,
+      points: rows.filter((d) => d.label === c.label).sort((a, b) => a.P - b.P).map((d) => ({ x: d.P, y: d.N_max, row: d })) }))
+      .filter((s) => s.points.length);
+    if (!isoNeed(el, series)) return;
+    const rings = th.map((t) => ({ x: t.P_fail, y: t.N, color: (camps.find((c) => c.label === t.label) || {}).color }));
+    const ticks = [...new Set(rows.map((d) => d.P).concat(th.map((t) => t.P_fail)))].sort((a, b) => a - b);
+    const ns = [...new Set(rows.map((d) => d.N_max).concat(th.map((t) => t.N)))].sort((a, b) => a - b);
+    iso.lineChart(el, {
+      series, xTicks: ticks, xLog: true, yLog: true, yTicks: ns,
+      yDomain: [ns[0] / 1.2, ns[ns.length - 1] * 1.2], yFormat: d3.format(','),
+      aria: 'For each version, the largest number of stars that finished in time against the number of ranks; rings mark steps up in ranks that did not pay off',
+      legendExtra: th.length ? [{ label: 'step did not pay off', kind: 'fail' }] : [],
+      rings,
+      tipRows: (xv) => camps.map((c) => {
+        const d = rows.find((r) => r.label === c.label && r.P === xv);
+        const t = th.find((r) => r.label === c.label && r.P_fail === xv);
+        return [c.label, d ? 'N = ' + iso.nfmt(d.N_max) + ' (' + d.time_s + ' s)' : t ? 'did not pay off (' + t.marginal + ' %)' : '—', c.color];
+      }),
+    });
+  });
+
+  view.draw('capMargChart', (el) => {
+    const st = iso.state('cap', 'camp_view', 'cap_th');
+    if (st !== 'ok') { iso.wait(el, st); return; }
+    const camps = iso.rows('camp_view').filter((c) => c.mode === 'capacity'), rows = iso.rows('cap'), th = iso.rows('cap_th');
+    const series = camps.map((c) => ({ label: c.label, color: c.color,
+      points: rows.filter((d) => d.label === c.label && d.marginal != null).map((d) => ({ x: d.P, y: d.marginal, row: d }))
+        .concat(th.filter((t) => t.label === c.label).map((t) => ({ x: t.P_fail, y: t.marginal, row: t, failed: true })))
+        .sort((a, b) => a.x - b.x) })).filter((s) => s.points.length);
+    if (!isoNeed(el, series)) return;
+    const ticks = isoTicks(series), rule = 100 * (+((camps[0] || {}).marginal) || 0.8);
+    const ys = series.flatMap((s) => s.points.map((p) => p.y));
+    iso.lineChart(el, {
+      series, xTicks: ticks, xLog: true, yDomain: [Math.min(0, d3.min(ys) - 5), Math.max(115, d3.max(ys) + 5)], yFormat: d3.format('d'),
+      aria: 'Marginal efficiency of each step up in ranks, one line per version, with the rule',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'rule (' + Math.round(rule) + ' %)', kind: 'fit' }].concat(th.length ? [{ label: 'did not pay off', kind: 'fail' }] : []),
+      refs: [{ points: isoFlat(ticks, 100), cls: 'iso-ref' }, { points: isoFlat(ticks, rule), cls: 'iso-fit', color: 'var(--color-fg-muted)' }],
+      rings: series.flatMap((s) => s.points.filter((p) => p.failed).map((p) => ({ x: p.x, y: p.y, color: s.color }))),
+      tipHead: (xv) => 'step up to P = ' + xv,
+      tipRows: (xv) => isoRowsAt(series, xv, (p) => p.y.toFixed(1) + ' %  (N = ' + iso.nfmt(p.row.N_max || p.row.N) + ')'),
+    });
+  });
+
+  view.draw('speedChart', (el) => {
+    if (iso.state('pts', 'camp_view') !== 'ok') { iso.wait(el, iso.state('pts', 'camp_view')); return; }
+    const series = isoSeries(isoCampRows(), 'S', true);
+    if (!isoNeed(el, series)) return;
+    const ticks = isoTicks(series), pmax = ticks[ticks.length - 1];
+    const ymax = Math.max(pmax, ...series.flatMap((s) => s.points.map((p) => (p.hi != null ? p.hi : p.y))));
+    iso.lineChart(el, {
+      series, endLabels: false, xTicks: ticks, xLog: true, yDomain: [0, ymax * 1.05], yFormat: d3.format('~g'),
+      aria: 'Speed-up of the step loop against the number of ranks for the picked version, one line per number of stars',
+      legendExtra: [{ label: 'ideal S = P', kind: 'ref' }, { label: 'step not cost-effective', kind: 'fail' }],
+      refs: [{ points: ticks.map((t) => ({ x: t, y: t })), cls: 'iso-ref' }],
+      rings: isoFails(series),
+      tipRows: (xv) => isoRowsAt(series, xv, (p) => p.y.toFixed(2) + (p.row.verdict === 'threshold' ? '  (not cost-effective)' : '')),
+    });
+  });
+
+  view.draw('effChart', (el) => {
+    if (iso.state('pts', 'camp_view') !== 'ok') { iso.wait(el, iso.state('pts', 'camp_view')); return; }
+    const series = isoSeries(isoCampRows(), 'E', true);
+    if (!isoNeed(el, series)) return;
+    const ticks = isoTicks(series), c = isoPicked();
+    const top = Math.max(110, ...series.flatMap((s) => s.points.map((p) => (p.hi != null ? p.hi : p.y) + 4)));
+    iso.lineChart(el, {
+      series, endLabels: false, xTicks: ticks, xLog: true, yDomain: [0, top], yFormat: d3.format('d'),
+      aria: 'Parallel efficiency against the number of ranks for the picked version, one line per number of stars, with the efficiency rule',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'efficiency rule (' + Math.round(100 * c.efficiency) + ' %)', kind: 'fit' },
+                    { label: 'step not cost-effective', kind: 'fail' }],
+      refs: [{ points: isoFlat(ticks, 100), cls: 'iso-ref' }, { points: isoFlat(ticks, 100 * c.efficiency), cls: 'iso-fit', color: 'var(--color-fg-muted)' }],
+      rings: isoFails(series),
+      tipRows: (xv) => isoRowsAt(series, xv, (p) => p.y.toFixed(1) + ' %  (S = ' + p.row.S + ')'),
+    });
+  });
+
+  view.draw('margChart', (el) => {
+    if (iso.state('pts', 'camp_view') !== 'ok') { iso.wait(el, iso.state('pts', 'camp_view')); return; }
+    const series = isoSeries(isoCampRows(), 'M', false, (d) => d.M != null);
+    if (!isoNeed(el, series)) return;
+    const ticks = isoTicks(series), c = isoPicked();
+    const ys = series.flatMap((s) => s.points.map((p) => p.y));
+    iso.lineChart(el, {
+      series, endLabels: false, xTicks: ticks, xLog: true, yDomain: [Math.min(0, d3.min(ys) - 5), Math.max(115, d3.max(ys) + 5)], yFormat: d3.format('d'),
+      aria: 'Marginal efficiency of each step up in ranks for the picked version, one line per number of stars, with the marginal rule',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'marginal rule (' + Math.round(100 * c.marginal) + ' %)', kind: 'fit' },
+                    { label: 'step not cost-effective', kind: 'fail' }],
+      refs: [{ points: isoFlat(ticks, 100), cls: 'iso-ref' }, { points: isoFlat(ticks, 100 * c.marginal), cls: 'iso-fit', color: 'var(--color-fg-muted)' }],
+      rings: isoFails(series),
+      tipHead: (xv) => 'step to P = ' + xv,
+      tipRows: (xv) => isoRowsAt(series, xv, (p) => p.y.toFixed(1) + ' %'),
+    });
+  });
+
+  view.draw('kfChart', (el) => {
+    if (iso.state('pts', 'camp_view') !== 'ok') { iso.wait(el, iso.state('pts', 'camp_view')); return; }
+    const series = isoSeries(isoCampRows(), 'KF', false, (d) => d.P > 1 && d.KF != null);
+    if (!isoNeed(el, series)) return;
+    const ticks = isoTicks(series);
+    const ys = series.flatMap((s) => s.points.map((p) => p.y));
+    const lo = Math.min(0, d3.min(ys)), hi = d3.max(ys);
+    iso.lineChart(el, {
+      series, endLabels: false, xTicks: ticks, xLog: true, yDomain: [lo - 0.05 * (hi - lo || 1), hi + 0.1 * (hi - lo || 1)], yFormat: d3.format('~g'),
+      aria: 'Karp-Flatt serial fraction against the number of ranks for the picked version, one line per number of stars',
+      refs: [{ points: isoFlat(ticks, 0), cls: 'iso-zero' }],
+      tipRows: (xv) => isoRowsAt(series, xv, (p) => p.y.toFixed(2) + ' %'),
+    });
+  });
+</script>
+
+<script>
+  /* pickers, and the time split as stacked bars for one N */
+  view.draw('campPick', (sel) => {
+    const rows = iso.rows('camp_view');
+    sel.replaceChildren(...rows.map((d) => new Option(d.label, d.label)));
+    const c = isoPicked();
+    sel.value = c ? c.label : '';
+    sel.onchange = () => view.setParams({ camp: sel.value });
+  });
+  view.draw('campNote', (el) => {
+    const c = isoPicked();
+    if (!c) { el.textContent = ''; return; }
+    const count = c.mode === 'capacity'
+      ? iso.rows('cap_pts').filter((d) => d.label === c.label).reduce((s, d) => s + d.runs, 0) + ' runs'
+      : c.points + ' points';
+    el.textContent = c.mpi_args + (c.note ? ' · ' + c.note : '') + ' · ' + count + ' in ' + c.jobs + ' jobs'
+      + (c.continued_label ? ' · continues ' + c.continued_label : '');
+  });
+  const isoBdRows = () => { const c = isoPicked(); return c ? iso.rows('bd').filter((d) => d.label === c.label) : []; };
+  const isoPickedN = () => {
+    const ns = [...new Set(isoBdRows().map((d) => d.N))].sort((a, b) => a - b);
+    const cur = +view.params().bd_n;
+    return ns.includes(cur) ? cur : ns.length ? ns.reduce((best, n) => (isoBdRows().filter((d) => d.N === n).length >= isoBdRows().filter((d) => d.N === best).length ? n : best), ns[0]) : null;
+  };
+  view.draw('nPick', (sel) => {
+    const ns = [...new Set(isoBdRows().map((d) => d.N))].sort((a, b) => a - b);
+    sel.replaceChildren(...ns.map((n) => new Option('N = ' + iso.nfmt(n), String(n))));
+    const n = isoPickedN();
+    sel.value = n == null ? '' : String(n);
+    sel.onchange = () => view.setParams({ bd_n: +sel.value });
+  });
+
+  view.draw('bdChart', (el) => {
+    const st = iso.state('bd', 'camp_view');
+    if (st !== 'ok') { iso.wait(el, st); return; }
+    el.replaceChildren();
+    const n = isoPickedN();
+    const rows = isoBdRows().filter((d) => d.N === n).sort((a, b) => a.P - b.P);
+    if (!rows.length) { const p = document.createElement('p'); p.className = 'iso-empty'; p.textContent = 'No time split: results.csv of this campaign was not found.'; el.append(p); return; }
+    const pts = new Map(iso.rows('pts').filter((d) => d.label === rows[0].label).map((d) => [d.N + '|' + d.P, d]));
+    const parts = [
+      { key: 'compute', label: 'compute (own stars)', color: 'var(--p0)' },
+      { key: 'communication', label: 'communication', color: 'var(--p1)' },
+      { key: 'waiting', label: 'waiting (Allreduces)', color: 'var(--p2)' },
+      { key: 'other', label: 'other loop work', color: 'var(--p3)' },
+    ];
+    iso.legend(el, parts.map((p) => ({ label: p.label, color: p.color })));
+    const W = Math.max(260, Math.round(el.clientWidth || 640));
+    const H = Math.round(Math.max(230, Math.min(320, W * 0.48)));
+    const svg = d3.select(el).append('svg').attr('class', 'iso-svg').attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('role', 'img').attr('aria-label', 'Share of the MPI step time per section for N = ' + n + ', one bar per number of ranks');
+    const top = 10, bottom = 28;
+    const y = d3.scaleLinear().domain([0, 100]).range([H - bottom, top]);
+    const yTicks = [0, 25, 50, 75, 100], yFormat = d3.format('d');
+    const left = iso.measure(svg, yTicks.map(yFormat), 'iso-axis') + 12;
+    const x = d3.scaleBand().domain(rows.map((d) => d.P)).range([left, W - 8]).padding(0.3);
+    svg.append('g').attr('class', 'iso-grid').selectAll('line').data(yTicks).join('line')
+      .attr('x1', left).attr('x2', W - 8).attr('y1', (d) => y(d)).attr('y2', (d) => y(d));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(${left},0)`)
+      .call(d3.axisLeft(y).tickValues(yTicks).tickSize(0).tickPadding(8).tickFormat(yFormat));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(0,${H - bottom})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(9).tickFormat((p) => 'P = ' + p));
+    rows.forEach((d) => {
+      let pos = 0;
+      const segs = parts.map((p) => { const v = Math.max(0, d[p.key] || 0); const s = { y0: pos, y1: pos + v, part: p, v }; pos += v; return s; });
+      svg.append('g').selectAll('rect').data(segs.filter((g) => g.v > 0)).join('rect')
+        .attr('x', x(d.P)).attr('width', x.bandwidth())
+        .attr('y', (g) => y(Math.min(100, g.y1))).attr('height', (g) => Math.max(0, y(g.y0) - y(Math.min(100, g.y1)) - 2))
+        .attr('rx', 2).style('fill', (g) => g.part.color);
+    });
+    const tip = iso.tip(el);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('class', 'iso-hit')
+      .attr('x', (d) => x(d.P) - x.step() * x.paddingInner() / 2).attr('width', x.step())
+      .attr('y', top).attr('height', H - bottom - top)
+      .on('pointermove', (ev, d) => {
+        const [px, py] = d3.pointer(ev, el);
+        const pt = pts.get(d.N + '|' + d.P) || {};
+        tip.show(px, py, 'N = ' + iso.nfmt(d.N) + ', P = ' + d.P,
+          parts.map((p) => [p.label, (d[p.key] || 0).toFixed(1) + ' %', p.color])
+            .concat([['MPI step', d.mpi_ms + ' ms', null], ['imbalance', String(d.imbalance), null],
+                     ['S / E', (pt.S != null ? pt.S : '—') + ' / ' + (pt.E != null ? pt.E + ' %' : '—'), null]]));
+      })
+      .on('pointerleave', () => tip.hide());
+  });
+</script>
+
+<script>
+  /* tables and the log */
+  const isoRows = (tbody, rows, cols, keyOf) => {
+    tbody.replaceChildren(...rows.map((d) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = keyOf(d);
+      cols.forEach(([field, left, swatch, cls]) => {
+        const td = document.createElement('td');
+        td.className = [left ? 'iso-left' : '', cls || ''].join(' ').trim();
+        if (swatch) { const sw = document.createElement('span'); sw.className = 'iso-swatch'; sw.style.background = d.color; sw.style.marginRight = '6px'; td.append(sw); }
+        td.append(document.createTextNode(iso.fmt(d[field])));
+        tr.append(td);
+      });
+      return tr;
+    }));
+  };
+  view.draw('versionRows', (tbody) => {
+    if (iso.state('camp_view') !== 'ok') { tbody.replaceChildren(); return; }
+    isoRows(tbody, iso.rows('camp_view'),
+      [['label', true, true], ['mpi_args', true, false, 'iso-code iso-wrap'], ['best_p'], ['best_n'], ['best_e'], ['thresholds', true, false, 'iso-wrap'], ['points'], ['jobs'], ['stop', true, false, 'iso-wrap']],
+      (d) => d.label);
+  });
+  view.draw('pointRows', (tbody) => {
+    if (iso.state('pts', 'camp_view') !== 'ok') { tbody.replaceChildren(); return; }
+    isoRows(tbody, isoCampRows().slice().sort((a, b) => a.N - b.N || a.P - b.P),
+      [['N'], ['P'], ['jobs'], ['serial_ms'], ['mpi_ms'], ['S'], ['E'], ['M'], ['KF'], ['comm'], ['imbalance'], ['steps'], ['verdict', true], ['hosts', true, false, 'iso-wrap']],
+      (d) => d.key);
+  });
+  view.draw('capVersionRows', (tbody) => {
+    if (iso.state('cap_view') !== 'ok') { tbody.replaceChildren(); return; }
+    isoRows(tbody, iso.rows('cap_view').map((d) => ({ ...d, stop_text: !d.done ? 'still running'
+        : d.fail ? 'step ' + d.fail.P_last + ' → ' + d.fail.P_fail + ' did not pay off (' + d.fail.marginal + ' %)' : d.stop })),
+      [['label', true, true], ['mpi_args', true, false, 'iso-code iso-wrap'], ['useful_p'], ['nodes_used'], ['n_max'], ['gain_p'], ['gain_n'],
+       ['continues', true], ['jobs'], ['stop_text', true, false, 'iso-wrap']],
+      (d) => d.label);
+  });
+  view.draw('capRunRows', (tbody) => {
+    const c = isoPicked();
+    if (iso.state('cap_pts') !== 'ok' || !c) { tbody.replaceChildren(); return; }
+    isoRows(tbody, iso.rows('cap_pts').filter((d) => d.label === c.label).sort((a, b) => a.P - b.P || a.N - b.N),
+      [['P'], ['N'], ['runs'], ['time_s'], ['ms'], ['fits', true], ['verdict', true], ['hosts', true, false, 'iso-wrap']],
+      (d) => d.key);
+  });
+  view.draw('logText', (el) => { const c = isoPicked(); el.textContent = c && c.log ? c.log : '—'; });
+
+  if (typeof d3 === 'undefined') {
+    document.getElementById('iso-offline').hidden = false;
+  } else {
+    view.compute();
+    view.run();
+    let timer;
+    window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(view.run, 150); });
+    if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => view.run());
+  }
+</script>
+</div>
+</body>
+</html>

@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gustafson Scaling v1</title>
+<!-- Made by gustafson/make_page.py: only the data block below changes when it runs. Open this file in a browser. -->
+<style>
+  /* One reading column; charts span it. Same style as amdahl/results.html; colours follow the matplotlib plots of gustafson_analysis.py. */
+  :root {
+    --color-bg: #fcfcfb; --color-fg: #1b1f27; --color-fg-muted: #5d6573; --color-panel: #f3f4f6; --color-border-line: #e2e5ea;
+    --cds-text-secondary: #5d6573; --cds-chart-grid: #eceef2; --cds-chart-axis: #9aa1ac; --cds-chart-reference: #8a919d;
+    --cds-surface-popover: #ffffff; --cds-border: #dde1e6; --cds-shadow-popover: 0 6px 20px rgba(20, 24, 32, .12);
+    --c0: #2a78d6; --c1: #1baf7a; --c2: #6250d6; --c3: #e87ba4;
+    --p0: #2a78d6; --p1: #eb6834; --p2: #6250d6;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --cds-font-size-caption: 12.5px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 36px;
+    --cds-pad-sm: 6px; --cds-pad-md: 10px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+      --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+      --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+      --c0: #4a93ea; --c1: #22a978; --c2: #8b7ff0; --c3: #d06a96;
+      --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+    --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+    --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+    --c0: #4a93ea; --c1: #22a978; --c2: #8b7ff0; --c3: #d06a96;
+    --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: var(--cds-font-size-body)/1.5 var(--font-sans); }
+  .gus-page { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .gus-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
+  .gus-select:focus-visible, .gus-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
+  .gus-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+</style>
+<style>
+  .gus { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
+  .gus-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .gus-title { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.2; text-wrap: balance; }
+  .gus-lede { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 68ch; }
+  .gus-meta { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .gus-num { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+
+  .gus-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); min-height: 120px; }
+  .gus-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .gus-tile-n { display: flex; align-items: center; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+  .gus-tile-big { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .gus-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+  .gus-sec { display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .gus-sec-h { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .gus-p { margin: 0; line-height: 1.55; max-width: 72ch; }
+  .gus-note { margin: 0; line-height: 1.5; max-width: 72ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .gus-axis-label { margin: var(--cds-gap-xs) 0 0; color: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+
+  .gus-chart { position: relative; min-height: 260px; }
+  .gus-chart--short { min-height: 190px; }
+  .gus-svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .gus-svg text { font-family: var(--font-sans); }
+  .gus-axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .gus-axis .domain, .gus-axis line { stroke: none; }
+  .gus-baseline { stroke: var(--cds-chart-axis) !important; }
+  .gus-grid line { stroke: var(--cds-chart-grid); stroke-width: 1; }
+  .gus-ref { fill: none; stroke: var(--cds-chart-reference); stroke-width: 1.25; stroke-dasharray: 4 4; }
+  .gus-zero { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .gus-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .gus-fit { fill: none; stroke-width: 1.25; stroke-dasharray: 2 3; opacity: .9; }
+  .gus-bound { fill: none; stroke-width: 1.25; stroke-dasharray: 6 4; opacity: .75; }
+  .gus-dot { stroke: var(--color-bg); stroke-width: 2; }
+  .gus-whisker { stroke-width: 1.5; }
+  .gus-end { fill: var(--color-fg); font-size: var(--cds-font-size-caption); }
+  .gus-cross { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .gus-total { stroke: var(--color-fg); stroke-width: 2.5; }
+  .gus-ink { fill: var(--color-fg); }
+  .gus-ring { fill: var(--color-bg); stroke: var(--color-fg); stroke-width: 2; }
+  .gus-link { stroke: var(--cds-chart-reference); stroke-width: 2; }
+  .gus-vlabel { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .gus-hit { fill: transparent; cursor: crosshair; }
+
+  .gus-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); margin-bottom: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .gus-key { display: inline-flex; align-items: center; gap: 6px; }
+  .gus-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .gus-swatch--ref { width: 16px; height: 0; border-top: 1.5px dashed var(--cds-chart-reference); border-radius: 0; }
+  .gus-swatch--fit { width: 16px; height: 0; border-top: 1.5px dotted var(--color-fg-muted); border-radius: 0; }
+  .gus-swatch--bound { width: 16px; height: 0; border-top: 1.5px dashed var(--color-fg-muted); border-radius: 0; }
+  .gus-swatch--total { width: 14px; height: 0; border-top: 2.5px solid var(--color-fg); border-radius: 0; }
+  .gus-swatch--ink { background: var(--color-fg); transform: rotate(45deg); width: 8px; height: 8px; border-radius: 1px; }
+  .gus-swatch--dot { background: var(--color-fg); border-radius: 50%; }
+  .gus-swatch--ring { background: var(--color-bg); border: 2px solid var(--color-fg); border-radius: 50%; width: 8px; height: 8px; }
+
+  .gus-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); line-height: 1.5; min-width: 150px; max-width: 260px; font-variant-numeric: tabular-nums; }
+  .gus-tip-h { font-weight: var(--cds-font-weight-medium); margin-bottom: 2px; }
+  .gus-tip-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .gus-tip-row span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--cds-text-secondary); }
+  .gus-empty { margin: 0; padding: var(--cds-pad-lg) 0; color: var(--color-fg-muted); }
+
+  .gus-controls { display: flex; align-items: center; gap: var(--cds-gap-sm); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+  .gus-table-wrap { overflow-x: auto; min-width: 0; }
+  .gus-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .gus-table th { text-align: right; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .gus-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .gus-table th:first-child, .gus-table td:first-child { text-align: left; }
+  .gus-table .gus-left { text-align: left; }
+  .gus-now td { font-weight: var(--cds-font-weight-medium); }
+
+  .gus-details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+  .gus-details summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .gus-details ul { margin: var(--cds-gap-sm) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 76ch; }
+  .gus-details code { font-size: .95em; }
+  .gus-hidden { display: none !important; }
+  .gus-sec[hidden] { display: none; }
+  </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+<script id="gustafson-data" type="application/json">{}</script>
+<script>
+  /* The page's data and a small view layer: computed values (view.calc) and drawings (view.draw). */
+  const GUS_DATA = JSON.parse(document.getElementById('gustafson-data').textContent);
+  const GUS_EMPTY = !GUS_DATA.summary;
+  const view = (() => {
+    const store = {}, calcs = [], draws = {}, params = {};
+    const V = {
+      colors: ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)'],
+      data: (id) => (id in store ? { status: 'ok', data: store[id] } : { status: 'missing', data: [] }),
+      calc: (id, o) => { calcs.push([id, o]); },
+      draw: (name, fn) => { draws[name] = fn; },
+      params: () => params,
+      setParams: (p) => { Object.assign(params, p); V.run(); },
+      compute: () => {
+        for (const k of ['summary', 'by_n0', 'lost', 'startup', 'amdahl_by_n', 'amdahl_summary'])
+          if (GUS_DATA[k]) store[k] = d3.csvParse(GUS_DATA[k]);
+        let left = calcs.slice();
+        for (let pass = 0; left.length && pass < 20; pass++) {
+          left = left.filter(([id, o]) => {
+            if (!o.inputs.every((i) => i in store)) return true;
+            try { store[id] = o.fn(...o.inputs.map((i) => store[i])); } catch (e) { console.error('calc ' + id, e); }
+            return false;
+          });
+        }
+      },
+      run: () => {
+        document.querySelectorAll('[data-draw]').forEach((el) => {
+          const fn = draws[el.dataset.draw];
+          if (fn) try { fn(el); } catch (e) { console.error('drawing ' + el.dataset.draw, e); }
+        });
+      },
+    };
+    return V;
+  })();
+</script>
+<div class="gus-page">
+
+<div class="gus">
+  <header class="gus-head" id="summary-head">
+    <h1 class="gus-title">Gustafson scaling of v1 on one node</h1>
+    <p class="gus-lede">Here the problem grows with the number of ranks, so that every rank keeps the serial time per step of a base problem with N0 stars. At P = 24 the weak efficiency of the step loop is <b class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-50" data-field="E24">—</b>&nbsp;% for N0 = 50 and <b class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-1000" data-field="E24">—</b>&nbsp;% for N0 = 1,000, a scaled speed-up of <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-50" data-field="S24">—</span> and <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-1000" data-field="S24">—</span> out of an ideal 24.</p>
+    <p class="gus-meta">Code version <span data-draw="meta" data-key="label">—</span> (Allgather) · one fully reserved 24-core node per sweep · P = 1 to 24 ranks · medians of the repeats · jobs <span data-draw="meta" data-key="jobs">—</span> · page made <span data-draw="meta" data-key="made">—</span></p>
+    <p class="gus-offline" id="gus-offline" hidden>The charts need d3 from cdnjs.cloudflare.com. Open this page with an internet connection.</p>
+  </header>
+
+  <div class="gus-tiles" id="tiles" data-draw="tiles" data-source="by_n0_view"></div>
+
+  <section class="gus-sec" id="speedup">
+    <h2 class="gus-sec-h">Scaled speed-up and the Gustafson fit</h2>
+    <p class="gus-p">The scaled speed-up S = τ(P) / T(P) compares the serial program on the scaled problem of N(P) stars with the MPI program on the same stars and P ranks, both per time step. Points are medians, bars run from the least to the most favourable pairing of repeats. The dotted lines are Gustafson's law S = s + (1 − s) P with s fitted to each N0; here s is the share of the <em>parallel</em> run's time that does not get faster with more ranks.</p>
+    <p class="gus-axis-label">Scaled speed-up of the step loop, τ(P) / T(P)</p>
+    <div class="gus-chart" id="speedup-chart" data-draw="speedChart" data-source="campaign by_n0_view"></div>
+  </section>
+
+  <section class="gus-sec" id="efficiency">
+    <h2 class="gus-sec-h">Weak efficiency: does the time per step stay the same?</h2>
+    <p class="gus-p">Weak efficiency E = T(1) / T(P): the serial program's time per step on the base problem over the MPI program's time per step on the scaled problem with P ranks. 100&nbsp;% means every rank handles its share of the bigger problem as fast as one core handled the whole base problem.</p>
+    <p class="gus-axis-label">Weak efficiency of the step loop (%)</p>
+    <div class="gus-chart" id="efficiency-chart" data-draw="effChart" data-source="campaign bound"></div>
+    <p class="gus-note">Dashed in the same colour, where it falls below 95&nbsp;%: the limit that the uneven split of the stars alone sets (the busiest rank holds ⌈N/P⌉ stars). The MPI program on one rank against the serial program, both on N0 stars: <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-50" data-field="p1_gain">—</span>&nbsp;% at N0 = 50 and <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-1000" data-field="p1_gain">—</span>&nbsp;% at N0 = 1,000 (positive: the MPI program is faster). E and S are measured against the serial program.</p>
+  </section>
+
+  <section class="gus-sec" id="strong-weak" data-draw="showIf" data-source="compare">
+    <h2 class="gus-sec-h">The same N, fixed or grown with P</h2>
+    <p class="gus-p">Dashed: the Amdahl campaign, where N stays fixed and the work per rank shrinks with P (strong scaling). Solid: this campaign, which starts from the same N and grows it with P (weak scaling). At P = 24 and N = 50 the fixed problem keeps <span class="gus-num" data-draw="val" data-source="compare_pmax" data-where="n=50" data-field="E_strong">—</span>&nbsp;% efficiency and the grown one <span class="gus-num" data-draw="val" data-source="compare_pmax" data-where="n=50" data-field="E_weak">—</span>&nbsp;%; at N = 1,000 they keep <span class="gus-num" data-draw="val" data-source="compare_pmax" data-where="n=1000" data-field="E_strong">—</span>&nbsp;% and <span class="gus-num" data-draw="val" data-source="compare_pmax" data-where="n=1000" data-field="E_weak">—</span>&nbsp;%.</p>
+    <p class="gus-axis-label">Efficiency of the step loop (%): strong T(1)/(P·T(P)) dashed, weak T(1)/T(P) solid</p>
+    <div class="gus-chart" id="strong-weak-chart" data-draw="compareChart" data-source="compare"></div>
+    <p class="gus-note">Both are measured against the serial program on N stars in their own job, so at P = 1 both show the MPI program on one rank against the serial one. The Amdahl sweeps ran on other nodes; efficiencies are ratios inside one job and compare across nodes, absolute times do not.</p>
+  </section>
+
+  <section class="gus-sec" id="serial-fraction">
+    <h2 class="gus-sec-h">A fixed serial part, or a cost that grows with P?</h2>
+    <p class="gus-p">s(P) = (P − S) / (P − 1) is the serial fraction that each P implies on its own, the weak-scaling counterpart of the Karp–Flatt metric. If it stays flat, a fixed serial part per step explains the curve, which is what Gustafson's law assumes. If it rises with P, a cost grows with the number of ranks: the Allgather of all positions, or waiting for the slowest rank. For N0 = 50 it goes from <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-50" data-field="s4">—</span>&nbsp;% at P = 4 to <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-50" data-field="s24">—</span>&nbsp;% at P = 24, for N0 = 1,000 from <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-1000" data-field="s4">—</span>&nbsp;% to <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-1000" data-field="s24">—</span>&nbsp;%.</p>
+    <p class="gus-axis-label">Gustafson serial fraction s(P) of the step loop (%)</p>
+    <div class="gus-chart" id="serial-fraction-chart" data-draw="sChart" data-source="campaign"></div>
+  </section>
+
+  <section class="gus-sec" id="lost-time">
+    <h2 class="gus-sec-h">Where the extra time per step goes</h2>
+    <p class="gus-p">Each bar is the extra time per step of the scaled problem on P ranks against the base problem on one core, T(P) − T(1), in % of T(1). It adds up to 1/E − 1. Compute is the mean rank's force and integration time: with N(P) chosen to keep the serial time per rank, it stays near zero when the cost model holds. Waiting covers everything else in the step loop: waiting for the slowest rank, the stop check and Python's own work per step.</p>
+    <div class="gus-controls"><label for="gus-lost-pick">Sweep</label><select id="gus-lost-pick" class="gus-select" data-draw="sweepPick" data-param="lost_key" aria-label="Sweep" data-source="lost_view"></select></div>
+    <p class="gus-axis-label">Extra time per step of the step loop (% of T(1))</p>
+    <div class="gus-chart" id="lost-time-chart" data-draw="lostChart" data-source="lost_view"></div>
+  </section>
+
+  <section class="gus-sec" id="growth">
+    <h2 class="gus-sec-h">How fast the problem has to grow</h2>
+    <p class="gus-p">One step of direct summation costs a·N + b·N² on one core: a per star (NumPy's work per row of the force loop) and b per pair. For v1 the Amdahl campaign gives a = <span class="gus-num" data-draw="meta" data-key="a_us">—</span>&nbsp;µs and b = <span class="gus-num" data-draw="meta" data-key="b_ns">—</span>&nbsp;ns. Keeping the pairs per rank fixed, N = N0·√P, hands every rank fewer but longer rows than the base problem, and those cost less time per pair. The serial work then grows by less than P, and the weak efficiency can pass 100&nbsp;% without any gain from the parallelisation. This campaign therefore picks N(P) so that τ(N(P)) = P·τ(N0) (solid). The dashed sweeps use N0·√P for comparison: at P = 24 the serial work of N0 = 100 grows <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-100" data-field="g24">—</span> times with the time rule and <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=pairs-100" data-field="g24">—</span> times with N0·√P.</p>
+    <p class="gus-axis-label">Serial work of the scaled problem, τ(P) / τ(1)</p>
+    <div class="gus-chart" id="growth-chart" data-draw="growthChart" data-source="campaign"></div>
+    <p class="gus-axis-label">Weak efficiency T(1) / T(P) of the step loop (%), both rules</p>
+    <div class="gus-chart" id="rules-chart" data-draw="rulesChart" data-source="campaign"></div>
+    <p class="gus-note">With N0·√P, N0 = 100 reaches <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=pairs-100" data-field="E24">—</span>&nbsp;% weak efficiency at P = 24 against <span class="gus-num" data-draw="val" data-source="by_n0_view" data-where="key=time-100" data-field="E24">—</span>&nbsp;% with the time rule. The scaled speed-up S = τ(P)/T(P) uses the measured serial time of whichever problem ran, so it is less sensitive to the rule than E.</p>
+  </section>
+
+  <section class="gus-sec" id="whole-runs">
+    <h2 class="gus-sec-h">Whole runs: start-up and loading grow too</h2>
+    <p class="gus-p">The step loop leaves out what a run pays once: starting Python, NumPy and MPI, and loading and distributing the stars, which grows with N. Under mpirun the start-up takes <span class="gus-num" data-draw="val" data-source="startup_fit" data-row="0" data-field="a_s">—</span>&nbsp;s plus <span class="gus-num" data-draw="val" data-source="startup_fit" data-row="0" data-field="b_ms">—</span>&nbsp;ms per rank; the serial program starts in <span class="gus-num" data-draw="val" data-source="startup_fit" data-row="0" data-field="serial_min_s">—</span> to <span class="gus-num" data-draw="val" data-source="startup_fit" data-row="0" data-field="serial_max_s">—</span>&nbsp;s. In these runs of about 20&nbsp;s that weighs on the whole-launch efficiency; a long production run would hardly notice it.</p>
+    <p class="gus-axis-label">Weak efficiency at P = 24 (%)</p>
+    <div class="gus-chart gus-chart--short" id="launch-chart" data-draw="launchChart" data-source="campaign"></div>
+  </section>
+
+  <section class="gus-sec" id="by-n0">
+    <h2 class="gus-sec-h">All numbers by sweep</h2>
+    <div class="gus-table-wrap">
+      <table class="gus-table" id="by-n0-table" data-source="by_n0_view" data-row-key="key">
+        <thead><tr><th data-field="rule" class="gus-left">Rule</th><th data-field="n0">N0</th><th data-field="N24">N(24)</th><th data-field="steps">Steps</th><th data-field="ms_step">T(1) (ms)</th><th data-field="E24">E(24) (%)</th><th data-field="S24">S(24)</th><th data-field="g24">τ(24)/τ(1)</th><th data-field="s">Gustafson s (%)</th><th data-field="s_range">s over all runs (%)</th><th data-field="s4">s(4) (%)</th><th data-field="s24">s(24) (%)</th></tr></thead>
+        <tbody data-draw="byN0Rows"></tbody>
+      </table>
+    </div>
+    <p class="gus-note">Rule time: N(P) keeps the serial time per step of each rank's share; rule pairs: N = N0·√P. s over all runs: the same fit to the most and to the least favourable pairing of repeats. Where it reaches below zero, s cannot be told apart from 0.</p>
+  </section>
+
+  <section class="gus-sec" id="detail">
+    <h2 class="gus-sec-h">Every P of one sweep</h2>
+    <div class="gus-controls"><label for="gus-detail-pick">Sweep</label><select id="gus-detail-pick" class="gus-select" data-draw="sweepPick" data-param="detail_key" aria-label="Sweep" data-source="by_n0_view"></select></div>
+    <div class="gus-table-wrap">
+      <table class="gus-table" id="detail-table" data-source="campaign" data-row-key="P">
+        <thead><tr><th data-field="P">P</th><th data-field="N">N</th><th data-field="serial_steps">Serial steps</th><th data-field="tau_ms">τ (ms)</th><th data-field="T_ms">T (ms)</th><th data-field="E">E (%)</th><th data-field="S">S</th><th data-field="Es">S / P (%)</th><th data-field="g">τ(P)/τ(1)</th><th data-field="pairs">Pairs per rank</th><th data-field="sP">s(P) (%)</th></tr></thead>
+        <tbody data-draw="detailRows"></tbody>
+      </table>
+    </div>
+    <p class="gus-note">τ: serial program on N stars, T: MPI program on N stars with P ranks, both per time step (medians). The serial runs of the scaled problems take about steps / P steps, so they last about as long as the base run; only times per step are compared. Pairs per rank: N(N − 1)/P against N0(N0 − 1).</p>
+  </section>
+
+  <details class="gus-details" id="method">
+    <summary>How the numbers were made, and what they leave out</summary>
+    <ul>
+      <li><code>gustafson/run_all.sh</code> submitted one LSF job per sweep. Each job reserved a whole node and, for every P = 1, 2, 4, 8, 12, 16 and 24, ran the MPI program on N(P) stars with P ranks and the serial program on the same N(P) stars, back to back, three times, with merging off, one thread per rank and ranks bound to cores, socket 0 first (as in the Amdahl campaign).</li>
+      <li>N(P) comes from <code>gustafson/plan.py</code>: with the rule time it solves a·N + b·N² = P·(a·N0 + b·N0²), with the rule pairs it is N0·√P, both rounded to whole stars. The subsets are the nearest-N selections of <code>GaiaSubsetSelection.py</code>, nested like the earlier ones.</li>
+      <li>Step loop: <code>simulation_time_s / iterations</code>, the time steps on the slowest rank. Program: <code>total_time_s</code>. Whole launch: the wall time of each launch, measured by the job script. The program and launch measures compare whole runs and only exist for E.</li>
+      <li>The numbers are embedded in this file by <code>gustafson/make_page.py</code> from the outputs of <code>gustafson/gustafson_analysis.py</code> (and, for the comparison with fixed N, <code>amdahl/amdahl_analysis.py</code>).</li>
+      <li>Not covered: more than one node (the Allgather over InfiniBand), N0 above 1,000 (the serial runs of the scaled problem get long: N0 = 5,000 needs N(24) ≈ 25,000 stars and about 70&nbsp;s per serial step, some 45 minutes per repeat), other parallelisations, and the lower clock frequency when all 24 cores are busy, which is not separated from the other losses.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+  /* shared drawing helpers */
+  window.gus = (() => {
+    const A = {};
+    A.state = (...ids) => {
+      const s = ids.map((id) => view.data(id).status);
+      if (s.every((x) => x === 'ok')) return 'ok';
+      if (s.some((x) => x === 'error' || x === 'missing' || x === 'declined')) return 'error';
+      return 'loading';
+    };
+    A.rows = (id) => { const g = view.data(id); return g.status === 'ok' && Array.isArray(g.data) ? g.data : []; };
+    A.wait = (el, st) => {
+      el.replaceChildren();
+      
+      const p = document.createElement('p');
+      p.className = 'gus-empty';
+      p.textContent = st !== 'error' ? '—' : (GUS_EMPTY ? 'No numbers yet: run gustafson/make_page.py after the campaign.' : 'Failed to load');
+      el.append(p);
+    };
+    A.fmt = (v) => {
+      if (v === null || v === undefined || v === '') return '—';
+      if (typeof v === 'number') return Number.isInteger(v) && Math.abs(v) >= 1000 ? d3.format(',')(v) : String(v);
+      return String(v);
+    };
+    A.nfmt = (n) => d3.format(',')(n);
+    A.nColor = (ns) => {
+      const order = [...new Set(ns)].sort((a, b) => a - b);
+      return (n) => view.colors[order.indexOf(n) % view.colors.length];
+    };
+    A.tip = (el) => {
+      const t = document.createElement('div');
+      t.className = 'gus-tip';
+      t.hidden = true;
+      el.append(t);
+      return {
+        show(px, py, head, rows) {
+          t.replaceChildren();
+          const h = document.createElement('div'); h.className = 'gus-tip-h'; h.textContent = head; t.append(h);
+          rows.forEach(([label, value, color]) => {
+            const r = document.createElement('div'); r.className = 'gus-tip-row';
+            const a = document.createElement('span');
+            if (color) { const sw = document.createElement('span'); sw.className = 'gus-swatch'; sw.style.background = color; a.append(sw); }
+            a.append(document.createTextNode(label));
+            const b = document.createElement('span'); b.textContent = value;
+            r.append(a, b); t.append(r);
+          });
+          t.hidden = false;
+          const W = el.clientWidth, tw = t.offsetWidth, th = t.offsetHeight;
+          let left = px + 14; if (left + tw > W) left = Math.max(0, px - tw - 14);
+          t.style.left = left + 'px';
+          t.style.top = Math.max(0, py - th / 2) + 'px';
+        },
+        hide() { t.hidden = true; },
+      };
+    };
+    A.legend = (el, items) => {
+      const box = document.createElement('div'); box.className = 'gus-legend';
+      items.forEach((it) => {
+        const k = document.createElement('span'); k.className = 'gus-key';
+        const sw = document.createElement('span'); sw.className = 'gus-swatch' + (it.kind ? ' gus-swatch--' + it.kind : '');
+        if (it.color) sw.style.background = it.color;
+        k.append(sw, document.createTextNode(it.label)); box.append(k);
+      });
+      el.append(box);
+    };
+    A.measure = (svg, texts, cls) => {
+      const g = svg.append('g').attr('class', cls);
+      let w = 0;
+      texts.forEach((s) => { const t = g.append('text').text(s); w = Math.max(w, t.node().getComputedTextLength() || s.length * 7); });
+      g.remove();
+      return Math.ceil(w);
+    };
+    /* line chart over P: o = {series:[{label,color,points:[{x,y,lo,hi}]}], xTicks, yDomain, yFormat, aria,
+       legendExtra, refs:[{points, cls}], extra(svg,x,y), tipRows(xv), tipHead(xv)} */
+    A.lineChart = (el, o) => {
+      el.replaceChildren();
+      
+      A.legend(el, o.series.map((s) => ({ label: s.label, color: s.color })).concat(o.legendExtra || []));
+      const W = Math.max(260, Math.round(el.clientWidth || 640));
+      const H = o.height || Math.round(Math.max(230, Math.min(320, W * 0.48)));
+      const svg = d3.select(el).append('svg').attr('class', 'gus-svg').attr('viewBox', `0 0 ${W} ${H}`)
+        .attr('role', 'img').attr('aria-label', o.aria);
+      const top = 10, bottom = 28;
+      const y = d3.scaleLinear().domain(o.yDomain).range([H - bottom, top]);
+      const yTicks = y.ticks(5), yFormat = o.yFormat || d3.format('~g');
+      const left = A.measure(svg, yTicks.map(yFormat), 'gus-axis') + 12;
+      const ends = o.endLabels !== false;
+      const right = ends ? A.measure(svg, o.series.map((s) => s.label), 'gus-end') + 12 : 12;
+      const x = d3.scaleLinear().domain(d3.extent(o.xTicks)).range([left, W - right]);
+      svg.append('g').attr('class', 'gus-grid').selectAll('line').data(yTicks).join('line')
+        .attr('x1', left).attr('x2', W - right).attr('y1', (d) => y(d)).attr('y2', (d) => y(d));
+      svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(${left},0)`)
+        .call(d3.axisLeft(y).tickValues(yTicks).tickSize(0).tickPadding(8).tickFormat(yFormat));
+      svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(0,${H - bottom})`)
+        .call(d3.axisBottom(x).tickValues(o.xTicks).tickSize(0).tickPadding(9).tickFormat(d3.format('d')));
+      svg.append('line').attr('class', 'gus-baseline').attr('x1', left).attr('x2', W - right).attr('y1', H - bottom).attr('y2', H - bottom);
+      const line = d3.line().x((p) => x(p.x)).y((p) => y(p.y));
+      (o.refs || []).forEach((r) => {
+        svg.append('path').attr('class', r.cls || 'gus-ref').attr('d', line(r.points)).style('stroke', r.color || null);
+      });
+      if (o.extra) o.extra(svg, x, y);
+      o.series.forEach((s) => {
+        const pts = s.points.filter((p) => p.y != null && isFinite(p.y));
+        svg.append('g').selectAll('line').data(pts.filter((p) => p.lo != null && p.hi != null)).join('line')
+          .attr('class', 'gus-whisker').attr('x1', (p) => x(p.x)).attr('x2', (p) => x(p.x))
+          .attr('y1', (p) => y(p.lo)).attr('y2', (p) => y(p.hi)).style('stroke', s.color);
+        svg.append('path').attr('class', 'gus-line').attr('d', line(pts)).style('stroke', s.color);
+        svg.append('g').selectAll('circle').data(pts).join('circle').attr('class', 'gus-dot')
+          .attr('cx', (p) => x(p.x)).attr('cy', (p) => y(p.y)).attr('r', 4).style('fill', s.color);
+      });
+      /* direct labels at the line ends, pushed apart */
+      if (ends) {
+        const lab = o.series.map((s) => { const q = s.points.filter((p) => p.y != null); return { s, y: y(q[q.length - 1].y) }; })
+          .sort((a, b) => a.y - b.y);
+        for (let i = 1; i < lab.length; i++) if (lab[i].y - lab[i - 1].y < 14) lab[i].y = lab[i - 1].y + 14;
+        const over = lab.length ? lab[lab.length - 1].y - (H - bottom - 4) : 0;
+        if (over > 0) lab.forEach((e) => { e.y -= over; });
+        svg.append('g').selectAll('text').data(lab).join('text').attr('class', 'gus-end')
+          .attr('x', W - right + 8).attr('y', (e) => e.y).attr('dy', '0.35em').text((e) => e.s.label);
+      }
+      /* hover: crosshair at the nearest P and a tooltip with every series */
+      const cross = svg.append('line').attr('class', 'gus-cross').attr('y1', top).attr('y2', H - bottom).style('display', 'none');
+      const tip = A.tip(el);
+      svg.append('rect').attr('class', 'gus-hit').attr('x', left).attr('y', top).attr('width', Math.max(0, W - right - left)).attr('height', H - bottom - top)
+        .on('pointermove', (ev) => {
+          const [mx] = d3.pointer(ev);
+          const xv = o.xTicks.reduce((best, t) => (Math.abs(x(t) - mx) < Math.abs(x(best) - mx) ? t : best), o.xTicks[0]);
+          cross.attr('x1', x(xv)).attr('x2', x(xv)).style('display', null);
+          const scale = el.querySelector('svg').getBoundingClientRect().width / W;
+          const [, py] = d3.pointer(ev, el);
+          tip.show(x(xv) * scale, py, o.tipHead ? o.tipHead(xv) : 'P = ' + xv, o.tipRows(xv));
+        })
+        .on('pointerleave', () => { cross.style('display', 'none'); tip.hide(); });
+    };
+    return A;
+  })();
+</script>
+
+<script>
+  /* rounded, display-ready views of the analysis files */
+  const gusNum = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
+  const gusRound = (v, k) => { const x = gusNum(v); return x == null ? null : Math.round(x * 10 ** k) / 10 ** k; };
+  const gusPct = (v, k) => { const x = gusNum(v); return x == null ? null : Math.round(100 * x * 10 ** k) / 10 ** k; };
+  const gusSig = (v, k) => { const x = gusNum(v); return x == null ? null : +x.toPrecision(k); };
+  const gusPctSig = (v, k) => { const x = gusNum(v); return x == null ? null : +(100 * x).toPrecision(k); };
+  const gusMs = (v) => { const x = gusNum(v); return x == null ? null : (x >= 100 ? Math.round(x) : gusSig(x, 3)); };
+  const gusSweepName = (rule, n0) => 'N0 = ' + d3.format(',')(n0) + (rule === 'pairs' ? ' (N0·√P)' : '');
+
+  view.calc('campaign', {
+    title: 'Sweeps of this campaign',
+    description: 'The weak-scaling summary for the job of each sweep in the by-N0 table, rounded for display. E, S/P and s(P) in %, times in ms per step (loop) or per run (program, launch).',
+    inputs: ['summary', 'by_n0'],
+    fn: (summary, by_n0) => {
+      const jobs = new Set(by_n0.map((d) => d.rule + '|' + d.n0 + '|' + d.job));
+      return summary.filter((d) => jobs.has(d.rule + '|' + d.n0 + '|' + d.job)).map((d) => ({
+        key: d.rule + '-' + d.n0 + '-' + d.measure + '-' + d.n_ranks, sweep: d.rule + '-' + d.n0,
+        rule: d.rule, n0: +d.n0, P: +d.n_ranks, N: +d.n_stars, measure: d.measure, job: String(d.job),
+        steps: gusNum(d.steps), serial_steps: gusNum(d.serial_steps),
+        T_ms: gusMs(d.t_ms), tau_ms: gusMs(d.tau_ms),
+        E: gusPct(d.efficiency, 1), E_lo: gusPct(d.efficiency_lo, 1), E_hi: gusPct(d.efficiency_hi, 1),
+        S: gusRound(d.speedup, 2), S_lo: gusRound(d.speedup_lo, 2), S_hi: gusRound(d.speedup_hi, 2),
+        Es: gusPct(d.scaled_efficiency, 0), g: gusRound(d.growth, 2), pairs: gusRound(d.pairs_per_rank, 2),
+        sP: gusPctSig(d.s_of_p, 2),
+      }));
+    },
+  });
+
+  view.calc('by_n0_view', {
+    title: 'Gustafson fit per sweep, rounded',
+    description: 'One row per rule and N0 (latest job): N and E, S, growth at the largest P, the Gustafson s with its range over the runs, s(P) at P = 4 and the largest P, and how much faster the MPI program is than the serial one on one rank. Percentages in %.',
+    inputs: ['by_n0', 'summary'],
+    fn: (by_n0, summary) => by_n0.map((d) => {
+      const p1 = summary.find((r) => String(r.job) === String(d.job) && r.rule === d.rule && r.n0 === d.n0
+                                     && r.measure === 'loop' && +r.n_ranks === 1);
+      const sLo = gusPctSig(d.s_lo, 2), sHi = gusPctSig(d.s_hi, 2);
+      return {
+        key: d.rule + '-' + d.n0, rule: d.rule, n0: +d.n0, job: String(d.job), steps: +d.steps,
+        name: gusSweepName(d.rule, +d.n0), pmax: +d.p_max, N24: +d.n_pmax,
+        ms_step: gusMs(d.t1_ms), E24: Math.round(100 * d.efficiency_pmax), S24: gusRound(d.speedup_pmax, 1),
+        Es24: Math.round(100 * d.scaled_efficiency_pmax), g24: gusRound(d.growth_pmax, 1),
+        pairs24: gusRound(d.pairs_per_rank_pmax, 2),
+        s: gusPctSig(d.s_fit, 2), s_lo: sLo, s_hi: sHi, s_range: sLo == null ? '—' : sLo + ' to ' + sHi,
+        s4: gusPctSig(d.s_first, 2), s24: gusPctSig(d.s_pmax, 2),
+        p1_gain: p1 ? Math.round(100 * (p1.efficiency - 1)) : null,
+      };
+    }),
+  });
+
+  view.calc('bound', {
+    title: 'Limit from splitting the stars',
+    description: 'With N stars on P ranks the busiest rank holds ceil(N/P) stars, so the efficiency is at most (N/P) / ceil(N/P). cap in %.',
+    inputs: ['campaign'],
+    fn: (campaign) => campaign.filter((d) => d.measure === 'loop').map((d) => {
+      const mean = d.N / d.P, most = Math.ceil(d.N / d.P);
+      return { key: d.sweep + '-' + d.P, sweep: d.sweep, rule: d.rule, n0: d.n0, P: d.P,
+               mean_stars: Math.round(mean * 10) / 10, max_stars: most, cap: Math.round(1000 * mean / most) / 10 };
+    }),
+  });
+
+  view.calc('compare', {
+    title: 'Strong against weak scaling for the same N',
+    description: 'For every N that is both an N of the Amdahl campaign and an N0 of the time rule: the strong-scaling efficiency (fixed N) and the weak-scaling efficiency (N grown with P) of the step loop at every P, in %.',
+    inputs: ['campaign', 'amdahl_by_n', 'amdahl_summary'],
+    fn: (campaign, amdahl_by_n, amdahl_summary) => {
+      const jobs = new Set(amdahl_by_n.map((d) => String(d.job)));
+      const strong = amdahl_summary.filter((d) => d.measure === 'loop' && jobs.has(String(d.job)));
+      const weak = campaign.filter((d) => d.measure === 'loop' && d.rule === 'time');
+      const ns = [...new Set(weak.map((d) => d.n0))].filter((n) => strong.some((d) => +d.n_stars_start === n));
+      const out = [];
+      ns.forEach((n) => weak.filter((d) => d.n0 === n).forEach((w) => {
+        const s = strong.find((d) => +d.n_stars_start === n && +d.n_ranks === w.P);
+        out.push({ key: n + '-' + w.P, n, P: w.P, E_weak: w.E, E_strong: s ? gusPct(s.efficiency, 1) : null });
+      }));
+      return out;
+    },
+  });
+
+  view.calc('compare_pmax', {
+    title: 'Strong against weak at the largest P',
+    description: 'compare at the largest P of each N, efficiencies rounded to whole %.',
+    inputs: ['compare'],
+    fn: (compare) => {
+      const ns = [...new Set(compare.map((d) => d.n))];
+      return ns.map((n) => {
+        const rows = compare.filter((d) => d.n === n), pm = Math.max(...rows.map((d) => d.P));
+        const r = rows.find((d) => d.P === pm);
+        return { n, P: pm, E_weak: r.E_weak == null ? null : Math.round(r.E_weak),
+                 E_strong: r.E_strong == null ? null : Math.round(r.E_strong) };
+      });
+    },
+  });
+
+  view.calc('lost_view', {
+    title: 'Extra time per step, rounded',
+    description: 'The lost-time table of the campaign jobs, rounded: compute, communication and waiting in % of T(1), and the communication time per step in ms.',
+    inputs: ['lost', 'by_n0'],
+    fn: (lost, by_n0) => {
+      const jobs = new Set(by_n0.map((d) => d.rule + '|' + d.n0 + '|' + d.job));
+      return lost.filter((d) => jobs.has(d.rule + '|' + d.n0 + '|' + d.job)).map((d) => ({
+        key: d.rule + '-' + d.n0 + '-' + d.n_ranks, sweep: d.rule + '-' + d.n0, rule: d.rule, n0: +d.n0,
+        name: gusSweepName(d.rule, +d.n0), P: +d.n_ranks, N: +d.n_stars,
+        compute: gusRound(d.lost_compute_pct, 1), communication: gusRound(d.lost_communication_pct, 1),
+        waiting: gusRound(d.lost_waiting_pct, 1), total: gusRound(d.lost_total_pct, 1),
+        comm_ms: gusSig(d.communication_ms, 3),
+      }));
+    },
+  });
+
+  view.calc('startup_fit', {
+    title: 'Start-up, straight-line fit',
+    description: 'Least-squares line through the median start-up of the mpirun launches against P, all sweeps together, and the range of the serial program’s start-up.',
+    inputs: ['startup'],
+    fn: (startup) => {
+      const mpi = startup.filter((d) => d.implementation === 'mpi').map((d) => [+d.n_ranks, +d.median]);
+      const serial = startup.filter((d) => d.implementation === 'serial').map((d) => +d.median);
+      const mx = d3.mean(mpi, (p) => p[0]), my = d3.mean(mpi, (p) => p[1]);
+      const b = d3.sum(mpi, (p) => (p[0] - mx) * (p[1] - my)) / d3.sum(mpi, (p) => (p[0] - mx) ** 2);
+      const a = my - b * mx;
+      return [{ a_s: Math.round(a * 100) / 100, b_ms: Math.round(b * 1000),
+                serial_min_s: Math.round(d3.min(serial) * 100) / 100, serial_max_s: Math.round(d3.max(serial) * 100) / 100 }];
+    },
+  });
+</script>
+
+<script>
+  /* single values in the text, and sections that need optional data */
+  view.draw('val', (el) => {
+    const g = view.data(el.dataset.source);
+    if (g.status !== 'ok' || !Array.isArray(g.data)) { el.textContent = '—'; return; }
+    let row;
+    if (el.dataset.row !== undefined) row = g.data[+el.dataset.row];
+    else {
+      const where = (el.dataset.where || '').split('&').filter(Boolean).map((p) => p.split('='));
+      row = g.data.find((d) => where.every(([k, v]) => String(d[k]) === v));
+    }
+    el.textContent = row ? gus.fmt(row[el.dataset.field]) : '—';
+  });
+  view.draw('showIf', (el) => { el.hidden = !gus.rows(el.dataset.source).length; });
+
+  /* one card per N0 of the main rule */
+  view.draw('tiles', (el) => {
+    const st = gus.state('by_n0_view');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const rows = gus.rows('by_n0_view').filter((d) => d.rule === gusMainRule()).sort((a, b) => a.n0 - b.n0);
+    const color = gus.nColor(rows.map((d) => d.n0));
+    el.replaceChildren(...rows.map((d) => {
+      const card = document.createElement('div'); card.className = 'gus-tile'; card.id = 'tile-' + d.n0;
+      const head = document.createElement('div'); head.className = 'gus-tile-n';
+      const sw = document.createElement('span'); sw.className = 'gus-swatch'; sw.style.background = color(d.n0);
+      head.append(sw, document.createTextNode('N0 = ' + gus.nfmt(d.n0) + ' · weak efficiency at P = ' + d.pmax));
+      const big = document.createElement('div'); big.className = 'gus-tile-big';
+      const e = document.createElement('span');
+      Object.assign(e.dataset, { source: 'by_n0_view', field: 'E24', where: 'key=' + d.key });
+      e.textContent = gus.fmt(d.E24);
+      big.append(e, document.createTextNode(' %'));
+      const sub = document.createElement('div'); sub.className = 'gus-tile-sub';
+      const s = document.createElement('span'); Object.assign(s.dataset, { source: 'by_n0_view', field: 'S24', where: 'key=' + d.key }); s.textContent = gus.fmt(d.S24);
+      const n = document.createElement('span'); Object.assign(n.dataset, { source: 'by_n0_view', field: 'N24', where: 'key=' + d.key }); n.textContent = gus.fmt(d.N24);
+      sub.append(document.createTextNode('scaled speed-up '), s, document.createTextNode(' · N = '), n, document.createTextNode(' stars at P = ' + d.pmax));
+      card.append(head, big, sub);
+      return card;
+    }));
+  });
+</script>
+
+<script>
+  /* charts over P */
+  const gusMainRule = () => (gus.rows('by_n0_view').some((d) => d.rule === 'time') ? 'time' : 'pairs');
+  const gusN0Color = () => gus.nColor(gus.rows('by_n0_view').map((d) => d.n0));
+  const gusSeries = (field, withSpread, rule) => {
+    const r = rule || gusMainRule();
+    const rows = gus.rows('campaign').filter((d) => d.measure === 'loop' && d.rule === r);
+    const ns = [...new Set(rows.map((d) => d.n0))].sort((a, b) => a - b);
+    const color = gusN0Color();
+    return ns.map((n) => ({
+      n, label: 'N0 = ' + gus.nfmt(n), color: color(n),
+      points: rows.filter((d) => d.n0 === n).sort((a, b) => a.P - b.P).map((d) => ({
+        x: d.P, y: d[field], row: d,
+        lo: withSpread ? d[field + '_lo'] : null, hi: withSpread ? d[field + '_hi'] : null,
+      })),
+    }));
+  };
+  /* lower end of an efficiency axis: 0 if anything is low, else a round value below the lowest point */
+  const gusFloor = (series) => {
+    const ys = series.flatMap((s) => s.points.flatMap((p) => [p.y, p.lo])).filter((v) => v != null && isFinite(v));
+    const lo = ys.length ? Math.min(...ys) : 0;
+    return lo < 60 ? 0 : Math.min(50, Math.floor((lo - 10) / 10) * 10);
+  };
+  const gusTicks = (series) => [...new Set(series.flatMap((s) => s.points.map((p) => p.x)))].sort((a, b) => a - b);
+  const gusRowsAt = (series, xv, fmt) => series.map((s) => {
+    const p = s.points.find((q) => q.x === xv);
+    return [s.label, p && p.y != null ? fmt(p) : '—', s.color];
+  });
+
+  view.draw('speedChart', (el) => {
+    const st = gus.state('campaign', 'by_n0_view');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const series = gusSeries('S', true);
+    const ticks = gusTicks(series), pmax = ticks[ticks.length - 1];
+    const fits = gus.rows('by_n0_view').filter((d) => d.rule === gusMainRule());
+    const refs = [{ points: [{ x: ticks[0], y: ticks[0] }, { x: pmax, y: pmax }], cls: 'gus-ref' }];
+    series.forEach((s) => {
+      const f = fits.find((d) => d.n0 === s.n);
+      if (f && f.s != null) { const sv = f.s / 100; refs.push({ points: [1, pmax].map((P) => ({ x: P, y: sv + (1 - sv) * P })), cls: 'gus-fit', color: s.color }); }
+    });
+    gus.lineChart(el, {
+      series, xTicks: ticks, yDomain: [0, pmax * 1.04], yFormat: d3.format('d'),
+      aria: 'Scaled speed-up of the step loop against the number of ranks, one line per base problem size, with the fitted Gustafson lines',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'Gustafson fit', kind: 'fit' }],
+      refs,
+      tipHead: (xv) => 'P = ' + xv,
+      tipRows: (xv) => gusRowsAt(series, xv, (p) => p.y.toFixed(2) + '  (N = ' + gus.nfmt(p.row.N) + ')'),
+    });
+  });
+
+  view.draw('effChart', (el) => {
+    const st = gus.state('campaign', 'bound');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const series = gusSeries('E', true);
+    const ticks = gusTicks(series);
+    const bound = gus.rows('bound').filter((d) => d.rule === gusMainRule());
+    const refs = [{ points: [{ x: ticks[0], y: 100 }, { x: ticks[ticks.length - 1], y: 100 }], cls: 'gus-ref' }];
+    series.forEach((s) => {
+      const b = bound.filter((d) => d.n0 === s.n).sort((a, c) => a.P - c.P);
+      if (b.length && Math.min(...b.map((d) => d.cap)) < 95) refs.push({ points: b.map((d) => ({ x: d.P, y: d.cap })), cls: 'gus-bound', color: s.color });
+    });
+    const top = Math.max(110, ...series.flatMap((s) => s.points.map((p) => (p.hi != null ? p.hi : p.y) + 4)));
+    gus.lineChart(el, {
+      series, xTicks: ticks, yDomain: [gusFloor(series.concat(refs.slice(1))), top], yFormat: d3.format('d'),
+      aria: 'Weak efficiency of the step loop against the number of ranks, one line per base problem size',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'limit from splitting the stars', kind: 'bound' }],
+      refs,
+      tipRows: (xv) => gusRowsAt(series, xv, (p) => p.y.toFixed(1) + ' %  (T = ' + p.row.T_ms + ' ms)'),
+    });
+  });
+
+  view.draw('compareChart', (el) => {
+    const st = gus.state('compare');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const rows = gus.rows('compare');
+    if (!rows.length) { el.replaceChildren(); return; }
+    const ns = [...new Set(rows.map((d) => d.n))].sort((a, b) => a - b);
+    const color = gusN0Color();
+    const series = ns.map((n) => ({ n, label: 'N = ' + gus.nfmt(n), color: color(n),
+      points: rows.filter((d) => d.n === n).sort((a, b) => a.P - b.P).map((d) => ({ x: d.P, y: d.E_weak, row: d })) }));
+    const ticks = gusTicks(series);
+    const refs = [{ points: [{ x: ticks[0], y: 100 }, { x: ticks[ticks.length - 1], y: 100 }], cls: 'gus-ref' }];
+    ns.forEach((n) => {
+      const pts = rows.filter((d) => d.n === n && d.E_strong != null).sort((a, b) => a.P - b.P).map((d) => ({ x: d.P, y: d.E_strong }));
+      if (pts.length > 1) refs.push({ points: pts, cls: 'gus-bound', color: color(n) });
+    });
+    const top = Math.max(110, ...rows.flatMap((d) => [d.E_weak || 0, d.E_strong || 0]).map((v) => v + 4));
+    gus.lineChart(el, {
+      series, xTicks: ticks, yDomain: [0, top], yFormat: d3.format('d'),
+      aria: 'Efficiency against the number of ranks for the same starting N: fixed N (strong scaling, dashed) and N grown with P (weak scaling, solid)',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'fixed N (Amdahl)', kind: 'bound' }],
+      refs,
+      tipRows: (xv) => series.flatMap((s) => {
+        const p = s.points.find((q) => q.x === xv);
+        return p ? [[s.label + ', grown', p.y != null ? p.y.toFixed(1) + ' %' : '—', s.color],
+                    [s.label + ', fixed', p.row.E_strong != null ? p.row.E_strong.toFixed(1) + ' %' : '—', null]] : [];
+      }),
+    });
+  });
+
+  view.draw('sChart', (el) => {
+    const st = gus.state('campaign');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const series = gusSeries('sP', false).map((s) => ({ ...s, points: s.points.filter((p) => p.x > 1) }));
+    const ticks = gusTicks(series);
+    const ys = series.flatMap((s) => s.points.map((p) => p.y)).filter((v) => v != null);
+    gus.lineChart(el, {
+      series, xTicks: ticks, yDomain: [Math.min(0, d3.min(ys)) - 1, d3.max(ys) + 2], yFormat: d3.format('~g'),
+      aria: 'Gustafson serial fraction implied by each number of ranks, one line per base problem size',
+      refs: [{ points: [{ x: ticks[0], y: 0 }, { x: ticks[ticks.length - 1], y: 0 }], cls: 'gus-zero' }],
+      tipRows: (xv) => gusRowsAt(series, xv, (p) => p.y.toFixed(2) + ' %'),
+    });
+  });
+
+  view.draw('growthChart', (el) => {
+    const st = gus.state('campaign');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const time = gusSeries('g', false, 'time'), pairs = gusSeries('g', false, 'pairs');
+    const series = time.length ? time : pairs;
+    const ticks = gusTicks(time.concat(pairs)), pmax = ticks[ticks.length - 1];
+    const refs = [{ points: [{ x: ticks[0], y: ticks[0] }, { x: pmax, y: pmax }], cls: 'gus-ref' }];
+    if (time.length) pairs.forEach((s) => refs.push({ points: s.points, cls: 'gus-bound', color: s.color }));
+    const ymax = Math.max(pmax, ...time.concat(pairs).flatMap((s) => s.points.map((p) => p.y)));
+    gus.lineChart(el, {
+      series, xTicks: ticks, yDomain: [0, ymax * 1.04], yFormat: d3.format('d'),
+      aria: 'Serial work of the scaled problem against the number of ranks: the time rule solid, N0 times the square root of P dashed',
+      legendExtra: [{ label: 'ideal: P times the work', kind: 'ref' }].concat(time.length && pairs.length ? [{ label: 'N0·√P', kind: 'bound' }] : []),
+      refs,
+      tipRows: (xv) => gusRowsAt(time, xv, (p) => p.y.toFixed(2) + '×  (N = ' + gus.nfmt(p.row.N) + ')')
+        .concat(time.length ? gusRowsAt(pairs, xv, (p) => p.y.toFixed(2) + '×  (N = ' + gus.nfmt(p.row.N) + ')').map((r) => [r[0] + ', N0·√P', r[1], null]) : []),
+    });
+  });
+
+  view.draw('rulesChart', (el) => {
+    const st = gus.state('campaign');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    const pairs = gusSeries('E', false, 'pairs');
+    const pn = new Set(pairs.map((s) => s.n));
+    const time = gusSeries('E', false, 'time').filter((s) => pn.has(s.n));
+    if (!time.length || !pairs.length) { el.replaceChildren(); const p = document.createElement('p'); p.className = 'gus-empty'; p.textContent = 'Needs sweeps with both rules for the same N0.'; el.append(p); return; }
+    const ticks = gusTicks(time.concat(pairs));
+    const refs = [{ points: [{ x: ticks[0], y: 100 }, { x: ticks[ticks.length - 1], y: 100 }], cls: 'gus-ref' }];
+    pairs.forEach((s) => refs.push({ points: s.points, cls: 'gus-bound', color: s.color }));
+    const top = Math.max(110, ...time.concat(pairs).flatMap((s) => s.points.map((p) => p.y + 4)));
+    gus.lineChart(el, {
+      series: time, xTicks: ticks, yDomain: [gusFloor(time.concat(pairs)), top], yFormat: d3.format('d'),
+      aria: 'Weak efficiency against the number of ranks with the time rule (solid) and with N0 times the square root of P (dashed)',
+      legendExtra: [{ label: 'ideal', kind: 'ref' }, { label: 'N0·√P', kind: 'bound' }],
+      refs,
+      tipRows: (xv) => gusRowsAt(time, xv, (p) => p.y.toFixed(1) + ' %').map((r) => [r[0] + ', time rule', r[1], r[2]])
+        .concat(gusRowsAt(pairs, xv, (p) => p.y.toFixed(1) + ' %').map((r) => [r[0] + ', N0·√P', r[1], null])),
+    });
+  });
+</script>
+
+<script>
+  /* sweep pickers, and the extra time per step as stacked bars for one sweep */
+  view.draw('sweepPick', (sel) => {
+    const rows = gus.rows(sel.dataset.source);
+    const keys = [...new Map(rows.map((d) => [d.sweep || d.key, d])).values()]
+      .sort((a, b) => (a.rule === b.rule ? a.n0 - b.n0 : (a.rule === gusMainRule() ? -1 : 1)));
+    sel.replaceChildren(...keys.map((d) => new Option(gusSweepName(d.rule, d.n0), d.sweep || d.key)));
+    const cur = view.params()[sel.dataset.param];
+    const all = keys.map((d) => d.sweep || d.key);
+    sel.value = all.includes(cur) ? cur : (all.length ? all[0] : '');
+    sel.onchange = () => view.setParams({ [sel.dataset.param]: sel.value });
+  });
+  const gusPicked = (param, keys) => { const cur = view.params()[param]; return keys.includes(cur) ? cur : keys[0]; };
+
+  view.draw('lostChart', (el) => {
+    const st = gus.state('lost_view');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    el.replaceChildren();
+    const all = gus.rows('lost_view');
+    const keys = [...new Set(all.slice().sort((a, b) => (a.rule === b.rule ? a.n0 - b.n0 : (a.rule === gusMainRule() ? -1 : 1))).map((d) => d.sweep))];
+    const key = gusPicked('lost_key', keys);
+    const rows = all.filter((d) => d.sweep === key).sort((a, b) => a.P - b.P);
+    if (!rows.length) return;
+    const parts = [
+      { key: 'compute', label: 'compute (own rows)', color: 'var(--p0)' },
+      { key: 'communication', label: 'communication', color: 'var(--p1)' },
+      { key: 'waiting', label: 'waiting and other loop work', color: 'var(--p2)' },
+    ];
+    gus.legend(el, parts.map((p) => ({ label: p.label, color: p.color })).concat([{ label: 'total = 1/E − 1', kind: 'total' }]));
+    const W = Math.max(260, Math.round(el.clientWidth || 640));
+    const H = Math.round(Math.max(230, Math.min(320, W * 0.48)));
+    const svg = d3.select(el).append('svg').attr('class', 'gus-svg').attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('role', 'img').attr('aria-label', 'Extra time per step against the base problem per number of ranks for ' + rows[0].name + ', split into compute, communication and waiting');
+    const stacks = rows.map((d) => {
+      let pos = 0, neg = 0;
+      const segs = parts.map((p) => {
+        const v = d[p.key] || 0;
+        const seg = v >= 0 ? { y0: pos, y1: pos + v } : { y0: neg + v, y1: neg };
+        if (v >= 0) pos += v; else neg += v;
+        return { ...seg, part: p, v };
+      });
+      return { d, segs, lo: neg, hi: pos };
+    });
+    const lo = Math.min(0, ...stacks.map((s) => s.lo), ...rows.map((d) => d.total));
+    const hi = Math.max(5, ...stacks.map((s) => s.hi), ...rows.map((d) => d.total));
+    const top = 10, bottom = 28;
+    const y = d3.scaleLinear().domain([lo, hi]).nice().range([H - bottom, top]);
+    const yTicks = y.ticks(5), yFormat = d3.format('d');
+    const left = gus.measure(svg, yTicks.map(yFormat), 'gus-axis') + 12;
+    const x = d3.scaleBand().domain(rows.map((d) => d.P)).range([left, W - 8]).padding(0.3);
+    svg.append('g').attr('class', 'gus-grid').selectAll('line').data(yTicks).join('line')
+      .attr('x1', left).attr('x2', W - 8).attr('y1', (d) => y(d)).attr('y2', (d) => y(d));
+    svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(${left},0)`)
+      .call(d3.axisLeft(y).tickValues(yTicks).tickSize(0).tickPadding(8).tickFormat(yFormat));
+    svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(0,${H - bottom})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(9));
+    stacks.forEach((s) => {
+      svg.append('g').selectAll('rect').data(s.segs.filter((g) => Math.abs(g.v) > 0)).join('rect')
+        .attr('x', x(s.d.P)).attr('width', x.bandwidth())
+        .attr('y', (g) => y(g.y1)).attr('height', (g) => Math.max(0, y(g.y0) - y(g.y1) - 2))
+        .attr('rx', 2).style('fill', (g) => g.part.color);
+      svg.append('line').attr('class', 'gus-total').attr('x1', x(s.d.P) - 3).attr('x2', x(s.d.P) + x.bandwidth() + 3)
+        .attr('y1', y(s.d.total)).attr('y2', y(s.d.total));
+    });
+    svg.append('line').attr('class', 'gus-zero').attr('x1', left).attr('x2', W - 8).attr('y1', y(0)).attr('y2', y(0));
+    const tip = gus.tip(el);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('class', 'gus-hit')
+      .attr('x', (d) => x(d.P) - x.step() * x.paddingInner() / 2).attr('width', x.step())
+      .attr('y', top).attr('height', H - bottom - top)
+      .on('pointermove', (ev, d) => {
+        const [px, py] = d3.pointer(ev, el);
+        tip.show(px, py, d.name + ', P = ' + d.P + ', N = ' + gus.nfmt(d.N),
+          parts.map((p) => [p.label, (d[p.key] || 0).toFixed(1) + ' %', p.color])
+            .concat([['total', d.total.toFixed(1) + ' %', null], ['communication per step', d.comm_ms + ' ms', null]]));
+      })
+      .on('pointerleave', () => tip.hide());
+  });
+</script>
+
+<script>
+  /* loop against whole launch at the largest P */
+  view.draw('launchChart', (el) => {
+    const st = gus.state('campaign');
+    if (st !== 'ok') { gus.wait(el, st); return; }
+    el.replaceChildren();
+    const rows = gus.rows('campaign').filter((d) => d.rule === gusMainRule());
+    const pmax = Math.max(...rows.map((d) => d.P));
+    const ns = [...new Set(rows.map((d) => d.n0))].sort((a, b) => a - b);
+    const pairs = ns.map((n) => ({
+      n, loop: rows.find((d) => d.n0 === n && d.P === pmax && d.measure === 'loop'),
+      launch: rows.find((d) => d.n0 === n && d.P === pmax && d.measure === 'launch'),
+    })).filter((d) => d.loop && d.launch);
+    if (!pairs.length) { const p = document.createElement('p'); p.className = 'gus-empty'; p.textContent = 'No launch times: copy gustafson/launch_times.csv from the cluster.'; el.append(p); return; }
+    gus.legend(el, [{ label: 'step loop', kind: 'dot' }, { label: 'whole launch, start-up and loading included', kind: 'ring' }]);
+    const W = Math.max(260, Math.round(el.clientWidth || 640));
+    const rowH = 34, top = 6, bottom = 28;
+    const H = top + bottom + rowH * pairs.length;
+    const svg = d3.select(el).append('svg').attr('class', 'gus-svg').attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('role', 'img').attr('aria-label', 'Weak efficiency at the largest number of ranks, step loop against whole launch, for each base problem size');
+    const left = gus.measure(svg, pairs.map((d) => 'N0 = ' + gus.nfmt(d.n)), 'gus-axis') + 14;
+    const xmax = Math.max(100, ...pairs.flatMap((d) => [d.loop.E, d.launch.E])) + 5;
+    const x = d3.scaleLinear().domain([0, xmax]).range([left, W - 34]);
+    const yb = d3.scaleBand().domain(pairs.map((d) => d.n)).range([top, H - bottom]).padding(0.2);
+    svg.append('g').attr('class', 'gus-grid').selectAll('line').data(x.ticks(5)).join('line')
+      .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', top).attr('y2', H - bottom);
+    svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(0,${H - bottom})`)
+      .call(d3.axisBottom(x).ticks(5).tickSize(0).tickPadding(9).tickFormat(d3.format('d')));
+    svg.append('g').attr('class', 'gus-axis').attr('transform', `translate(${left},0)`)
+      .call(d3.axisLeft(yb).tickSize(0).tickPadding(10).tickFormat((n) => 'N0 = ' + gus.nfmt(n)));
+    const tip = gus.tip(el);
+    pairs.forEach((d) => {
+      const cy = yb(d.n) + yb.bandwidth() / 2;
+      const g = svg.append('g');
+      g.append('line').attr('class', 'gus-link').attr('x1', x(d.launch.E)).attr('x2', x(d.loop.E)).attr('y1', cy).attr('y2', cy);
+      g.append('circle').attr('class', 'gus-ring').attr('cx', x(d.launch.E)).attr('cy', cy).attr('r', 5);
+      g.append('circle').attr('class', 'gus-ink').attr('cx', x(d.loop.E)).attr('cy', cy).attr('r', 5.5);
+      const right = d.loop.E >= d.launch.E;
+      g.append('text').attr('class', 'gus-vlabel').attr('x', x(d.loop.E) + (right ? 10 : -10)).attr('y', cy).attr('dy', '0.35em')
+        .attr('text-anchor', right ? 'start' : 'end').text(Math.round(d.loop.E) + ' %');
+      if (Math.abs(x(d.loop.E) - x(d.launch.E)) > 44) g.append('text').attr('class', 'gus-vlabel').attr('x', x(d.launch.E) + (right ? -10 : 10)).attr('y', cy)
+        .attr('dy', '0.35em').attr('text-anchor', right ? 'end' : 'start').text(Math.round(d.launch.E) + ' %');
+      g.append('rect').attr('class', 'gus-hit').attr('x', left).attr('y', yb(d.n)).attr('width', W - left).attr('height', yb.bandwidth())
+        .on('pointermove', (ev) => {
+          const [px, py] = d3.pointer(ev, el);
+          tip.show(px, py, 'N0 = ' + gus.nfmt(d.n) + ', P = ' + pmax + ', N = ' + gus.nfmt(d.loop.N), [
+            ['step loop', d.loop.E.toFixed(1) + ' %', null], ['whole launch', d.launch.E.toFixed(1) + ' %', null],
+            ['step loop per step', d.loop.T_ms + ' ms', null], ['whole launch', (d.launch.T_ms / 1000).toFixed(2) + ' s', null]]);
+        })
+        .on('pointerleave', () => tip.hide());
+    });
+  });
+</script>
+
+<script>
+  /* tables */
+  const gusRows = (tbody, rows, cols, keyOf, cls) => {
+    tbody.replaceChildren(...rows.map((d) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = keyOf(d);
+      if (cls) { const c = cls(d); if (c) tr.className = c; }
+      cols.forEach(([field, left]) => {
+        const td = document.createElement('td');
+        if (left) td.className = 'gus-left';
+        td.textContent = gus.fmt(d[field]);
+        tr.append(td);
+      });
+      return tr;
+    }));
+  };
+  view.draw('byN0Rows', (tbody) => {
+    if (gus.state('by_n0_view') !== 'ok') { tbody.replaceChildren(); return; }
+    const main = gusMainRule();
+    gusRows(tbody, gus.rows('by_n0_view').slice().sort((a, b) => (a.rule === b.rule ? a.n0 - b.n0 : (a.rule === main ? -1 : 1))),
+      [['rule', true], ['n0'], ['N24'], ['steps'], ['ms_step'], ['E24'], ['S24'], ['g24'], ['s'], ['s_range'], ['s4'], ['s24']],
+      (d) => d.key);
+  });
+  view.draw('detailRows', (tbody) => {
+    if (gus.state('campaign', 'by_n0_view') !== 'ok') { tbody.replaceChildren(); return; }
+    const keys = gus.rows('by_n0_view').slice().sort((a, b) => (a.rule === b.rule ? a.n0 - b.n0 : (a.rule === gusMainRule() ? -1 : 1))).map((d) => d.key);
+    const key = gusPicked('detail_key', keys);
+    gusRows(tbody, gus.rows('campaign').filter((d) => d.sweep === key && d.measure === 'loop').sort((a, b) => a.P - b.P),
+      [['P'], ['N'], ['serial_steps'], ['tau_ms'], ['T_ms'], ['E'], ['S'], ['Es'], ['g'], ['pairs'], ['sP']], (d) => String(d.P));
+  });
+</script>
+
+<script>
+  view.draw('meta', (el) => {
+    const k = el.dataset.key;
+    const meta = GUS_DATA.meta || {};
+    if (k === 'jobs') { el.textContent = gus.rows('by_n0').map((d) => d.job).join(', ') || '—'; return; }
+    el.textContent = meta[k] == null ? '—' : String(meta[k]);
+  });
+  if (typeof d3 === 'undefined') {
+    document.getElementById('gus-offline').hidden = false;
+  } else {
+    view.compute();
+    view.run();
+    let timer;
+    window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(view.run, 150); });
+  }
+</script>
+</div>
+</body>
+</html>
