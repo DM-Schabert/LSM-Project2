@@ -1,0 +1,4 @@
+numpy
+mpi4py
+# Optional for plots, on your laptop rather than on the HPC:
+matplotlib

@@ -1,0 +1,7 @@
+# This ignore file affects only the NEW data_types/ folder.
+__pycache__/
+*.pyc
+logs/*
+!logs/.gitkeep
+.DS_Store
+# CSVs and generated plots in results/ are deliberately NOT ignored.
