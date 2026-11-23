@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#BSUB -J nscale_one
+#BSUB -q hpcintro
+#BSUB -n 16
+#BSUB -R "span[hosts=1]"
+#BSUB -W 00:30
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/high_ranks_one_%J.out
+#BSUB -eo logs/high_ranks_one_%J.err
+set -euo pipefail
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+printf '\n=== Single node, %s slots; hosts: %s ===\n' "${LSB_DJOB_NUMPROC:-?}" "${LSB_MCPU_HOSTS:-?}"
+# Print rank placement once; the group's existing simulation is unchanged.
+mpirun -np 16 hostname | sort | uniq -c
+python3 -u run_high_ranks.py \
+    --n 50 100 --ranks 2 4 8 16 --steps 50000 --repeats 3 --timeout 900 \
+    --output "results/high_ranks_one_${LSB_JOBID}.csv"

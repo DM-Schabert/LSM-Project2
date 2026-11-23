@@ -1,0 +1,7 @@
+job_id=30324249
+topology_requested=two_nodes
+lsb_slots=32
+lsb_hosts=n-62-21-46 16 n-62-21-47 16 
+cpu=Model name:                              Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+command_template=mpirun --map-by node -np '{P}' python3 ParallelImplementation.py --data '{DATA}' --steps '{STEPS}' --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+arguments=--n 50 100 --ranks 8 16 32 --steps 50000 --repeats 3 --timeout 900 --output results/high_ranks_two_30324249.csv

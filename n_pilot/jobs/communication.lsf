@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#BSUB -J n_comm_pilot
+#BSUB -q hpcintro
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -W 00:30
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/communication_%J.out
+#BSUB -eo logs/communication_%J.err
+set -euo pipefail
+# Submit from INSIDE n_pilot/: bsub < jobs/communication.lsf
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+if [[ ! -f ../data_types/benchmark_allgatherv.py ]]; then
+  echo 'Cannot find existing data_types/benchmark_allgatherv.py' >&2
+  exit 1
+fi
+for ranks in 2 4 8; do
+  for n in 250 500 1000 2000; do
+    mpirun -np "$ranks" python3 -u ../data_types/benchmark_allgatherv.py \
+      --n "$n" --iterations 100 --repeats 5 --warmup 5 \
+      --output "results/mpi_only_${LSB_JOBID}.csv"
+  done
+done
+echo "Communication-only results: results/mpi_only_${LSB_JOBID}.csv"

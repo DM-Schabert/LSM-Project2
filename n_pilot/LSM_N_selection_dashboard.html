@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LSM | MPI Performance — N Selection</title>
+  <style>
+    :root {
+      --bg: #080d16; --panel: #111b2b; --panel2: #0d1725; --panel3:#182438;
+      --line: #27354c; --text:#e8f0fc; --muted:#9aabc4; --faint:#70819a;
+      --mint:#5de1bf; --sky:#7eaafc; --amber:#f4c477; --radius:16px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; min-width:320px; background: radial-gradient(ellipse 850px 500px at 85% -15%, #18314b 0%, transparent 62%), var(--bg); color:var(--text); font-family:var(--font); }
+    .wrap { max-width:1250px; margin:auto; padding:36px 28px 68px; }
+    .eyebrow { color:var(--mint); font-size:11px; letter-spacing:.17em; font-weight:800; text-transform:uppercase; }
+    .top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px; margin-bottom:26px; }
+    h1 { font-size:clamp(28px, 4vw, 43px); line-height:1.16; letter-spacing:-.037em; margin:9px 0 10px; font-weight:780; }
+    h2 { font-size:17px; letter-spacing:-.015em; margin:0; font-weight:740; }
+    p { margin:0; }
+    .subtitle { color:var(--muted); line-height:1.6; font-size:14px; max-width:730px; }
+    .pill { font-size:12px; border-radius:999px; padding:9px 12px; border:1px solid #325645; color:var(--mint); background:#11251f; white-space:nowrap; }
+    .controls { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; border:1px solid var(--line); border-radius:14px; padding:12px 15px; background:#101a29; margin-bottom:22px; }
+    .controlsLeft,.controlsRight { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .groupText { color:var(--faint); font-size:11px; font-weight:750; letter-spacing:.07em; text-transform:uppercase; }
+    .segment { border:1px solid #30415a; background:#0d1522; padding:3px; display:flex; border-radius:10px; }
+    .segment button { cursor:pointer; background:none; border:0; color:var(--muted); padding:7px 13px; font:700 12px var(--font); border-radius:7px; transition:.15s; }
+    .segment button.active { background:#283a53; color:white; box-shadow:0 1px 3px #0003; }
+    .importBtn,.resetBtn { display:inline-flex; align-items:center; gap:7px; cursor:pointer; border-radius:9px; padding:9px 12px; background:#21364c; border:1px solid #3c526e; font:700 12px var(--font); color:#e8f0fc; }
+    .resetBtn { background:transparent; color:var(--muted); border-color:#36445b; }
+    .importBtn:hover,.resetBtn:hover { border-color:var(--mint); }
+    .cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; margin-bottom:22px; }
+    .stat,.chartPanel,.tablePanel,.notesPanel { border:1px solid var(--line); border-radius:var(--radius); background:linear-gradient(165deg,#142032 0%,#101a29 100%); }
+    .stat { padding:19px 20px; min-height:132px; }
+    .statLabel { text-transform:uppercase; letter-spacing:.08em; color:#97a8c1; font-size:10px; font-weight:800; }
+    .statVal { margin:12px 0 4px; font-size:clamp(22px,2.45vw,30px); font-weight:780; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    .statDetail { color:var(--faint); font-size:11px; line-height:1.5; }
+    .charts { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+    .chartPanel { padding:22px 22px 16px; min-width:0; }
+    .panelHead { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .panelSub { margin-top:6px; font-size:12px; color:var(--muted); line-height:1.5; }
+    .metricTag { border:1px solid var(--line); border-radius:8px; padding:6px 9px; color:var(--muted); font-size:11px; white-space:nowrap; }
+    .plot { width:100%; display:block; margin:10px 0 5px; }
+    .legend { display:flex; flex-wrap:wrap; column-gap:16px; row-gap:11px; padding:6px 3px 5px; }
+    .legendItem { display:inline-flex; align-items:center; gap:7px; font-size:11px; color:#b5c4da; white-space:nowrap; }
+    .lineSample { width:24px; height:0; border-top:3px solid; }
+    .lineSample.dash { border-top-style:dashed; }
+    .axis { font:11px var(--font); fill:#8fa1ba; }
+    .gridline { stroke:#2a394e; stroke-width:1; }
+    .plotline { fill:none; stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; }
+    .dot { stroke:var(--panel); stroke-width:2; cursor:help; }
+    .errorbar { stroke-width:1.5; opacity:.6; }
+    .details { display:grid; grid-template-columns:1.5fr 1fr; gap:15px; margin-top:16px; }
+    .tablePanel,.notesPanel { padding:21px; min-width:0; }
+    .table-scroll { width:100%; overflow-x:auto; margin-top:16px; }
+    table { border-collapse:collapse; width:100%; font-size:12px; white-space:nowrap; }
+    th { text-align:left; color:#95a7c1; font-size:10px; text-transform:uppercase; letter-spacing:.06em; background:#1a2940; padding:12px; border-bottom:1px solid #344761; }
+    td { padding:12px; border-bottom:1px solid #233148; color:#d7e2f3; font-variant-numeric:tabular-nums; }
+    tr:last-child td { border-bottom:0; }
+    tbody tr:hover td { background:#1a2a40; }
+    th.num,td.num { text-align:right; }
+    .topo { color:#bdcce0; }
+    .topo::before { display:inline-block; content:""; width:7px; height:7px; border-radius:2px; margin-right:7px; background:#7287a7; }
+    .topo.two::before { background:#f0c479; }
+    .notesPanel p { color:#acbdd3; font-size:13px; line-height:1.65; margin-top:11px; }
+    .highlight { font-weight:700; color:var(--text); }
+    .notesPanel .noteNumber { color:var(--mint); font-weight:800; }
+    .notesPanel .caution { border-left:2px solid var(--amber); padding:10px 12px; margin-top:18px; background:#26261e; border-radius:0 9px 9px 0; color:#ddcbaa; font-size:12px; line-height:1.6; }
+    .footer { margin:20px 4px 0; color:#7f90aa; font-size:11px; line-height:1.7; }
+    .sourceStatus { font-size:11px; color:var(--faint); }
+    .sourceStatus strong { color:var(--mint); }
+    input[type=file] { display:none; }
+    @media(max-width:1000px){.cards{grid-template-columns:repeat(2,minmax(0,1fr));}.charts,.details{grid-template-columns:1fr;}}
+    @media(max-width:610px){.wrap{padding:23px 13px 45px}.cards{gap:9px}.stat{padding:15px}.chartPanel,.tablePanel,.notesPanel{padding:16px}.controls{padding:11px}.controlsLeft,.controlsRight{width:100%;}.statVal{font-size:24px}.legend{gap:10px}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">02616 · Large-scale Modelling / Experiment 02</div>
+      <h1>MPI performance <span style="color:var(--mint)">/ N selection</span></h1>
+      <p class="subtitle">Real N-body simulator · 50,000 timesteps per run · merging disabled · 3 repetitions per configuration. Comparing timestep throughput and the measured communication-phase share as ranks increase.</p>
+    </div>
+    <div class="pill">● High-rank pilot · hpcintro</div>
+  </header>
+
+  <div class="controls">
+    <div class="controlsLeft">
+      <span class="groupText">Show stars</span>
+      <div class="segment" role="group" aria-label="Filter star counts">
+        <button type="button" class="active" data-filter="all">Both</button>
+        <button type="button" data-filter="50">N = 50</button>
+        <button type="button" data-filter="100">N = 100</button>
+      </div>
+      <span class="sourceStatus" id="sourceStatus">Showing <strong>summary from chat</strong></span>
+    </div>
+    <div class="controlsRight">
+      <label for="csvfile" class="importBtn">↥ Load results CSV</label>
+      <input type="file" id="csvfile" accept=".csv,text/csv" />
+      <button type="button" class="resetBtn" id="reset">Reset</button>
+    </div>
+  </div>
+
+  <section class="cards" aria-label="Key metrics">
+    <article class="stat"><div class="statLabel">Highest throughput</div><div class="statVal" id="maxThroughput">6,165</div><div class="statDetail" id="maxThroughputDetail">steps/s · N=50 · 32 ranks · two nodes</div></article>
+    <article class="stat"><div class="statLabel">Highest MPI share</div><div class="statVal" id="maxComm">31.89%</div><div class="statDetail" id="maxCommDetail">N=50 · 32 ranks · two nodes</div></article>
+    <article class="stat"><div class="statLabel">Tested rank counts</div><div class="statVal" id="rankSpan">2–32</div><div class="statDetail">single-node and two-node placements</div></article>
+    <article class="stat"><div class="statLabel">Repetitions per case</div><div class="statVal" id="reps">3</div><div class="statDetail">medians used for comparison</div></article>
+  </section>
+
+  <section class="charts" aria-label="Performance charts">
+    <article class="chartPanel">
+      <div class="panelHead"><div><h2>Timestep throughput</h2><p class="panelSub">How many complete simulation steps finish each second?</p></div><div class="metricTag">Higher is better ↑</div></div>
+      <svg class="plot" id="throughputSvg" viewBox="0 0 560 310" role="img" aria-label="Line chart of simulation timesteps per second by MPI rank count"></svg>
+      <div class="legend" id="legendThroughput"></div>
+    </article>
+    <article class="chartPanel">
+      <div class="panelHead"><div><h2>Communication share</h2><p class="panelSub">Time inside the communication phase as a share of simulation time.</p></div><div class="metricTag">MPI sensitivity ↑</div></div>
+      <svg class="plot" id="communicationSvg" viewBox="0 0 560 310" role="img" aria-label="Line chart of communication share by MPI rank count"></svg>
+      <div class="legend" id="legendCommunication"></div>
+    </article>
+  </section>
+
+  <section class="details">
+    <article class="tablePanel">
+      <div class="panelHead"><div><h2>All measured configurations</h2><p class="panelSub">The same medians as the graphs; individual run ranges appear after importing the actual CSV.</p></div><span class="metricTag" id="rowCount">14 cases</span></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Stars</th><th>Placement</th><th class="num">Ranks</th><th class="num">Steps/s</th><th class="num">MPI share</th><th class="num">Runs</th></tr></thead>
+        <tbody id="resultTable"></tbody>
+      </table></div>
+    </article>
+    <aside class="notesPanel">
+      <h2>What this experiment shows</h2>
+      <p><span class="noteNumber">01 /</span> <span class="highlight">Smaller N exposes MPI overhead.</span> At two-node, P=32, communication was 31.89% for N=50 versus 21.85% for N=100.</p>
+      <p><span class="noteNumber">02 /</span> <span class="highlight">Adding ranks still helps, but with diminishing returns.</span> For N=50 across two nodes, increasing 16 → 32 ranks improves throughput by about 21.6%, not 100%.</p>
+      <p><span class="noteNumber">03 /</span> <span class="highlight">Node placement matters.</span> At equal rank counts (8 or 16), two-node throughput is consistently lower in the supplied results.</p>
+      <p><span class="noteNumber">04 /</span> <span class="highlight">N=50 is a useful stress case</span>, with N=100 as a less extreme validation case. This motivates exploring communication optimisations.</p>
+      <div class="caution"><strong>Interpret with care:</strong> "MPI share" includes time spent inside the measured communication phase, potentially including waiting for other ranks; it is not necessarily pure network transfer. Confirm host placement using LSF logs. Phase times are slowest-rank diagnostics and need not sum to total.</div>
+    </aside>
+  </section>
+  <footer class="footer">
+    Source: existing ParallelImplementation.py; timings aggregated by analyze_high_ranks.py. One-node: P={2,4,8,16}; two-node: P={8,16,32}. Lines show medians. Import <code>n_pilot/results/high_ranks_summary.csv</code> to show the actual per-configuration min/max run ranges. Everything here runs locally, with no external libraries or network access.
+  </footer>
+</main>
+<script>
+(()=>{
+  'use strict';
+  const embedded = [
+    [50,'one node',2,1426.5,1.83],[50,'one node',4,2552.3,5.33],
+    [50,'one node',8,3990.4,9.45],[50,'one node',16,5543.2,17.20],
+    [50,'two nodes',8,3607.5,11.18],[50,'two nodes',16,5071.0,17.93],
+    [50,'two nodes',32,6165.2,31.89],
+    [100,'one node',2,606.4,0.81],[100,'one node',4,1169.3,2.47],
+    [100,'one node',8,2073.8,5.31],[100,'one node',16,3168.6,13.91],
+    [100,'two nodes',8,1843.7,6.07],[100,'two nodes',16,2942.9,13.02],
+    [100,'two nodes',32,4006.4,21.85],
+  ].map(([n,topology,p,speed,comm])=>({n,topology,p,runs:3,median_steps_per_s:speed,median_comm_pct:comm}));
+  let rows = embedded.map(d=>({...d}));
+  let filter = 'all';
+  let hasRanges = false;
+  const colors = {50:'#5de1bf',100:'#7eaafc'};
+  const $ = id => document.getElementById(id);
+  const format = (v,d=1)=>Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const svgNS='http://www.w3.org/2000/svg';
+  function S(name,attrs={},text=null){const el=document.createElementNS(svgNS,name);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);if(text!==null)el.textContent=text;return el;}
+  function filtered(){return rows.filter(d=>filter==='all'||String(d.n)===filter)}
+  function variants(){return [50,100].filter(n=>filter==='all'||String(n)===filter).flatMap(n=>['one node','two nodes'].map(topology=>({n,topology,data:rows.filter(r=>r.n===n&&r.topology===topology).sort((a,b)=>a.p-b.p)})).filter(x=>x.data.length))}
+  function makeLegend(el){el.replaceChildren();for(const v of variants()){const item=document.createElement('span');item.className='legendItem';const sw=document.createElement('span');sw.className='lineSample'+(v.topology==='two nodes'?' dash':'');sw.style.borderColor=colors[v.n];item.append(sw,document.createTextNode(`N=${v.n} · ${v.topology}`));el.append(item);}}
+  function draw(id,metric,lower,upper){
+    const svg=$(id);svg.replaceChildren();const W=560,H=310,L=58,R=16,T=22,B=42;
+    const w=W-L-R,h=H-T-B;const vals=filtered().map(r=>+r[metric]).filter(Number.isFinite);
+    if(!vals.length){svg.append(S('text',{x:W/2,y:H/2,'text-anchor':'middle',fill:'#93a5bf'},'No data'));return;}
+    const uvals=filtered().map(r=>+r[upper]).filter(Number.isFinite);const highest=Math.max(...vals,...uvals,0);
+    const range = metric==='median_comm_pct' ? Math.ceil(highest/5)*5+5 : Math.ceil(highest/1000)*1000+1000;
+    const x=p=>L+(Math.log2(p)-1)/4*w;
+    const y=v=>T+h*(1-v/range);
+    for(let i=0;i<=5;i++){
+      const val=range*i/5, yy=y(val);svg.append(S('line',{x1:L,x2:W-R,y1:yy,y2:yy,class:'gridline'}));
+      svg.append(S('text',{x:L-11,y:yy+4,'text-anchor':'end',class:'axis'},metric==='median_comm_pct'?format(val,0)+'%':format(val,0)));
+    }
+    for(const p of [2,4,8,16,32]){const xx=x(p);svg.append(S('text',{x:xx,y:H-17,'text-anchor':'middle',class:'axis'},p));}
+    svg.append(S('text',{x:L+w/2,y:H-1,'text-anchor':'middle',class:'axis'},'MPI ranks (P)'));
+    for(const v of variants()){
+      const points=v.data, col=colors[v.n];
+      const line=S('polyline',{points:points.map(d=>`${x(d.p)},${y(d[metric])}`).join(' '),stroke:col,class:'plotline'});
+      if(v.topology==='two nodes')line.setAttribute('stroke-dasharray','7 6');svg.append(line);
+      for(const d of points){
+        const xx=x(d.p),yy=y(d[metric]),lo=d[lower],hi=d[upper];
+        if(Number.isFinite(lo)&&Number.isFinite(hi)){
+          const lyy=y(lo),hyy=y(hi);
+          svg.append(S('line',{x1:xx,x2:xx,y1:lyy,y2:hyy,stroke:col,class:'errorbar'}));
+          svg.append(S('line',{x1:xx-4,x2:xx+4,y1:lyy,y2:lyy,stroke:col,class:'errorbar'}));
+          svg.append(S('line',{x1:xx-4,x2:xx+4,y1:hyy,y2:hyy,stroke:col,class:'errorbar'}));
+        }
+        const marker=v.topology==='two nodes' ? S('rect',{x:xx-5,y:yy-5,width:10,height:10,rx:2,fill:col,class:'dot'}) : S('circle',{cx:xx,cy:yy,r:5.1,fill:col,class:'dot'});
+        const unit=metric==='median_comm_pct'?'%':' steps/s';
+        const detail = `${v.n} stars · ${d.p} ranks · ${v.topology}\nMedian: ${format(d[metric],metric==='median_comm_pct'?2:1)}${unit}`+(Number.isFinite(lo)&&Number.isFinite(hi)?`\nRun range: ${format(lo,2)}–${format(hi,2)}${unit}`:'');
+        marker.append(S('title',{},detail));svg.append(marker);
+      }
+    }
+  }
+  function render(){
+    const subset=filtered(), top=subset.reduce((a,b)=>!a||b.median_steps_per_s>a.median_steps_per_s?b:a,null),comm=subset.reduce((a,b)=>!a||b.median_comm_pct>a.median_comm_pct?b:a,null);
+    $('maxThroughput').textContent=top?format(top.median_steps_per_s,0):'—';
+    $('maxThroughputDetail').textContent=top?`steps/s · N=${top.n} · ${top.p} ranks · ${top.topology}`:'No measurements';
+    $('maxComm').textContent=comm?format(comm.median_comm_pct,2)+'%':'—';
+    $('maxCommDetail').textContent=comm?`N=${comm.n} · ${comm.p} ranks · ${comm.topology}`:'No measurements';
+    const ps=subset.map(d=>d.p);$('rankSpan').textContent=ps.length?Math.min(...ps)+'–'+Math.max(...ps):'—';
+    $('reps').textContent=subset.length?String(Math.min(...subset.map(r=>r.runs))):'—';
+    $('rowCount').textContent=`${subset.length} cases`;
+    makeLegend($('legendThroughput'));makeLegend($('legendCommunication'));
+    draw('throughputSvg','median_steps_per_s','min_steps_per_s','max_steps_per_s');
+    draw('communicationSvg','median_comm_pct','min_comm_pct','max_comm_pct');
+    $('resultTable').replaceChildren();
+    for(const d of [...subset].sort((a,b)=>a.n-b.n||a.topology.localeCompare(b.topology)||a.p-b.p)){
+      const tr=document.createElement('tr');
+      const cell=(value,cls='')=>{const td=document.createElement('td');td.className=cls;td.textContent=value;tr.append(td);return td};
+      cell('N = '+d.n);const tc=cell(d.topology,'topo'+(d.topology==='two nodes'?' two':''));
+      cell(d.p,'num');cell(format(d.median_steps_per_s,1),'num');cell(format(d.median_comm_pct,2)+'%','num');cell(d.runs,'num');
+      $('resultTable').append(tr);
+    }
+  }
+  function parseCSV(input){
+    const records=[];let out=[],value='',quoted=false;
+    for(let i=0;i<input.length;i++){
+      const ch=input[i];if(ch==='"'){if(quoted&&input[i+1]==='"'){value+='"';i++}else quoted=!quoted}
+      else if(ch===','&&!quoted){out.push(value);value=''}
+      else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&input[i+1]==='\n')i++;out.push(value);if(out.some(v=>v.trim().length))records.push(out);out=[];value=''}
+      else value+=ch;
+    }
+    out.push(value);if(out.some(v=>v.trim().length))records.push(out);
+    if(records.length<2)throw Error('The CSV has no data rows.');
+    const headers=records.shift().map(v=>v.trim().replace(/^\uFEFF/,''));
+    const need=['n','topology','p','runs','median_steps_per_s','median_comm_pct'];
+    for(const key of need)if(!headers.includes(key))throw Error('Missing CSV column: '+key);
+    const all=records.map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]??'').trim()]))).map(r=>{
+      const d={...r};for(const k of ['n','p','runs','median_steps_per_s','median_comm_pct','min_steps_per_s','max_steps_per_s','min_comm_pct','max_comm_pct']){
+        if(k in d)d[k]=d[k]===''?NaN:Number(d[k]);
+      }
+      return d;
+    }).filter(d=>Number.isFinite(d.n)&&Number.isFinite(d.p)&&Number.isFinite(d.median_steps_per_s)&&Number.isFinite(d.median_comm_pct));
+    if(!all.length)throw Error('No valid measurements found.');
+    return all;
+  }
+  document.querySelectorAll('[data-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+    filter=btn.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b===btn));render();
+  }));
+  $('reset').addEventListener('click',()=>{rows=embedded.map(d=>({...d}));hasRanges=false;$('csvfile').value='';$('sourceStatus').innerHTML='Showing <strong>summary from chat</strong>';render();});
+  $('csvfile').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{rows=parseCSV(await file.text());hasRanges=true;$('sourceStatus').innerHTML=`Loaded <strong>${file.name.replace(/[<>]/g,'')}</strong> · ${rows.length} configurations`;render();}
+    catch(err){alert('Could not read summary CSV: '+err.message);event.target.value='';}
+  });
+  render();
+})();
+</script>
+</body>
+</html>

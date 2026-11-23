@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#BSUB -J nscale_two
+#BSUB -q hpcintro
+#BSUB -n 32
+#BSUB -R "span[ptile=16]"
+#BSUB -W 00:30
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/high_ranks_two_%J.out
+#BSUB -eo logs/high_ranks_two_%J.err
+set -euo pipefail
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+printf '\n=== Two nodes, %s slots; hosts: %s ===\n' "${LSB_DJOB_NUMPROC:-?}" "${LSB_MCPU_HOSTS:-?}"
+# Round-robin mapping across both hosts: do not accidentally pack P=8 or 16 on one node.
+mpirun -np 32 --map-by node hostname | sort | uniq -c
+python3 -u run_high_ranks.py --spread \
+    --n 50 100 --ranks 8 16 32 --steps 50000 --repeats 3 --timeout 900 \
+    --output "results/high_ranks_two_${LSB_JOBID}.csv"

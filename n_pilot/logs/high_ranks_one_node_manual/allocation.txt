@@ -1,0 +1,7 @@
+job_id=manual
+topology_requested=one_node
+lsb_slots=unknown
+lsb_hosts=unknown
+cpu=Model name:                              Intel(R) Xeon(R) CPU E5-2660 v3 @ 2.60GHz
+command_template=mpirun -np {P} python3 ParallelImplementation.py --data {DATA} --steps {STEPS} --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+arguments=--n 50 --ranks 16 --steps 10 --repeats 1 --dry-run

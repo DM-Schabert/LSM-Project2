@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#BSUB -J n_pilot
+#BSUB -q hpcintro
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -W 01:00
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/pilot_%J.out
+#BSUB -eo logs/pilot_%J.err
+set -euo pipefail
+# Submit from INSIDE n_pilot/: bsub < jobs/pilot.lsf
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+# 8 allocated slots => maximum MPI rank count is 8.
+python3 -u run_pilot.py \
+    --n 100 1000 5000 \
+    --ranks 2 4 8 \
+    --steps 100 \
+    --repeats 2
