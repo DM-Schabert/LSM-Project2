@@ -690,6 +690,9 @@ def agree_on_stop(comm: MPI.Comm, my_code: int, perf: Perf) -> int:
     return int(result[0])
 
 
+# ---------------------------------------------------------------- Parallel IO
+
+
 # ---------------------------------------------------------------- results
 
 def cpu_model() -> str:

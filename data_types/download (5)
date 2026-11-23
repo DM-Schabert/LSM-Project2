@@ -1,0 +1,4 @@
+# Keep scripts usable on Linux HPC even when staged from Windows Git.
+*.sh text eol=lf
+*.lsf text eol=lf
+*.py text eol=lf

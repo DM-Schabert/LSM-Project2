@@ -51,6 +51,7 @@ DEFAULT_N_VALUES: List[int] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 2000, 
 DEFAULT_OUT_DIR: Path = Path("gaia_subsets")
 DEFAULT_PLOTS_DIR: Path = Path("Plots")
 
+CLUSTER_CENTER: NDArray[np.float64] = [0.0, 0.0, 0.0]
 
 # ---------------------------------------------------------------- 1. Load data
 
@@ -97,7 +98,7 @@ class StarSelector:
     are always nested inside larger ones.
     """
 
-    def __init__(self, data: pd.DataFrame, seed: int) -> None:
+    def __init__(self, data: pd.DataFrame, seed: int, cluster=False: bool) -> None:
         self.data: pd.DataFrame = data
 
         # Random: a fixed seed gives the same stars every time.
@@ -106,7 +107,10 @@ class StarSelector:
 
         # Nearest: the N stars closest to one fixed centre (the median 3D position).
         xyz: NDArray[np.float64] = get_xyz(data)
-        self.center: NDArray[np.float64] = np.median(xyz, axis=0)
+        if cluster:
+            self.center: NDArray[np.float64] = CLUSTER_CENTER
+        else:
+            self.center: NDArray[np.float64] = np.median(xyz, axis=0)
         distance_sq: NDArray[np.float64] = np.sum((xyz - self.center) ** 2, axis=1)
         self.nearest_order: NDArray[np.int64] = np.argsort(distance_sq, kind="stable")
 
@@ -305,4 +309,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main()pass

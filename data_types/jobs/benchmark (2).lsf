@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#BSUB -J dtype_bench
+#BSUB -q hpc
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -W 01:00
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/bench_%J.out
+#BSUB -eo logs/bench_%J.err
+set -euo pipefail
+# Submit from INSIDE data_types/: bsub < jobs/benchmark.lsf
+cd "${LS_SUBCWD:-$PWD}"
+source ./hpc_env.sh
+mkdir -p results
+job="${LSB_JOBID:-manual}"
+file="results/bench_${job}.csv"
+
+for ranks in 2 4 8; do
+  for n in 1000 5000 20000; do
+    echo "--- Benchmark: N=$n ranks=$ranks ---"
+    mpirun -np "$ranks" python3 -u benchmark_allgatherv.py \
+      --n "$n" --iterations 100 --repeats 5 --warmup 5 --output "$file"
+  done
+done
+echo "Finished; raw results: $file"

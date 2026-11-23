@@ -9,3 +9,4 @@ dataGaia2.csv
 /communication/overlap/out/*.lock
 /communication/overlap/out/*local*
 /memory/out/*local*
+/venv
