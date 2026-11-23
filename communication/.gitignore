@@ -1,5 +1,7 @@
 # made again from results/ by the analysis
 out/
+# ... except the overlap experiment's raw data, which is its results/
+!overlap/out/
 # LSF logs of the cluster jobs
 logs/*
 !logs/.gitkeep
