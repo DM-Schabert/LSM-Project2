@@ -1,4 +1,4 @@
-# Communication schemes: how the positions get to the ranks
+# communication: how the positions get to the ranks
 
 Every star feels every other star, so in every time step each rank needs positions it does not own. This folder compares ways of moving them, one at a time, against the same baseline and with the same measurements.
 
@@ -6,13 +6,22 @@ Every star feels every other star, so in every time step each rank needs positio
 
 What we know from the Amdahl campaign (`amdahl/results.html`): on one node and with large N, communication costs almost nothing (N = 5 000, P = 24: about 0.3 ms per step against about 120 ms of computing). With small N it is a large part of each step (N = 50: about a quarter of the step loop). So differences between the schemes will show **at small N, across nodes and at large P**, and hardly at all on one node with large N. Finding that is a result too.
 
+**Answer so far (C2, C3, C4).** Up to N = 20 000 and P = 48 the network is not the limit: the Allgatherv of v1 is 0.12 % of a step at N = 20 000 on two nodes, and v1 nearly doubles its speed from one node to two (×1.98). 2D is slightly better than v1 only at N = 50; the ring loses at small N because it calls the force kernel P times per step. The differences at large N come from the force kernel, not from the bytes sent; that is followed up in depth in `../kernel/`. Why the ring's overlap does not help is this folder's topic in depth: `overlap/`.
+
+```bash
+python3 communication/make_page.py      # C2, C3, C4 from ../results.csv into communication/results.html
+open communication/results.html         # the results; 2d_decomposition.html explains the 2D scheme
+```
+
 ## Layout
 
 | Folder | What goes in |
 |---|---|
 | `../ParallelImplementation.py` | **all three schemes**, chosen with `--decomposition allgather` (v1, default), `ring` (Pelle) or `2d`. One program, so every scheme shares loading, timers, the stop logic and the results row |
-| `2d_decomposition.html` | interactive explanation of the 2D decomposition, with pseudo code, and at the bottom the C2 measurements (expectation against measurement, speed-up, where the time of a step goes); open it in a browser |
-| `make_page.py` | writes the C2 numbers from `../results.csv` into the data block of `2d_decomposition.html` |
+| `results.html` | **the results**: C2 (one node), C3 (two nodes) and C4 (overlap) for all schemes, in the same style as `isoeff/`, `amdahl/` and `gustafson/results.html`; open it in a browser |
+| `make_page.py` | writes the C2/C3 numbers from `../results.csv` into the data block of `results.html`, with the node-speed correction (see below) |
+| `2d_decomposition.html` | interactive explanation of the 2D decomposition, with pseudo code |
+| `overlap/` | **the topic in depth**: why the ring's overlap does not help (eager/rendezvous, progress), with its own README, job, page |
 | `tests/` | C1: `validate.sh` runs every scheme and compares its final state with the serial run (`compare_states.py`) |
 | `bench/` | communication alone, no physics: time per call against message size and P, to fit `T = μ + s/B` |
 | `jobs/` | LSF job scripts (one node, two nodes) |
@@ -68,8 +77,9 @@ Expectations to check:
 | C0 | Communication alone: `Allgatherv`, ring of `Sendrecv`, `Bcast` + `Allreduce`. Fit latency μ and bandwidth B | message sizes of 50 to 100 000 stars | 2 to 24 (48) | 1 and 2 |
 | C1 | Correctness of every scheme against the serial run (`tests/validate.sh`) | 5, 100, 1 000 (5 < P: empty blocks) | 1, 2, 3, 4, 6, 7, 8, 12, 16, 24 | 1 |
 | C2 | Strong scaling per scheme (with the Amdahl framework, one label per scheme) | 50, 100, 1 000, 5 000 | 1 … 24 | 1 |
-| C3 | The same across two nodes | 1 000, 5 000, 20 000 | 8 … 48 | 2 |
-| C4 | Overlap on and off (ring) | 50, 1 000 | 8, 24 | 1 and 2 |
+| C3 | The same across two nodes | 50, 1 000, 5 000, 20 000 | 1 … 48 | 2 |
+| C4 | Overlap on and off (ring) | as C2 and C3 (the two ring labels) | 1 … 48 | 1 and 2 |
+| C6 | In depth: why overlap does not help. Two ranks, one message of 64 B to 4 MB, Isend/Irecv against Sendrecv, with and without Testall (`overlap/`) | — | 2 | 1 and 2 |
 | C5 | Memory per rank against N (peak RSS) | up to the largest that fits | 24 | 1 |
 
 ## Running C0 and getting the results off the cluster
@@ -133,7 +143,7 @@ NODES=2 LABEL=v3-2d-tile-2n PROGRAM_ARGS="--decomposition 2d --tile-rows 0" bash
 
 Every campaign also starts its own analysis job. To compare the schemes, copy `results.csv` and `amdahl/launch_times.csv` to the laptop and run, for example, `python3 amdahl/amdahl_analysis.py --label v1-tile v2-ring-tile v2-ringblk-tile v3-2d-tile --out amdahl/out/schemes`: the per-N plots then show all schemes together. The `decomposition` column in `results.csv` says which scheme and grid each MPI row used (`allgather_block`, `ring_overlap`, `ring_blocking`, `2d_6x4`, …).
 
-For the page, `python3 communication/make_page.py` (default: the four labels above) takes the latest job per label and N and writes the medians into `2d_decomposition.html`. The page compares every scheme with its own run at P = 1, because each sweep ran on a different node and the nodes differ by up to 21 % (serial run at N = 50).
+For the page, `python3 communication/make_page.py` takes the latest job per label and N (the four labels above, and the same with `-2n`) and writes the medians into `results.html`. It also corrects for the speed of the nodes: the serial runs are the same program everywhere, so the median of a node's serial step time against all nodes is its factor (n-62-21-75: 0.88, the other five within 1 %), and every time is divided by the factor of the slowest node of its run. After that correction, C3 repeated C2 (P ≤ 24 on other nodes) within 1–2 %, at most 8 %.
 
 ## Status
 
@@ -141,8 +151,20 @@ C1 on the cluster (job 30082644, `results/validate_30082644.csv`): 228 runs, N =
 
 | Scheme | Expectation written | Implemented | Correct (C1) | Measured, 1 node | Measured, 2 nodes |
 |---|---|---|---|---|---|
-| Allgather (v1) | yes (`docs/Parallel_Plan_v1(1).md`, §3; C0) | yes | **cluster: bit-identical** to serial, 30/30 runs (job 30082644) | yes (`amdahl/`, `--tile-rows 1`) | no |
-| Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | **cluster: 90/90 passed**, ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083334–40): N = 50 collapses, about 70 µs per kernel call × P calls per step; N ≥ 1 000 12–21 % below v1 | no |
-| 2D force decomposition | yes (above, from C0) | yes (16 Nov) | **cluster: 78/78 passed**, bit-identical for p_c = 1, else ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083342–44): N = 50 14 % better than v1, N ≥ 1 000 5–8 % below | no |
+| Allgather (v1) | yes (`docs/Parallel_Plan_v1(1).md`, §3; C0) | yes | **cluster: bit-identical** to serial, 30/30 runs (job 30082644) | yes (`amdahl/`, `--tile-rows 1`) | C3 (jobs 30099619–22): T(24)/T(48) = 1.76 (N = 1 000) to 1.98 (N = 20 000); Allgatherv 0.12 % of the step at N = 20 000 |
+| Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | **cluster: 90/90 passed**, ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083334–40): N = 50 collapses, about 70 µs per kernel call × P calls per step; N ≥ 1 000 12–21 % below v1 | C3 (jobs 30099624–32): N ≤ 1 000 slower on two nodes than on one; N = 5 000 9 % faster than v1 (kernel on 104 × 104 blocks), N = 20 000 34 % slower. C4: overlap 0 to −10 % |
+| 2D force decomposition | yes (above, from C0) | yes (16 Nov) | **cluster: 78/78 passed**, bit-identical for p_c = 1, else ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083342–44): N = 50 14 % better than v1, N ≥ 1 000 5–8 % below | C3 (jobs 30099634–37): N = 50 6 % faster than v1 at P = 48; N ≥ 1 000 2–10 % slower than v1 |
 
 C2 on one node (jobs 30083330–30083344, `--tile-rows 0`, `v1-tile` as the reference) is shown at the bottom of `2d_decomposition.html`. The C0 prediction for the ring missed by a factor of about 90 at N = 50: C0 timed the messages only, but the ring calls the force kernel P times per step and each call has a fixed cost of about 70 µs in Python. At large N the differences between the schemes also come from the kernel (summed kernel time of all ranks at N = 5 000, P = 24, relative to P = 1: v1 1.29, 2D 1.37, ring 1.63), not from the bytes sent.
+
+C3 and C4 on two nodes (jobs 30099619–30099637, 480 runs, all finished, `NODES=2`, P = 1 … 48, N = 50, 1 000, 5 000, 20 000) are on `results.html`. In short: the second node pays off from N ≈ 1 000 on for v1 and 2D (×1.76 to ×1.98 from P = 24 to 48) and makes N = 50 slower for every scheme. The network costs v1 0.12–5 % of a step at N ≥ 1 000. At P = 32 (24 + 8 ranks) the Allgatherv is 4–7 times slower than at P = 48, even for the fastest rank; most likely Open MPI picks another algorithm there (not checked). The overlap of the ring brings nothing on two nodes either. The memory per rank is about 220 MB on one node and 270–300 MB on two, at every N: it is MPI, not the stars (C5 still open).
+
+## Results page
+
+`results.html` stays as it is until `make_page.py` fills its data block. It shows:
+
+- **Tiles:** the network share of v1 at the largest N, what the second node brings, the ring against v1 at N = 5 000, the fastest node.
+- **Charts:** time per step and efficiency against P for all schemes, for one campaign (C2 or C3) and one N, with the point where the second node joins.
+- **Tables:** T(24)/T(48) per scheme and N, the cost of the Allgatherv over the network, overlap on and off, where the time of a step goes, the expectations with their verdicts, the node factors, and every number.
+
+The charts load d3 from cdnjs, so the page needs an internet connection.

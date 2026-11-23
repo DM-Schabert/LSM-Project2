@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ring overlap</title>
+<!-- Made by communication/overlap/make_page.py: only the data block below changes when it runs. Open this file in a browser. -->
+<style>
+  /* One reading column; charts span it. Same style as isoeff/, amdahl/ and gustafson/results.html. */
+  :root {
+    --color-bg: #fcfcfb; --color-fg: #1b1f27; --color-fg-muted: #5d6573; --color-panel: #f3f4f6; --color-border-line: #e2e5ea;
+    --cds-text-secondary: #5d6573; --cds-chart-grid: #eceef2; --cds-chart-axis: #9aa1ac; --cds-chart-reference: #8a919d;
+    --cds-surface-popover: #ffffff; --cds-border: #dde1e6; --cds-shadow-popover: 0 6px 20px rgba(20, 24, 32, .12);
+    --c0: #2a78d6; --c1: #eb6834; --c2: #1baf7a; --c3: #eda100; --c4: #e87ba4; --c5: #6250d6;
+    --q0: #86b6ef; --q1: #5598e7; --q2: #2a78d6; --q3: #1c5cab; --q4: #104281;
+    --p0: #2a78d6; --p1: #eb6834; --p2: #6250d6; --p3: #b4b9c2;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --cds-font-size-caption: 12.5px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 36px;
+    --cds-pad-sm: 6px; --cds-pad-md: 10px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+      --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+      --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+      --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+      --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+      --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+    --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+    --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+    --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+    --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+    --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: var(--cds-font-size-body)/1.5 var(--font-sans); }
+  .iso-page { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .iso-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
+  .iso-select:focus-visible, .iso-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
+  .iso-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+</style>
+<style>
+  .iso { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
+  .iso-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .iso-title { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.2; text-wrap: balance; }
+  .iso-lede { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 68ch; }
+  .iso-meta { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-num { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+
+  .iso-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); min-height: 120px; }
+  .iso-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .iso-tile-n { display: flex; align-items: center; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+  .iso-tile-big { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .iso-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+  .iso-sec { display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .iso-sec-h { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-p { margin: 0; line-height: 1.55; max-width: 72ch; }
+  .iso-note { margin: 0; line-height: 1.5; max-width: 72ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-axis-label { margin: var(--cds-gap-xs) 0 0; color: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+
+  .iso-chart { position: relative; min-height: 260px; }
+  .iso-chart--short { min-height: 190px; }
+  .iso-svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .iso-svg text { font-family: var(--font-sans); }
+  .iso-axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-axis .domain, .iso-axis line { stroke: none; }
+  .iso-baseline { stroke: var(--cds-chart-axis) !important; }
+  .iso-grid line { stroke: var(--cds-chart-grid); stroke-width: 1; }
+  .iso-ref { fill: none; stroke: var(--cds-chart-reference); stroke-width: 1.25; stroke-dasharray: 4 4; }
+  .iso-zero { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .iso-fit { fill: none; stroke-width: 1.25; stroke-dasharray: 2 3; opacity: .9; }
+  .iso-bound { fill: none; stroke-width: 1.25; stroke-dasharray: 6 4; opacity: .75; }
+  .iso-dot { stroke: var(--color-bg); stroke-width: 2; }
+  .iso-whisker { stroke-width: 1.5; }
+  .iso-end { fill: var(--color-fg); font-size: var(--cds-font-size-caption); }
+  .iso-cross { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-total { stroke: var(--color-fg); stroke-width: 2.5; }
+  .iso-ink { fill: var(--color-fg); }
+  .iso-ring { fill: var(--color-bg); stroke: var(--color-fg); stroke-width: 2; }
+  .iso-link { stroke: var(--cds-chart-reference); stroke-width: 2; }
+  .iso-vlabel { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-hit { fill: transparent; cursor: crosshair; }
+
+  .iso-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); margin-bottom: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .iso-key { display: inline-flex; align-items: center; gap: 6px; }
+  .iso-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .iso-swatch--ref { width: 16px; height: 0; border-top: 1.5px dashed var(--cds-chart-reference); border-radius: 0; }
+  .iso-swatch--fit { width: 16px; height: 0; border-top: 1.5px dotted var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--bound { width: 16px; height: 0; border-top: 1.5px dashed var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--total { width: 14px; height: 0; border-top: 2.5px solid var(--color-fg); border-radius: 0; }
+  .iso-swatch--ink { background: var(--color-fg); transform: rotate(45deg); width: 8px; height: 8px; border-radius: 1px; }
+  .iso-swatch--dot { background: var(--color-fg); border-radius: 50%; }
+  .iso-swatch--ring { background: var(--color-bg); border: 2px solid var(--color-fg); border-radius: 50%; width: 8px; height: 8px; }
+
+  .iso-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); line-height: 1.5; min-width: 150px; max-width: 260px; font-variant-numeric: tabular-nums; }
+  .iso-tip-h { font-weight: var(--cds-font-weight-medium); margin-bottom: 2px; }
+  .iso-tip-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .iso-tip-row span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--cds-text-secondary); }
+  .iso-empty { margin: 0; padding: var(--cds-pad-lg) 0; color: var(--color-fg-muted); }
+
+  .iso-controls { display: flex; align-items: center; gap: var(--cds-gap-sm); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+  .iso-table-wrap { overflow-x: auto; min-width: 0; }
+  .iso-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-table th { text-align: right; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table th:first-child, .iso-table td:first-child { text-align: left; }
+  .iso-table .iso-left { text-align: left; }
+  .iso-now td { font-weight: var(--cds-font-weight-medium); }
+
+  .iso-details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+  .iso-details summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .iso-details ul { margin: var(--cds-gap-sm) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 76ch; }
+  .iso-details code { font-size: .95em; }
+  .iso-hidden { display: none !important; }
+  .iso-sec[hidden] { display: none; }
+  .iso-sec-h3 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-fail { fill: none; stroke-width: 1.75; }
+  .iso-swatch--fail { background: transparent; border: 1.75px solid var(--color-fg-muted); border-radius: 50%; width: 9px; height: 9px; }
+  .iso-log { margin: var(--cds-gap-sm) 0 0; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line);
+             border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); line-height: 1.5; white-space: pre-wrap; overflow-x: auto; }
+  .iso-controls span { color: var(--color-fg-muted); }
+  .iso-table td.iso-wrap { white-space: normal; min-width: 14ch; max-width: 36ch; }
+  .iso-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
+<style>
+  .iso-yes { color: var(--c2); font-weight: var(--cds-font-weight-medium); }
+  .iso-no { color: var(--c1); font-weight: var(--cds-font-weight-medium); }
+  .iso-table td.iso-text { white-space: normal; text-align: left; min-width: 22ch; max-width: 46ch; line-height: 1.45; }
+  .iso-hyp { margin: 0; padding: var(--cds-pad-md) var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); line-height: 1.55; max-width: 76ch; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+<script id="overlap-data" type="application/json">{}</script>
+<div class="iso-page">
+<div class="iso">
+  <header class="iso-head">
+    <h1 class="iso-title">Why the ring's overlap does not help</h1>
+    <p class="iso-lede">The ring can start sending the next block (<code class="iso-code">Isend</code>/<code class="iso-code">Irecv</code>) and compute while it travels. In C4 that brought nothing, on one node and on two, and at small N it cost 7–10 %. Here two ranks exchange one message of each size while they compute with the force kernel, to see whether the transfer is hidden at all, and why not.</p>
+    <p class="iso-meta" id="meta">—</p>
+    <p class="iso-offline" id="offline" hidden>The charts need d3 from cdnjs.cloudflare.com. Open this page with an internet connection.</p>
+    <p class="iso-offline" id="empty" hidden>No measurements yet. Run <code class="iso-code">bsub &lt; communication/overlap/overlap_batch.sh</code> on the cluster, copy <code class="iso-code">communication/overlap/out/overlap_&lt;job&gt;.csv</code> back and run <code class="iso-code">python3 communication/overlap/make_page.py</code>.</p>
+  </header>
+
+  <p class="iso-hyp"><b>Hypothesis.</b> MPI moves a message only while the program is inside an MPI call; nothing runs in the background. A small message (below the eager limit) is copied out at <code class="iso-code">Isend</code> and has arrived by the time the computation ends. A large one (rendezvous protocol) first needs a handshake between the two ranks, which only happens inside an MPI call, so the whole transfer starts at <code class="iso-code">Waitall</code>, after the computation: nothing is hidden. Calling <code class="iso-code">Testall</code> between the kernel tiles drives the transfer on and should hide it after all. And in our runs the transfers are so short against the computation that overlap could not have shown even if it had worked.</p>
+
+  <div class="iso-tiles" id="tiles"></div>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">How much of the transfer is hidden</h2>
+    <p class="iso-p">Share of the transfer that is hidden behind the kernel: 1 − (time in <code class="iso-code">Waitall</code>) / T<sub>comm</sub>, where T<sub>comm</sub> is the same exchange with <code class="iso-code">Sendrecv</code> and no computation. At 1 the message has arrived when the computation ends; at 0 the whole transfer happens in <code class="iso-code">Waitall</code>. Dashed: the message size of the ring at N = 5 000 and 20 000, P = 48. The x axis is logarithmic.</p>
+    <div class="iso-controls"><label for="pick-pl">Ranks</label><select id="pick-pl" class="iso-select"></select></div>
+    <div class="iso-legend" id="legend-a"></div>
+    <p class="iso-axis-label">Share of the transfer hidden</p>
+    <div class="iso-chart" id="chart-a"></div>
+    <p class="iso-axis-label" style="text-align:right">Message size (bytes, each direction)</p>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Where the transfer time ends up</h2>
+    <p class="iso-p">Same ranks as above. The transfer alone against the time left in <code class="iso-code">Waitall</code> after the computation. If the hypothesis holds, the waiting line lies on the transfer line for large messages without <code class="iso-code">Testall</code>, and near the bottom with it. Both axes are logarithmic.</p>
+    <div class="iso-legend" id="legend-b"></div>
+    <p class="iso-axis-label">Time (µs)</p>
+    <div class="iso-chart" id="chart-b"></div>
+    <p class="iso-axis-label" style="text-align:right">Message size (bytes, each direction)</p>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">What overlap could have saved in our runs</h2>
+    <p class="iso-p">Every run of the ring in C2 and C3. A message carries ⌈N/P⌉ positions of 24 bytes; per step there are P − 1 of them. The most overlap could ever save is all of their transfer time, (P − 1) · T<sub>comm</sub>, measured above (one node: same-node pair; two nodes: the pair across nodes, because the slowest hop sets the pace). Against that: what overlap actually changed in C4.</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="bound-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">The other explanations</h2>
+    <p class="iso-p">Posting costs: does <code class="iso-code">Irecv</code> + <code class="iso-code">Isend</code> + <code class="iso-code">Waitall</code> cost more than one <code class="iso-code">Sendrecv</code> for small messages? Slower kernel: does the transfer in the background slow the computation down?</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="other-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Expectation against measurement</h2>
+    <p class="iso-p">The expectations and the rule for each verdict were written into <code class="iso-code">communication/overlap/README.md</code> before the first measurement; the page applies the rules to the data.</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="expect-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <details class="iso-details">
+      <summary>Every measured point</summary>
+      <div class="iso-table-wrap"><table class="iso-table" id="all-table"></table></div>
+    </details>
+    <details class="iso-details">
+      <summary>How it is measured</summary>
+      <ul>
+        <li>Two ranks, each sends m bytes to the other and receives m bytes, as two neighbours of the ring do in every round. Same node: <code class="iso-code">--map-by core</code> (cores 0 and 1); two nodes: <code class="iso-code">--map-by ppr:1:node</code>. Two full nodes are reserved, so no other job shares them.</li>
+        <li>The computation is the real force kernel in tiles of 2 × 1 000 pairs (they fit into the L2 cache), so many tiles take about twice as long as the transfer, at least 4 tiles. Polling: one <code class="iso-code">Testall</code> after every tile until the requests are done.</li>
+        <li>Every iteration starts after a barrier; the slower of the two ranks counts. Per size and mode the median of 30 iterations; the sizes run three times (the second time in reverse order), and the page shows the median over the three.</li>
+        <li>The job log lists the transport Open MPI uses (UCX or ob1) and its eager and rendezvous limits, to compare with the measured switch.</li>
+      </ul>
+    </details>
+  </section>
+</div>
+</div>
+
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('overlap-data').textContent || '{}');
+  const PTS = DATA.points || [], META = DATA.meta || {}, RING = DATA.ring || [];
+  if (!PTS.length) { document.getElementById('empty').hidden = false; return; }
+  const HAS_D3 = typeof d3 !== 'undefined';
+  if (!HAS_D3) document.getElementById('offline').hidden = false;
+
+  const nf = (v, d = 0) => v == null || !isFinite(v) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const bytes = (b) => b == null ? '—' : b >= 1048576 ? `${nf(b / 1048576, b % 1048576 ? 1 : 0)} MB` : b >= 1024 ? `${nf(b / 1024, b % 1024 ? 1 : 0)} KB` : `${nf(b)} B`;
+  const us = (v) => v == null || !isFinite(v) ? '—' : v >= 100 ? nf(v, 0) : v >= 10 ? nf(v, 1) : nf(v, 2);
+  const pct = (v, d = 0) => v == null || !isFinite(v) ? '—' : `${nf(v * 100, d)} %`;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const median = (xs) => { const v = xs.filter((x) => x != null && isFinite(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+  const table = (id, head, rows, left = 1) => {
+    document.getElementById(id).innerHTML = `<thead><tr>${head.map((h, i) => `<th${i < left ? ' class="iso-left"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${
+      rows.map((r) => `<tr>${r.map((c, i) => `<td${i < left ? ' class="iso-left"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody>`; };
+
+  // ---------- derived numbers per placement and size
+  const PLACES = (META.placements || []).map((p) => p.placement);
+  const PNAME = { intra: 'same node', inter: 'two nodes' };
+  const at = (pl, m, mode) => PTS.find((p) => p.placement === pl && p.bytes === m && p.mode === mode);
+  const SIZES = [...new Set(PTS.map((p) => p.bytes))].sort((a, b) => a - b);
+  const tcomm = (pl, m) => (at(pl, m, 'comm') || {}).total_us;
+  const hidden = (pl, m, mode) => { const t = tcomm(pl, m), p = at(pl, m, mode); return t && p ? 1 - p.wait_us / t : null; };
+  const gain = (pl, m, mode) => { const b = at(pl, m, 'blocking'), p = at(pl, m, mode); return b && p ? b.total_us - p.total_us : null; };
+  const sw = (pl) => { let s = null; for (let i = SIZES.length - 1; i >= 0; i--) { const h = hidden(pl, SIZES[i], 'nonblocking'); if (h == null) continue; if (h < 0.5) s = SIZES[i]; else break; } return s; };
+  const tcommAt = (pl, m) => {   // T_comm at any size: log-log interpolation, clamped at the smallest size
+    const pts = SIZES.map((s) => ({ x: s, y: tcomm(pl, s) })).filter((q) => q.y);
+    if (!pts.length) return null;
+    if (m <= pts[0].x) return pts[0].y;
+    for (let i = 1; i < pts.length; i++) if (m <= pts[i].x) { const f = Math.log(m / pts[i - 1].x) / Math.log(pts[i].x / pts[i - 1].x); return Math.exp(Math.log(pts[i - 1].y) + f * Math.log(pts[i].y / pts[i - 1].y)); }
+    const a = pts[pts.length - 2], b = pts[pts.length - 1]; return b.y * (m / b.x) ** (Math.log(b.y / a.y) / Math.log(b.x / a.x)); };
+  const big = SIZES.filter((m) => m >= 65536), small = SIZES.filter((m) => m <= 1024);
+  const per = Object.fromEntries(PLACES.map((pl) => [pl, {
+    sw: sw(pl), hidNb: median(big.map((m) => hidden(pl, m, 'nonblocking'))), hidPoll: median(big.map((m) => hidden(pl, m, 'polling'))),
+    waitSmall: median(small.map((m) => (at(pl, m, 'nonblocking') || {}).wait_us)), waitBig: median(big.map((m) => { const p = at(pl, m, 'nonblocking'), t = tcomm(pl, m); return p && t ? p.wait_us / t : null; })),
+    postCost: median(small.map((m) => { const g = gain(pl, m, 'nonblocking'); return g == null ? null : -g; })),
+    compSlow: median(big.map((m) => { const p = at(pl, m, 'nonblocking'), c = at(pl, m, 'compute'); return p && c ? p.compute_us / c.total_us : null; })) }]));
+  const ringPl = (r) => (r.nodes > 1 && r.P > 24 ? 'inter' : 'intra');
+  const BOUND = RING.slice().sort((a, b) => a.campaign.localeCompare(b.campaign) || a.N - b.N || a.P - b.P).filter((r) => r.P > 1).map((r) => {
+    const m = Math.ceil(r.N / r.P) * 24, pl = PLACES.includes(ringPl(r)) ? ringPl(r) : PLACES[0], t = tcommAt(pl, m);
+    return { r, m, pl, t, bound: t != null ? (r.P - 1) * t / r.blocking_us : null, c4: r.overlap_us / r.blocking_us - 1, perHop: (r.overlap_us - r.blocking_us) / (r.P - 1) }; });
+
+  // ---------- meta, tiles
+  document.getElementById('meta').innerHTML = [`Job ${esc(META.job)}`, ...(META.placements || []).map((p) => `${PNAME[p.placement] || p.placement}: ${esc(p.hosts)} (cpus ${esc(p.cpus)})`),
+    `kernel tile ${nf(median((META.placements || []).map((p) => +p.tile_us)))} µs`, `page made ${esc(META.made)}`].join(' · ');
+  const big5 = BOUND.filter((b) => b.r.N >= 5000 && b.bound != null);
+  const maxBound = big5.length ? big5.reduce((m, b) => (b.bound > m.bound ? b : m)) : null;
+  const tiles = PLACES.map((pl) => ({ n: `Switch, ${PNAME[pl] || pl}`, big: bytes(per[pl].sw), sub: 'from this size on, less than half of the transfer is hidden' }))
+    .concat([{ n: 'Large messages (≥ 64 KB) hidden', big: PLACES.map((pl) => pct(per[pl].hidNb)).join(' / '), sub: `without Testall (${PLACES.map((p) => PNAME[p] || p).join(' / ')}); with Testall ${PLACES.map((pl) => pct(per[pl].hidPoll)).join(' / ')}` },
+      { n: 'Most overlap could save, N ≥ 5 000', big: maxBound ? pct(maxBound.bound, 2) : '—', sub: maxBound ? `of a step (${maxBound.r.campaign}, N = ${nf(maxBound.r.N)}, P = ${maxBound.r.P})` : 'no ring runs found' }]);
+  document.getElementById('tiles').innerHTML = tiles.map((t) => `<div class="iso-tile"><div class="iso-tile-n">${esc(t.n)}</div><div class="iso-tile-big">${t.big}</div><div class="iso-tile-sub">${esc(t.sub)}</div></div>`).join('');
+
+  // ---------- tables
+  table('bound-table', ['Campaign', 'N', 'P', 'Message', 'T<sub>comm</sub> (µs)', 'Step, blocking (ms)', 'Most overlap could save', 'C4: overlap against blocking', 'per hop (µs)'],
+    BOUND.map((b) => [b.r.campaign, nf(b.r.N), nf(b.r.P), bytes(b.m), us(b.t), nf(b.r.blocking_us / 1000, b.r.blocking_us < 10000 ? 3 : 1), pct(b.bound, 2),
+      `${b.c4 >= 0 ? '+' : '−'}${nf(Math.abs(b.c4) * 100, 1)} %`, `${b.perHop >= 0 ? '+' : '−'}${us(Math.abs(b.perHop))}`]), 1);
+  table('other-table', ['Ranks', 'Waitall, messages ≤ 1 KB (µs)', 'Non-blocking costs more, ≤ 1 KB (µs per exchange)', 'Kernel during a transfer ≥ 64 KB', 'Waitall / T<sub>comm</sub>, ≥ 64 KB'],
+    PLACES.map((pl) => [PNAME[pl] || pl, us(per[pl].waitSmall), us(per[pl].postCost), per[pl].compSlow ? `×${nf(per[pl].compSlow, 3)}` : '—', per[pl].waitBig ? nf(per[pl].waitBig, 2) : '—']));
+  table('all-table', ['Ranks', 'Size', 'Mode', 'Total (µs)', 'fastest / slowest sweep', 'Post', 'Compute', 'Wait', 'Tiles', 'Testall calls'],
+    PTS.slice().sort((a, b) => a.placement.localeCompare(b.placement) || a.bytes - b.bytes || ['comm', 'compute', 'blocking', 'nonblocking', 'polling'].indexOf(a.mode) - ['comm', 'compute', 'blocking', 'nonblocking', 'polling'].indexOf(b.mode))
+      .map((p) => [PNAME[p.placement] || p.placement, bytes(p.bytes), p.mode, us(p.total_us), `${us(p.total_min_us)} / ${us(p.total_max_us)}`, us(p.post_us), us(p.compute_us), us(p.wait_us), nf(p.n_tiles), nf(p.tests)]), 3);
+
+  // ---------- expectations (rules in README.md, written before measuring)
+  const all = (f) => PLACES.length ? PLACES.every((pl) => { const v = f(per[pl]); return v === true; }) : null;
+  const anyNull = (f) => PLACES.some((pl) => f(per[pl]) == null);
+  const show = (f) => PLACES.map((pl) => `${PNAME[pl] || pl}: ${f(per[pl])}`).join('; ');
+  const n50 = BOUND.filter((b) => b.r.N === 50 && b.r.P >= 8).map((b) => b.perHop / per[b.pl].postCost);
+  const r50 = median(n50);
+  const E = [
+    ['Small messages have arrived when the computation ends: for messages ≤ 1 KB, Waitall only returns.', 'Median time in Waitall for sizes ≤ 1 KB at most 3 µs, on one node and on two.',
+     show((p) => `${us(p.waitSmall)} µs`), anyNull((p) => p.waitSmall) ? null : all((p) => p.waitSmall <= 3)],
+    ['Large messages are not hidden without progress calls: the whole transfer happens in Waitall.', 'For sizes ≥ 64 KB, at most 20 % of the transfer hidden (median), on one node and on two.',
+     show((p) => pct(p.hidNb)), anyNull((p) => p.hidNb) ? null : all((p) => p.hidNb <= 0.2)],
+    ['Testall between the kernel tiles drives the transfer on and hides it.', 'For sizes ≥ 64 KB with Testall, at least 70 % of the transfer hidden (median), on one node and on two.',
+     show((p) => pct(p.hidPoll)), anyNull((p) => p.hidPoll) ? null : all((p) => p.hidPoll >= 0.7)],
+    ['The switch from hidden to not hidden lies at the eager/rendezvous limit, which is a few KB.', 'The smallest size from which less than half is hidden at every larger size lies between 1 KB and 64 KB, on one node and on two (compare with the limits in the job log).',
+     show((p) => bytes(p.sw)), anyNull((p) => p.sw) ? null : all((p) => p.sw >= 1024 && p.sw <= 65536)],
+    ['A transfer in the background does not slow the kernel down.', 'Kernel time during a non-blocking transfer ≥ 64 KB at most ×1.05 the kernel alone (median), on one node and on two.',
+     show((p) => (p.compSlow ? `×${nf(p.compSlow, 3)}` : '—')), anyNull((p) => p.compSlow) ? null : all((p) => p.compSlow <= 1.05)],
+    ['For small messages, Irecv + Isend + Waitall cost a few µs more than one Sendrecv.', 'Non-blocking minus blocking, sizes ≤ 1 KB, between 0 and 15 µs per exchange (median), on one node and on two.',
+     show((p) => `${us(p.postCost)} µs`), anyNull((p) => p.postCost) ? null : all((p) => p.postCost >= 0 && p.postCost <= 15)],
+    ['In our runs overlap could not have shown at large N even if it had worked: the transfers are too short against the computation.', 'For every ring run of C2 and C3 with N ≥ 5 000, (P − 1) · T<sub>comm</sub> below 3 % of the step.',
+     maxBound ? `at most ${pct(maxBound.bound, 2)}` : '—', maxBound ? big5.every((b) => b.bound < 0.03) : null],
+    ['The loss of the overlap ring at N = 50 is the extra cost of the non-blocking calls.', 'Measured loss per hop in C2 and C3 (N = 50, P ≥ 8) between half and twice the extra cost above (median).',
+     r50 != null ? `×${nf(r50, 1)} the extra cost` : '—', r50 == null ? null : r50 >= 0.5 && r50 <= 2],
+  ];
+  table('expect-table', ['Expectation (before measuring)', 'Rule for "yes"', 'Measured', 'Correct?'],
+    E.map(([e, r, m, ok]) => [e, r, m, ok == null ? '—' : ok ? '<span class="iso-yes">yes</span>' : '<span class="iso-no">no</span>']), 2);
+  document.querySelectorAll('#expect-table td:nth-child(-n+3)').forEach((td) => td.classList.add('iso-text'));
+
+  if (!HAS_D3) return;
+
+  // ---------- charts
+  const chart = (el, o) => {
+    el.innerHTML = '';
+    const W = Math.max(320, el.clientWidth || 640), H = o.height || 280, m = { top: 14, right: 96, bottom: 28, left: 52 };
+    const pts = o.series.flatMap((s) => s.points.map((p) => ({ ...p, s }))).filter((p) => p.y != null && isFinite(p.y));
+    if (!pts.length) { el.innerHTML = '<p class="iso-empty">No points.</p>'; return; }
+    const x = d3.scaleLog().base(2).domain([SIZES[0] / 1.3, SIZES[SIZES.length - 1] * 1.3]).range([m.left, W - m.right]);
+    const ys = pts.map((p) => p.y);
+    const y = o.yLog ? d3.scaleLog().domain([Math.max(0.1, d3.min(ys) / 1.5), d3.max(ys) * 1.5]).range([H - m.bottom, m.top])
+      : d3.scaleLinear().domain(o.yDomain).range([H - m.bottom, m.top]);
+    const yt = o.yLog ? y.ticks(6).filter((v) => /^1/.test(v.toExponential())) : y.ticks(5);
+    const svg = d3.select(el).append('svg').attr('class', 'iso-svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', o.label);
+    svg.append('g').attr('class', 'iso-grid').selectAll('line').data(yt).join('line').attr('x1', m.left).attr('x2', W - m.right).attr('y1', (v) => y(v)).attr('y2', (v) => y(v));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(0,${H - m.bottom})`).call(d3.axisBottom(x).tickValues(SIZES.filter((s) => Math.log2(s) % 2 === 0)).tickFormat(bytes).tickSize(0).tickPadding(8));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(${m.left},0)`).call(d3.axisLeft(y).tickValues(yt).tickFormat(o.yFmt).tickSize(0).tickPadding(8));
+    svg.append('line').attr('class', 'iso-baseline').attr('x1', m.left).attr('x2', W - m.right).attr('y1', H - m.bottom).attr('y2', H - m.bottom);
+    (o.refY || []).forEach((r) => { svg.append('line').attr('class', 'iso-ref').attr('x1', m.left).attr('x2', W - m.right).attr('y1', y(r.y)).attr('y2', y(r.y));
+      svg.append('text').attr('class', 'iso-end').attr('x', W - m.right + 6).attr('y', y(r.y) + 4).text(r.label); });
+    (o.refX || []).forEach((r, i) => { svg.append('line').attr('class', 'iso-ref').attr('x1', x(r.x)).attr('x2', x(r.x)).attr('y1', m.top).attr('y2', H - m.bottom);
+      svg.append('text').attr('class', 'iso-end').attr('x', x(r.x) + 4).attr('y', m.top + 10 + 13 * i).text(r.label); });
+    const line = d3.line().defined((p) => p.y != null && isFinite(p.y)).x((p) => x(p.x)).y((p) => y(o.clamp ? o.clamp(p.y) : p.y));
+    o.series.forEach((s) => {
+      svg.append('path').attr('class', 'iso-line').style('stroke', s.color).attr('d', line(s.points));
+      svg.append('g').selectAll('circle').data(s.points.filter((p) => p.y != null && isFinite(p.y))).join('circle').attr('class', 'iso-dot').style('fill', s.color).attr('r', 3.5)
+        .attr('cx', (p) => x(p.x)).attr('cy', (p) => y(o.clamp ? o.clamp(p.y) : p.y)); });
+    const ends = o.series.map((s) => { const q = s.points.filter((p) => p.y != null && isFinite(p.y)); const p = q[q.length - 1]; return p ? { s, x: x(p.x), y: y(o.clamp ? o.clamp(p.y) : p.y) } : null; }).filter(Boolean).sort((a, b) => a.y - b.y);
+    ends.forEach((e, i) => { if (i && e.y - ends[i - 1].y < 13) e.y = ends[i - 1].y + 13; });
+    ends.forEach((e) => svg.append('text').attr('class', 'iso-end').attr('x', e.x + 8).attr('y', e.y + 4).text(e.s.name));
+    const tip = d3.select(el).append('div').attr('class', 'iso-tip').attr('hidden', true);
+    const cross = svg.append('line').attr('class', 'iso-cross').attr('y1', m.top).attr('y2', H - m.bottom).attr('visibility', 'hidden');
+    svg.append('rect').attr('class', 'iso-hit').attr('x', m.left).attr('y', m.top).attr('width', W - m.left - m.right).attr('height', H - m.top - m.bottom)
+      .on('pointermove', (ev) => {
+        const [px] = d3.pointer(ev), s = d3.least(SIZES, (v) => Math.abs(x(v) - px));
+        cross.attr('x1', x(s)).attr('x2', x(s)).attr('visibility', 'visible');
+        tip.attr('hidden', null).html(o.tip(s));
+        const box = el.getBoundingClientRect(), sc = box.width / W;
+        tip.style('left', `${Math.max(0, Math.min(x(s) * sc + 12, box.width - 270))}px`).style('top', '0px'); })
+      .on('pointerleave', () => { tip.attr('hidden', true); cross.attr('visibility', 'hidden'); });
+  };
+  const row = (a, b) => `<div class="iso-tip-row"><span>${a}</span><span>${b}</span></div>`;
+  const legend = (id, items) => { document.getElementById(id).innerHTML = items.map((i) => `<span class="iso-key"><span class="iso-swatch${i.cls ? ' ' + i.cls : ''}"${i.color ? ` style="background:${i.color}"` : ''}></span>${i.name}</span>`).join(''); };
+  const pick = document.getElementById('pick-pl');
+  pick.innerHTML = PLACES.map((p) => `<option value="${p}">${PNAME[p] || p}</option>`).join('');
+  if (PLACES.includes('inter')) pick.value = 'inter';
+  const ringRefs = [[5000, 48], [20000, 48]].map(([n, p]) => ({ x: Math.ceil(n / p) * 24, label: `ring N = ${n / 1000}k` })).filter((r) => r.x >= SIZES[0] && r.x <= SIZES[SIZES.length - 1]);
+  const tipSize = (pl, s) => { const nb = at(pl, s, 'nonblocking'), po = at(pl, s, 'polling');
+    return `<div class="iso-tip-h">${bytes(s)}, ${PNAME[pl] || pl}</div>` + row('transfer alone', `${us(tcomm(pl, s))} µs`) + row('compute', `${us((at(pl, s, 'compute') || {}).total_us)} µs`)
+      + row('Waitall, non-blocking', `${us(nb && nb.wait_us)} µs`) + row('Waitall, with Testall', `${us(po && po.wait_us)} µs`)
+      + row('hidden: non-blocking', pct(hidden(pl, s, 'nonblocking'))) + row('hidden: with Testall', pct(hidden(pl, s, 'polling')))
+      + row('saved against blocking', `${us(gain(pl, s, 'nonblocking'))} / ${us(gain(pl, s, 'polling'))} µs`); };
+  const draw = () => {
+    const pl = pick.value;
+    const sa = [{ name: 'non-blocking', color: 'var(--c1)', mode: 'nonblocking' }, { name: 'with Testall', color: 'var(--c0)', mode: 'polling' }]
+      .map((s) => ({ ...s, points: SIZES.map((m) => ({ x: m, y: hidden(pl, m, s.mode) })) }));
+    legend('legend-a', sa.map((s) => ({ name: s.name, color: s.color })).concat([{ name: 'all hidden (1), nothing hidden (0), ring messages', cls: 'iso-swatch--ref' }]));
+    chart(document.getElementById('chart-a'), { series: sa, yDomain: [-0.25, 1.15], clamp: (v) => Math.max(-0.25, Math.min(1.15, v)), yFmt: (v) => pct(v), refY: [{ y: 1, label: 'all' }, { y: 0, label: 'none' }],
+      refX: ringRefs, label: 'Share of the transfer hidden against message size', tip: (s) => tipSize(pl, s) });
+    const sb = [{ name: 'transfer alone', color: 'var(--color-fg-muted)', f: (m) => tcomm(pl, m) }, { name: 'Waitall, non-blocking', color: 'var(--c1)', f: (m) => (at(pl, m, 'nonblocking') || {}).wait_us },
+      { name: 'Waitall, Testall', color: 'var(--c0)', f: (m) => (at(pl, m, 'polling') || {}).wait_us }].map((s) => ({ ...s, points: SIZES.map((m) => ({ x: m, y: s.f(m) > 0 ? s.f(m) : null })) }));
+    legend('legend-b', sb.map((s) => ({ name: s.name, color: s.color })));
+    chart(document.getElementById('chart-b'), { series: sb, yLog: true, yFmt: (v) => nf(v), label: 'Transfer time and time left in Waitall against message size', tip: (s) => tipSize(pl, s) });
+  };
+  pick.addEventListener('change', draw);
+  draw();
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 150); });
+})();
+</script>
+</body>
+</html>
