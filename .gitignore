@@ -8,3 +8,4 @@ dataGaia2.csv
 /kernel/out/*local*
 /communication/overlap/out/*.lock
 /communication/overlap/out/*local*
+/memory/out/*local*
