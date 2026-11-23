@@ -87,7 +87,7 @@
       <table class="iso-table">
         <thead><tr><th>Page</th><th>Question</th><th>Answer</th></tr></thead>
         <tbody>
-          <tr><td class="iso-nowrap"><a href="amdahl/results.html">Amdahl</a></td><td>How does v1 scale on one node?</td><td>Efficiency at P = 24 rises from 38 % (N = 50) to 97 % (N = 5 000). About 0.1 ms per step does not get faster with more ranks.</td></tr>
+          <tr><td class="iso-nowrap"><a href="amdahl/results.html">Amdahl</a></td><td>How does v1 scale on one node?</td><td>Efficiency at P = 24 rises from 38 % (N = 50) to 97 % (N = 5 000). The serial fraction, about 0.1 ms per step, does not get faster with more ranks.</td></tr>
           <tr><td class="iso-nowrap"><a href="communication/results.html">Communication schemes</a></td><td>Allgather, ring or 2D, on one node and on two?</td><td>v1 is the best or equal from N = 1 000 on. The network costs at most 0.7 % of a step from N = 5 000 on.</td></tr>
           <tr><td class="iso-nowrap"><a href="communication/2d_decomposition.html">2D decomposition</a></td><td>How does 2D split the work?</td><td>Interactive explainer with pseudo code, no measurements.</td></tr>
           <tr><td class="iso-nowrap"><a href="communication/overlap/results.html">Overlap</a></td><td>Why does the ring's overlap not help?</td><td>On one node nothing is hidden, across two nodes about 40 %, and there is almost nothing to hide.</td></tr>
@@ -121,7 +121,7 @@
     <h3 class="iso-sec-h3">Amdahl (<a href="amdahl/results.html">details</a>)</h3>
     <ul class="iso-list">
       <li>At N = 5 000, S(24) = 23.3 (97 %). At N = 50 it stops at S(24) = 9.1 (38 %).</li>
-      <li>About 0.1 ms per step does not get faster with more ranks, whatever N is. At small N that is a large share: the uneven split of the stars, the Allgather latency and the fixed Python work per step.</li>
+      <li>The serial fraction s of Amdahl's law (lecture 8), about 0.1 ms per step, does not get faster with more ranks, whatever N is. At small N that is a large share: the uneven split of the stars, the Allgather latency and the fixed Python work per step.</li>
       <li>Every launch costs 1.80 s plus 28 ms per rank before the first step.</li>
     </ul>
 
@@ -162,7 +162,7 @@
         </tbody>
       </table>
     </div>
-    <p class="iso-note">1 GB per rank is the LSF reservation of our jobs (<span class="iso-code">rusage[mem=1GB]</span>), not a hard limit. Even in the most generous case time comes first, by a factor of 3.6.</p>
+    <p class="iso-note">1 GB per rank is the LSF reservation of our jobs (<span class="iso-code">rusage[mem=1GB]</span>), not a hard limit. Even in the most generous case time comes first, by a factor of 3.6. All limits are estimates from the measured bytes per star, bytes per pair and time per pair, not runs at these sizes.</p>
 
     <h3 class="iso-sec-h3">Side findings</h3>
     <ul class="iso-list">
@@ -217,9 +217,9 @@
   <section class="iso-sec">
     <h2 class="iso-sec-h">Other pages in the repository</h2>
     <ul class="iso-list">
-      <li><a href="isoeff/results.html">Isoefficiency</a>: how far a code version scales, and how much N has to grow to keep adding ranks worthwhile.</li>
+      <li><a href="isoeff/results.html">Isoefficiency</a>: how far a code version scales, and how much N has to grow to keep adding ranks worthwhile (the scale-up of lecture 8; isoefficiency and the marginal-efficiency criterion are our own additions, not from the lecture).</li>
       <li><a href="gustafson/results.html">Gustafson scaling</a>: weak scaling of v1. The framework is ready, but nothing has been measured yet (the page is empty).</li>
-      <li><a href="data_types/README%20(2).md">MPI datatypes</a>: a derived datatype for (x, y, z) in the Allgatherv, as a microbenchmark (raw numbers in <a href="data_types/results/summary.csv">results/summary.csv</a>; no written result yet).</li>
+      <li><a href="data_types/README%20(2).md">MPI datatypes</a>: a derived datatype for (x, y, z) in the Allgatherv, as a microbenchmark (raw numbers in <a href="data_types/results/summary.csv">results/summary.csv</a>; no written result yet). No consistent gain, as lecture 8 leads one to expect: derived types mainly save a temporary buffer for non-contiguous data, and the (N, 3) positions are contiguous.</li>
       <li><a href="experiments/README.md">Redistribution after merging</a>: whether handing merged stars to new owners at once pays off (5.7&nbsp;% faster in five repeats on four ranks).</li>
     </ul>
   </section>

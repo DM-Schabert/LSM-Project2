@@ -213,7 +213,7 @@
     <ol class="agenda">
       <li><a href="#s-setup">Setup<span>one time step, hardware, correctness</span></a></li>
       <li><a href="#s-amdahl">Strong scaling<span>Amdahl, v1 on one node</span></a></li>
-      <li><a href="#s-isoeff">How many stars fit<span>isoefficiency, 10&nbsp;000 steps in 300&nbsp;s</span></a></li>
+      <li><a href="#s-isoeff">How many stars fit<span>scale-up: 10&nbsp;000 steps in 300&nbsp;s</span></a></li>
       <li><a href="#s-schemes">Communication schemes<span>Allgather, ring, 2D on one and two nodes</span></a></li>
       <li><a href="#s-ov">In depth: overlap<span>why hiding the transfer does not help</span></a></li>
       <li><a href="#s-mem">In depth: memory<span>what fills a rank, which limit comes first</span></a></li>
@@ -234,8 +234,9 @@
       <div class="chart"><svg id="step-svg" viewBox="0 0 560 300" role="img" aria-label="One time step: forces from every pair, kick-drift-kick, then the positions are exchanged so that every rank knows them for the next step."></svg>
         <p class="note" id="step-note">Share of a step for v1 at N = 5 000, P = 24 (C2).</p></div>
       <ul class="facts">
-        <li><b>Hardware:</b> Xeon E5-2650 v4, 24 cores per node, up to two nodes (P&nbsp;=&nbsp;48); Open MPI over UCX.</li>
+        <li><b>Hardware:</b> Xeon E5-2650 v4, 2 × 12 cores per node, no hyperthreading, up to two full nodes; Open MPI over InfiniBand (UCX). <b>P</b> is the number of ranks (the lecture's NP), one rank per core.</li>
         <li><b>Correct before fast:</b> every scheme against the serial run for N = 5, 100, 1 000 and P = 1 to 24: <b>228 of 228</b> runs agree, at most 1.3·10⁻¹³ relative.</li>
+        <li><b>What is timed:</b> the wall-clock time of the step loop (<code>time.perf_counter</code>); the start-up is timed separately. Speed-ups are against the serial program on the same node.</li>
         <li><b>Fair comparisons:</b> the same tiled force kernel everywhere, 3 repeats and their median, the serial run and every P of a sweep on the same node.</li>
         <li><b>One node is faster:</b> <span id="fast-node">n-62-21-75 is 12&nbsp;%</span> faster with the same CPU. Every time is corrected with a factor per node from its serial runs.</li>
       </ul>
@@ -253,28 +254,28 @@
       <div class="chart chart--tall" id="ch-speedup"></div>
       <div class="tiles" id="amd-tiles"></div>
     </div>
-    <p class="note">v1 (Allgather), one fully reserved node per N, medians of 3 repeats. The dashed line is ideal scaling.</p>
+    <p class="note">v1 (Allgather), one fully reserved node per N, medians of 3 repeats. Speed-up S(P) = T(1)/T(P) with T(1) the serial program (lecture 8); efficiency E = S/P as in the HPC wiki, since the lecture defines efficiency only for weak scaling. The dashed line is ideal scaling.</p>
   </div>
 </section>
 
 <section class="slide" id="s-amdahl2">
   <div class="inner">
     <p class="eyebrow">2 · Strong scaling · Amdahl</p>
-    <h2>Why: more ranks only shrink the part that can be split</h2>
-    <p class="p">Amdahl's law splits a time step into a fixed part, which stays the same however many ranks there are, and the rest, which shrinks like 1/P. Each bar is one time step: the more ranks, the shorter the step, and the larger the fixed part's share.</p>
+    <h2>Why: more ranks only shrink the parallel fraction</h2>
+    <p class="p">Amdahl's law (lecture 8): T(P) ∝ s + p/P with s + p = 1. The serial fraction s stays the same however many ranks there are; only the parallel fraction p is divided over them. Each bar is one time step: the more ranks, the shorter the step, and the larger the serial fraction's share.</p>
     <div class="controls">
       <div class="seg" role="group" aria-label="N" id="amd-n"></div>
       <button type="button" class="btn" id="amd-play">Play</button>
     </div>
     <div class="legend">
-      <span class="key"><span class="sw" style="background: var(--c3)"></span>fixed part: does not shrink</span>
-      <span class="key"><span class="sw" style="background: var(--tile)"></span>split over the ranks</span>
+      <span class="key"><span class="sw" style="background: var(--c3)"></span>serial fraction s: does not shrink</span>
+      <span class="key"><span class="sw" style="background: var(--tile)"></span>parallel fraction, divided over the ranks</span>
     </div>
     <div class="two">
       <div class="chart chart--tall" id="ch-amdbars"></div>
       <ul class="facts" id="amd-why"><li>—</li></ul>
     </div>
-    <p class="note">Shares from Amdahl's law fitted to the measured step loop, T(P) = s·T<sub>1</sub> + (1 − s)·T<sub>1</sub>/P; the number above a bar is the measured time per step.</p>
+    <p class="note">Shares from Amdahl's law fitted to the measured step loop (a model, not a measurement), T(P) = s·T<sub>1</sub> + (1 − s)·T<sub>1</sub>/P; the number above a bar is the measured time per step.</p>
   </div>
 </section>
 
@@ -283,7 +284,7 @@
   <div class="inner">
     <p class="eyebrow">3 · How many stars fit · isoefficiency</p>
     <h2>With 24 ranks, about 1&nbsp;700 stars fit into a real run</h2>
-    <p class="p">For every P, the largest N for which 10&nbsp;000 time steps finish within 300&nbsp;s. A step to more ranks only counts if it pays off: twice the ranks must give at least 1.6 times the speed (marginal efficiency ≥&nbsp;80&nbsp;%).</p>
+    <p class="p">The weak-scaling question of lecture 8, asked of a real run: how much can the problem grow with more ranks (scale-up)? For every P, the largest N for which 10&nbsp;000 time steps finish within 300&nbsp;s. A step to more ranks only counts if it pays off: twice the ranks must give at least 1.6 times the speed (marginal efficiency ≥&nbsp;80&nbsp;%, a criterion of our own; isoefficiency and marginal efficiency are not part of the lecture).</p>
     <div class="two">
       <div class="chart chart--tall" id="ch-iso"></div>
       <ul class="facts" id="iso-facts">
@@ -381,6 +382,7 @@
     <p class="eyebrow">5 · In depth: overlap</p>
     <h2>The ring can send the next block while it computes. It does not help.</h2>
     <p class="lede">C4 ran the ring with and without overlap: no gain on one node, and on two nodes up to 10&nbsp;% slower at small N. Two ranks and one message at a time show why.</p>
+    <p class="p">Non-blocking calls "allow overlapping communication and computation" but "require manual completion" (lecture 4): <code>Isend</code> and <code>Irecv</code> return request handles, and <code>Waitall</code> completes them. Whether the message actually travels during the computation depends on who moves the bytes.</p>
     <div class="tiles">
       <div class="tile"><span class="tile-big" id="k-intra">0&nbsp;%</span><span class="tile-sub">of a message is hidden behind the computation on one node, at every size</span></div>
       <div class="tile"><span class="tile-big" id="k-inter">≈&nbsp;40&nbsp;%</span><span class="tile-sub">is hidden across two nodes, for messages from 64&nbsp;KB on</span></div>
@@ -528,6 +530,7 @@
     <p class="p">Memory grows with N, the time per step with N². So the largest N that memory allows lies far beyond the largest N that time allows. Without tiles in the force kernel it would be the other way round.</p>
     <div class="chart" id="ch-limits"></div>
     <ul class="facts" id="lim-facts"><li>—</li></ul>
+    <p class="note">All limits are estimates from the measured bytes per star, bytes per pair and time per pair, not runs at these sizes.</p>
   </div>
 </section>
 
@@ -543,7 +546,7 @@
     </div>
     <div class="chart"><svg id="tile-svg" viewBox="0 0 760 300" role="img" aria-label="One rank's block of star pairs, the tile the kernel is working on, and the memory of the rank with and without tiles."></svg></div>
     <p class="status" id="tile-status">—</p>
-    <p class="note">P = 24 on one node. A tile is 2<sup>18</sup> pairs; its temporaries take <span id="tile-bpp">79</span> B per pair as measured (56 B with a <code>del</code> at the end of the tile loop). The rest of the rank is the start-up and the catalogue, from the memory model.</p>
+    <p class="note">P = 24 on one node. A tile is 2<sup>18</sup> pairs; its temporaries take <span id="tile-bpp">79</span> B per pair as measured (56 B with a <code>del</code> at the end of the tile loop). The rest of the rank is the start-up and the catalogue, from the memory model. The bar without tiles is an estimate from the measured bytes per pair, not a run.</p>
   </div>
 </section>
 
@@ -572,6 +575,7 @@
     <p class="eyebrow">8 · MPI datatypes</p>
     <h2>A derived datatype for (x,&nbsp;y,&nbsp;z) brings no consistent gain</h2>
     <p class="p">One <code>Allgatherv</code> of N positions, sent as plain doubles or as one derived type per star (<code>MPI.DOUBLE.Create_contiguous(3)</code>). Bars to the right: the derived type is faster.</p>
+    <p class="p">Lecture 8 recommends derived types mainly because "they will generally save you a temporary buffer" for data that is not contiguous. Our (N, 3) positions are contiguous already, so there is nothing to save, and no gain is to be expected. A type could pay off for the full star records, to send positions and masses without packing them first (not tested).</p>
     <div class="legend" id="dt-legend"></div>
     <div class="chart" id="ch-dt"></div>
     <p class="note" id="dt-note">Rasmus' microbenchmark (<code>data_types/</code>), synthetic positions, communication only; no written result yet.</p>
@@ -607,7 +611,7 @@
     <ol class="takeaways">
       <li><b>The computation per step is the limit,</b> not the network and not the memory.</li>
       <li><b>Expectations that did not hold:</b> the Allgather did not hit a communication floor up to 48 ranks; 2D did not scale further; overlap did not help; the ring at N&nbsp;=&nbsp;50 cost about 90 times what C0 predicted, because its cost is the P kernel calls per step.</li>
-      <li><b>Open:</b> weak scaling (the Gustafson framework is ready, nothing is measured yet); the physics checks of the project description (energy, two-body orbit, Plummer sphere); why the kernel slows down when every core is busy; a performance model that predicts where a communication floor would appear.</li>
+      <li><b>Open:</b> weak scaling (the Gustafson framework is ready, nothing is measured yet); the physics checks of the project description (energy, two-body orbit, Plummer sphere); profiles with cProfile per rank and mpiP (lecture 9) to confirm the hand-placed timers; the kernel's performance against the hardware's peak, and whether it is compute- or memory-bound (lecture 2), which would explain why it slows down when every core is busy; a performance model that predicts where a communication floor would appear.</li>
     </ol>
     <p class="note">Every number in detail: <a href="overview.html">overview</a> · <a href="amdahl/results.html">Amdahl</a> · <a href="isoeff/results.html">isoefficiency</a> · <a href="communication/results.html">communication</a> · <a href="communication/overlap/results.html">overlap</a> · <a href="memory/results.html">memory</a></p>
   </div>
@@ -775,7 +779,7 @@
       const b = BY.find((x) => x.n_stars === N); if (!b) return;
       const s = Math.max(0, b.s_fit), T1 = b.serial_ms_per_step, fixed = s * T1;
       const W = 560, H = 330, m = { l: 56, r: 8, t: 32, b: 40 }, iw = W - m.l - m.r, ih = H - m.t - m.b, slot = iw / Ps.length, bw = slot * 0.62, base = H - m.b;
-      const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Share of the fixed part and of the split part of one time step for each P, at N = ${N}.` }, host);
+      const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Share of the serial and of the parallel fraction of one time step for each P, at N = ${N}.` }, host);
       const ax = svgEl('g', { class: 'ax' }, svg);
       [0, 0.25, 0.5, 0.75, 1].forEach((v) => { const y = base - ih * v; svgEl('line', { x1: m.l, x2: W - m.r, y1: y, y2: y, class: v === 0 ? 'zero' : null }, ax); svgEl('text', { x: m.l - 8, y: y + 4, 'text-anchor': 'end' }, ax).textContent = pct(v); });
       svgEl('text', { x: m.l - 8, y: m.t - 9, 'text-anchor': 'end' }, ax).textContent = 'ms';
@@ -793,15 +797,15 @@
         const r = L.find((q) => q.n_stars_start === N && q.n_ranks === P), ms = r ? r.t_median_s / r.steps_requested * 1000 : null;
         if (ms != null) svgEl('text', { class: 'bar-label', x: x + bw / 2, y: m.t - 9, 'text-anchor': 'middle', 'font-size': 11.5 }, svg).textContent = ms >= 100 ? nf(ms) : ms >= 1 ? nf(ms, 1) : nf(ms, 2);
         const hit = svgEl('rect', { class: 'hit', x, y: m.t, width: bw, height: ih }, svg);
-        hit.addEventListener('mousemove', (e) => showTip(host, `<b>N = ${nf(N)}, P = ${P}</b>${row('fixed part', `${nf(fixed, 3)} ms (${pct(f, 1)})`)}${row('split part', `${nf(par, 3)} ms`)}${row('speed-up, model', nf(T1 / (fixed + par), 1))}${r ? row('speed-up, measured', nf(r.speedup, 1)) : ''}${ms != null ? row('measured', `${nf(ms, 3)} ms per step`) : ''}`, e));
+        hit.addEventListener('mousemove', (e) => showTip(host, `<b>N = ${nf(N)}, P = ${P}</b>${row('serial fraction', `${nf(fixed, 3)} ms (${pct(f, 1)})`)}${row('parallel fraction', `${nf(par, 3)} ms`)}${row('speed-up, model', nf(T1 / (fixed + par), 1))}${r ? row('speed-up, measured', nf(r.speedup, 1)) : ''}${ms != null ? row('measured', `${nf(ms, 3)} ms per step`) : ''}`, e));
         hit.addEventListener('mouseleave', () => hideTip(host));
       });
       const P1 = Ps[Ps.length - 1], par1 = (1 - s) * T1 / P1, f1 = fixed / (fixed + par1), rM = L.find((q) => q.n_stars_start === N && q.n_ranks === P1);
       const noisy = N >= 1000;
       setHTML('amd-why', [
-        `<li><b>Fixed part at N = ${nf(N)}:</b> s = ${pct(s, s < 0.01 ? 2 : 1)} of the serial step, ${nf(fixed, fixed < 1 ? 2 : 1)} ms${noisy ? ` (the fit allows ${pct(Math.max(0, b.s_lo), 2)} to ${pct(b.s_hi, 1)}: within the run-to-run noise)` : ''}.</li>`,
-        `<li><b>With ${P1} ranks</b> it is ${pct(f1)} of the step. The model gives a speed-up of ${nf(T1 / (fixed + par1), 1)}${rM ? `, measured ${nf(rM.speedup, 1)}` : ''}; no number of ranks gets past 1/s${s > 0 ? ` = ${nf(1 / s)}` : ''}.${rM && rM.speedup < 0.9 * T1 / (fixed + par1) ? ' The measurement stays below the model because at small N an overhead grows with P (rising Karp–Flatt), which Amdahl\'s law does not contain.' : ''}</li>`,
-        `<li><b>Where the fixed part comes from:</b> the uneven split of the stars (at N = 50 and P = 24 some ranks hold 3 stars, the mean is 2.1), the latency of the Allgather, and the Python work per step and per kernel call${floor ? `: about ${nf(floor, 1)} ms per step` : ''}. It only matters where a step is short.</li>`,
+        `<li><b>Serial fraction at N = ${nf(N)}:</b> s = ${pct(s, s < 0.01 ? 2 : 1)} of the serial step, ${nf(fixed, fixed < 1 ? 2 : 1)} ms${noisy ? ` (the fit allows ${pct(Math.max(0, b.s_lo), 2)} to ${pct(b.s_hi, 1)}: within the run-to-run noise)` : ''}.</li>`,
+        `<li><b>With ${P1} ranks</b> it is ${pct(f1)} of the step. The model gives a speed-up of ${nf(T1 / (fixed + par1), 1)}${rM ? `, measured ${nf(rM.speedup, 1)}` : ''}; no number of ranks gets past 1/s${s > 0 ? ` = ${nf(1 / s)}` : ''}.${rM && rM.speedup < 0.9 * T1 / (fixed + par1) ? ' The measurement stays below the model because at small N an overhead grows with P (the Karp–Flatt metric, the serial fraction worked out from each measured point, rises with P), which Amdahl\'s law does not contain.' : ''}</li>`,
+        `<li><b>Where the serial fraction comes from:</b> the uneven split of the stars (at N = 50 and P = 24 some ranks hold 3 stars, the mean is 2.1), the latency of the Allgather, and the Python work per step and per kernel call${floor ? `: about ${nf(floor, 1)} ms per step` : ''}. It only matters where a step is short.</li>`,
         fs ? `<li><b>Start-up:</b> every launch costs about ${nf(fs.a, 2)} s plus ${nf(fs.b * 1000)} ms per rank before the first step.</li>` : ''].join(''));
     };
     const stop = () => { if (timer) clearInterval(timer); timer = null; abtn.textContent = 'Play'; };
@@ -902,9 +906,9 @@
       m.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`); m.g.setAttribute('opacity', 1); };
     const owner = { v1: (r) => r, ring: (r) => r, '2d': (r, c) => 2 * Math.floor(r / 2) + Math.floor(c / 2) };
     const FACTS = {
-      v1: [['received per step', 'all N positions, in one <code>Allgatherv</code> (every rank to every rank)'], ['kernel calls per step', '1 per rank'], ['positions held', 'N'], ['measured', 'the best or equal from N = 1 000 on']],
-      ring: [['received per step', 'all N positions, in P − 1 blocks from one neighbour'], ['kernel calls per step', 'P per rank'], ['positions held', '3 N/P'], ['measured', 'P kernel calls per step: it collapses at small N (next sections)']],
-      '2d': [['received per step', 'positions within the column, partial forces within the row'], ['kernel calls per step', '1 per rank'], ['positions held', 'N/p<sub>r</sub> + N/p<sub>c</sub> (P = 48: 8 × 6, about 0.29 N)'], ['measured', 'better only at N = 50; 2–10 % slower from N = 1 000 on']] };
+      v1: [['received per step', 'all N positions, in one global collective, <code>Allgatherv</code> (lecture 4: Allgather = Gather + Bcast)'], ['kernel calls per step', '1 per rank'], ['positions held', 'N'], ['measured', 'the best or equal from N = 1 000 on']],
+      ring: [['received per step', 'all N positions, in P − 1 blocks from one neighbour on a periodic 1D Cartesian map (<code>Create_cart</code>, <code>Shift</code>)'], ['kernel calls per step', 'P per rank'], ['positions held', '3 N/P'], ['measured', 'P kernel calls per step: it collapses at small N (next sections)']],
+      '2d': [['received per step', 'positions within the column, partial forces summed within the row: <code>Split</code> into row and column communicators, as in the y = A·x example of lecture 7'], ['kernel calls per step', '1 per rank'], ['positions held', 'N/p<sub>r</sub> + N/p<sub>c</sub> (P = 48: 8 × 6, about 0.29 N)'], ['measured', 'better only at N = 50; 2–10 % slower from N = 1 000 on']] };
     const PLAN = {
       v1: { len: 5.8, comm: [0.2, 1.6], comp: [1.8, 4.4] },
       ring: { round: 1.6, comp: [0, 1.05], pass: [1.1, 1.55], len: 4 * 1.6 + 1.4 },
@@ -1306,7 +1310,7 @@
       const nb = model.rows[1];
       setHTML('tl-reading', pl === 'intra'
         ? `<b>One node.</b> Through shared memory the CPU copies the message itself, and only while it is inside an MPI call. During the tiles it runs NumPy, so the whole copy waits for <code>Waitall</code>: nothing is hidden, and the overlap variant ends ${sgn(nb.total - model.blocking, 0, ' µs')} against blocking. With <code>Testall</code> the copy happens between the tiles instead: <code>Waitall</code> is short, but the computation got longer by about the same time.`
-        : `<b>Two nodes.</b> The network card moves part of the message by itself (RDMA), so about ${pct(Math.round(nb.h * 20) / 20)} arrives during the tiles. The rest still needs the CPU inside an MPI call and waits for <code>Waitall</code>: the overlap variant ends ${sgn(nb.total - model.blocking, 0, ' µs')} against blocking, while hiding everything would have saved ${nf(model.blocking - nb.ideal)} µs. <code>Testall</code> moves the rest into the computation without saving more.`);
+        : `<b>Two nodes.</b> The InfiniBand network card moves part of the message by itself (RDMA: it reads the memory directly), so about ${pct(Math.round(nb.h * 20) / 20)} arrives during the tiles. The rest still needs the CPU inside an MPI call and waits for <code>Waitall</code>: the overlap variant ends ${sgn(nb.total - model.blocking, 0, ' µs')} against blocking, while hiding everything would have saved ${nf(model.blocking - nb.ideal)} µs. <code>Testall</code> moves the rest into the computation without saving more.`);
       buildMech();
       draw();
     };
