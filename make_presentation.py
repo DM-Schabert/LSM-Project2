@@ -4,8 +4,8 @@ From the repository root, after the pages themselves are up to date (each folder
 
     python3 make_presentation.py
 
-It copies the data blocks of amdahl/, isoeff/, communication/, communication/overlap/ and memory/results.html, and
-data_types/results/summary.csv, into the one data block of presentation.html (<script id="deck-data">), keeping only
+It copies the data blocks of amdahl/, isoeff/, communication/, communication/overlap/ and memory/results.html,
+data_types/results/summary.csv and the CSVs of experiments/results/ into the one data block of presentation.html (<script id="deck-data">), keeping only
 what the presentation draws. Nothing is measured or fitted again here; the page computes the rest, the same way the
 results pages do.
 """
@@ -55,6 +55,14 @@ def isoeff() -> dict:
     return {"capacity": csv_rows(d.get("capacity", "")), "campaigns": camps, "meta": d.get("meta", {})}
 
 
+def merge() -> dict:
+    """The merge-balance experiment (experiments/results): stars per rank per step, merge events, timings."""
+    res = ROOT / "experiments" / "results"
+    read = lambda name: csv_rows((res / name).read_text()) if (res / name).exists() else []  # noqa: E731
+    return {"steps": read("diagnostic_steps.csv"), "events": read("merge_events.csv"),
+            "timing": read("timing_summary.csv"), "paired": read("paired_comparison.csv")}
+
+
 def datatypes() -> list:
     path = ROOT / "data_types" / "results" / "summary.csv"
     return csv_rows(path.read_text()) if path.exists() else []
@@ -70,7 +78,7 @@ def main() -> None:
             "comm": {"meta": comm.get("meta", {}), "runs": comm.get("runs", [])},
             "overlap": block(ROOT / "communication" / "overlap" / "results.html", "overlap-data"),
             "memory": block(ROOT / "memory" / "results.html", "memory-data"),
-            "datatypes": datatypes()}
+            "datatypes": datatypes(), "merge": merge()}
     text = json.dumps(data, separators=(",", ":"), allow_nan=False).replace("</", "<\\/")
     page = args.page.read_text()
     page, found = DECK.subn(lambda m: m.group(1) + text + m.group(2), page)
@@ -80,7 +88,7 @@ def main() -> None:
     print(f"Wrote {len(text) // 1024} KB into {args.page}: amdahl {len(data['amdahl'].get('loop', []))} points, "
           f"isoeff {len(data['isoeff'].get('capacity', []))}, communication {len(data['comm']['runs'])} runs, "
           f"overlap {len(data['overlap'].get('points', []))} points, memory {len(data['memory'].get('launches', []))} launches, "
-          f"datatypes {len(data['datatypes'])} rows")
+          f"datatypes {len(data['datatypes'])} rows, merge {len(data['merge']['steps'])} steps")
 
 
 if __name__ == "__main__":
