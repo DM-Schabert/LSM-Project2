@@ -16,7 +16,7 @@ python3 memory/make_page.py                     # fills memory/results.html
 - `peak_memory_mb` in C2/C3: 177–226 MB per rank on one node, 270–300 MB on two, at every N up to 20 000.
 - Rank 0 reads the CSV; then **every rank gets the whole catalogue by `Bcast`**: positions, velocities (24 B each per star), masses, members, owner (8 B each), class (`<U1`, 4 B), guessed (1 B), so 77 B per star, also for the ring and 2D.
 - After loading, `main()` drops the full positions for the ring and 2D; rank 0 keeps a copy of the start positions for `--plot`.
-- The kernel's temporaries are 56 B per pair of the current tile (`tracemalloc`, `kernel/`); `--tile-rows 0` caps a tile at 2^18 pairs.
+- The kernel's temporaries are 56 B per pair of the current tile (`tracemalloc`, one tile call); `--tile-rows 0` caps a tile at 2^18 pairs.
 
 **Hypothesis.** Memory of a rank ≈ M0 (Python, NumPy, pandas, matplotlib, MPI) + N · b (the whole catalogue, b ≈ 77 B per star, whatever the scheme) + 56 B × pairs per tile + on rank 0 alone, pandas while reading the CSV. Then a rank has room for millions of stars, while time allows far fewer: **time is the limit, not memory.** Memory would come first only for a kernel without tiles (one tile for the whole own block).
 
@@ -78,3 +78,16 @@ Expectation 4 also depends on whether the memory allocator gives freed arrays ba
 ## Results page
 
 `results.html` is in the same style as `isoeff/`, `amdahl/`, `gustafson/` and `communication/results.html`, and stays empty until `make_page.py` fills its data block: tiles (memory before any star, bytes per star, rank 0's extra, memory against time), memory against N (peak or held after the set-up), every phase for one scheme and N, the kernel's temporaries against tile size, MPI's share against P, which limit comes first, the expectations with their verdicts, and every launch. The charts load d3 from cdnjs, so the page needs an internet connection.
+
+## Result (job 30267003, n-62-21-77 and n-62-21-47, 257 GB per node)
+
+All 38 launches finished in 3 minutes. Verdicts on `results.html`: 7 of 9 yes (6 and 9 no).
+
+- **Before any star: 187 MB per rank** (Python, NumPy, pandas, matplotlib, mpi4py). MPI needs almost nothing per peer on one node (0–34 KB); the first contact with the other node adds **76 MB per rank** (the network transport), which is the step from about 220 to 270–300 MB seen in C3. A single rank (P = 1) starts at 249 MB.
+- **Every rank holds the whole catalogue: 85–88 B per star**, the same for v1, ring and 2D (R² 0.999). The ring's and 2D's smaller share does not show in the peak.
+- **After the set-up** v1 holds 58, the ring 36 and 2D 46 B per star, as predicted from the code (55 / 33 / 43): the ring and 2D save only after the peak.
+- **Rank 0 needs 321 B per star more while pandas reads the CSV**, so it sets the limit: 418 MB at 589 993 stars against 275 MB on the other ranks.
+- **The kernel needs 79 B per pair, not 56 (expectation 6: no).** `tracemalloc` of one tile call alone gives 56 B; with several tiles per call the previous tile's arrays stay alive until the next tile's arrays replace them (`tracemalloc`: 56.1 B for one tile, 80.1 B from two tiles on). A `del` at the end of the tile loop in `block_accelerations` would take this back to 56 B.
+- **Which limit comes first:** with 1 GB per rank (the reservation), rank 0 fills it at 2.2 M stars, the other ranks at 10.3 M; with the node's memory (10.7 GB per rank) at 27 M. Time allows 607 k stars for one step in 30 minutes at P = 24 (859 k at P = 48), and only 2 479 for 10 000 steps in 300 s. **Time comes first**, by ×3.6 in the most generous case and by orders of magnitude for a real run.
+- **Without tiles memory would come first:** one tile for the whole own block fills 1 GB per rank at P = 24 from about 16 000 stars, below our 20 000-star runs.
+- **LSF's "Max Memory" (2.5 GB) missed the real peak** (about 20 GB summed over the 24 ranks at `--tile-rows 417`; expectation 9: no): LSF samples the memory every few seconds, and each launch took about 2 s. It cannot be used to find short peaks.

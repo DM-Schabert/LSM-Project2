@@ -12,6 +12,7 @@ Only the data block (<script id="overlap-data">) is replaced; the page computes 
 """
 import argparse
 import datetime
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -32,9 +33,16 @@ def ring_runs(results: Path) -> list:
         return []
     df = pd.read_csv(results)
     df = df.join(df["run_name"].astype(str).str.extract(r"^amdahl_(?P<label>.+?)_j(?P<job>\d+)_r\d+$"))
+    # the same node-speed correction as communication/results.html: ring and blocking ring ran on different
+    # nodes, and n-62-21-75 is 12 % faster, which would otherwise show up as a +-10 % "effect" of overlap
+    spec = importlib.util.spec_from_file_location("comm_page", ROOT / "communication" / "make_page.py")
+    comm_page = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(comm_page)
+    factor = dict(comm_page.node_factors(df[df["label"].notna()]).set_index("host")["factor"])
     df = df[df["label"].isin(RING) & (df["implementation"] != "serial")].copy()
     df["job"] = df["job"].astype(int)
-    df["step_us"] = df["simulation_time_s"] / df["iterations"] * 1e6
+    slowest = df["hosts"].fillna(df["hostname"]).astype(str).map(lambda h: max(factor.get(x, 1.0) for x in h.split(";")))
+    df["step_us"] = df["simulation_time_s"] / df["iterations"] * 1e6 / slowest
     df = df[df["job"] == df.groupby(["label", "n_stars_start"])["job"].transform("max")]
     out = {}
     for (label, n, p), g in df.groupby(["label", "n_stars_start", "n_ranks"]):

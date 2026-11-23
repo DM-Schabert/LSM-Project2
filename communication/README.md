@@ -6,7 +6,7 @@ Every star feels every other star, so in every time step each rank needs positio
 
 What we know from the Amdahl campaign (`amdahl/results.html`): on one node and with large N, communication costs almost nothing (N = 5 000, P = 24: about 0.3 ms per step against about 120 ms of computing). With small N it is a large part of each step (N = 50: about a quarter of the step loop). So differences between the schemes will show **at small N, across nodes and at large P**, and hardly at all on one node with large N. Finding that is a result too.
 
-**Answer so far (C2, C3, C4).** Up to N = 20 000 and P = 48 the network is not the limit: the Allgatherv of v1 is 0.12 % of a step at N = 20 000 on two nodes, and v1 nearly doubles its speed from one node to two (×1.98). 2D is slightly better than v1 only at N = 50; the ring loses at small N because it calls the force kernel P times per step. The differences at large N come from the force kernel, not from the bytes sent; that is followed up in depth in `../kernel/`. Why the ring's overlap does not help is this folder's topic in depth: `overlap/`.
+**Answer so far (C2, C3, C4).** Up to N = 20 000 and P = 48 the network is not the limit: the Allgatherv of v1 is 0.12 % of a step at N = 20 000 on two nodes, and v1 nearly doubles its speed from one node to two (×1.98). 2D is slightly better than v1 only at N = 50; the ring loses at small N because it calls the force kernel P times per step. The differences at large N come from the force kernel, not from the bytes sent (most likely the tiles' temporaries competing for the shared cache when every core is busy; not followed up). Why the ring's overlap does not help is this folder's topic in depth: `overlap/`.
 
 ```bash
 python3 communication/make_page.py      # C2, C3, C4 from ../results.csv into communication/results.html
@@ -80,7 +80,7 @@ Expectations to check:
 | C3 | The same across two nodes | 50, 1 000, 5 000, 20 000 | 1 … 48 | 2 |
 | C4 | Overlap on and off (ring) | as C2 and C3 (the two ring labels) | 1 … 48 | 1 and 2 |
 | C6 | In depth: why overlap does not help. Two ranks, one message of 64 B to 4 MB, Isend/Irecv against Sendrecv, with and without Testall (`overlap/`) | — | 2 | 1 and 2 |
-| C5 | Memory per rank against N (peak RSS) | up to the largest that fits | 24 | 1 |
+| C5 | Memory per rank against N: done in depth in `../memory/` | 1 000 to 589 993 | 1 … 48 | 1 and 2 |
 
 ## Running C0 and getting the results off the cluster
 
@@ -155,9 +155,9 @@ C1 on the cluster (job 30082644, `results/validate_30082644.csv`): 228 runs, N =
 | Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | **cluster: 90/90 passed**, ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083334–40): N = 50 collapses, about 70 µs per kernel call × P calls per step; N ≥ 1 000 12–21 % below v1 | C3 (jobs 30099624–32): N ≤ 1 000 slower on two nodes than on one; N = 5 000 9 % faster than v1 (kernel on 104 × 104 blocks), N = 20 000 34 % slower. C4: overlap 0 to −10 % |
 | 2D force decomposition | yes (above, from C0) | yes (16 Nov) | **cluster: 78/78 passed**, bit-identical for p_c = 1, else ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083342–44): N = 50 14 % better than v1, N ≥ 1 000 5–8 % below | C3 (jobs 30099634–37): N = 50 6 % faster than v1 at P = 48; N ≥ 1 000 2–10 % slower than v1 |
 
-C2 on one node (jobs 30083330–30083344, `--tile-rows 0`, `v1-tile` as the reference) is shown at the bottom of `2d_decomposition.html`. The C0 prediction for the ring missed by a factor of about 90 at N = 50: C0 timed the messages only, but the ring calls the force kernel P times per step and each call has a fixed cost of about 70 µs in Python. At large N the differences between the schemes also come from the kernel (summed kernel time of all ranks at N = 5 000, P = 24, relative to P = 1: v1 1.29, 2D 1.37, ring 1.63), not from the bytes sent.
+C2 on one node (jobs 30083330–30083344, `--tile-rows 0`, `v1-tile` as the reference) is on `results.html` (campaign C2). The C0 prediction for the ring missed by a factor of about 90 at N = 50: C0 timed the messages only, but the ring calls the force kernel P times per step and each call has a fixed cost of about 70 µs in Python. At large N the differences between the schemes also come from the kernel (summed kernel time of all ranks at N = 5 000, P = 24, relative to P = 1: v1 1.29, 2D 1.37, ring 1.63), not from the bytes sent.
 
-C3 and C4 on two nodes (jobs 30099619–30099637, 480 runs, all finished, `NODES=2`, P = 1 … 48, N = 50, 1 000, 5 000, 20 000) are on `results.html`. In short: the second node pays off from N ≈ 1 000 on for v1 and 2D (×1.76 to ×1.98 from P = 24 to 48) and makes N = 50 slower for every scheme. The network costs v1 0.12–5 % of a step at N ≥ 1 000. At P = 32 (24 + 8 ranks) the Allgatherv is 4–7 times slower than at P = 48, even for the fastest rank; most likely Open MPI picks another algorithm there (not checked). The overlap of the ring brings nothing on two nodes either. The memory per rank is about 220 MB on one node and 270–300 MB on two, at every N: it is MPI, not the stars (C5 still open).
+C3 and C4 on two nodes (jobs 30099619–30099637, 480 runs, all finished, `NODES=2`, P = 1 … 48, N = 50, 1 000, 5 000, 20 000) are on `results.html`. In short: the second node pays off from N ≈ 1 000 on for v1 and 2D (×1.76 to ×1.98 from P = 24 to 48) and makes N = 50 slower for every scheme. The network costs v1 0.12–5 % of a step at N ≥ 1 000. At P = 32 (24 + 8 ranks) and N ≥ 5 000 the Allgatherv is 4–6 times slower than at P = 48 (the fastest rank 4 times), at N = 1 000 about twice; most likely Open MPI picks another algorithm there (not checked). The overlap of the ring brings nothing on two nodes either. The memory per rank is about 220 MB on one node and 270–300 MB on two, at every N: it is MPI, not the stars (measured in depth in `../memory/`).
 
 ## Results page
 

@@ -44,6 +44,7 @@
   .amd-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
   .amd-select:focus-visible, .amd-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
   .amd-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+  .page-nav a { color: var(--c0); text-underline-offset: 2px; }
 </style>
 <style>
   .amd { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
@@ -162,6 +163,7 @@
 
 <div class="amd">
   <header class="amd-head" id="summary-head">
+    <p class="amd-meta page-nav">All results: <a href="../overview.html">Overview</a> · <a href="../presentation.html">Presentation</a> · <b>Amdahl</b> · <a href="../communication/results.html">Communication</a> · <a href="../communication/2d_decomposition.html">2D explainer</a> · <a href="../communication/overlap/results.html">Overlap</a> · <a href="../memory/results.html">Memory</a></p>
     <h1 class="amd-title">Amdahl scaling of v1 on one node</h1>
     <p class="amd-lede">With 24 ranks the step loop runs at <b class="amd-num" data-draw="val" data-source="by_n_view" data-where="n=5000" data-field="E24">—</b>&nbsp;% efficiency for N = 5,000 stars, but at only <b class="amd-num" data-draw="val" data-source="by_n_view" data-where="n=50" data-field="E24">—</b>&nbsp;% for N = 50. The cost per step that more ranks cannot remove is small and hardly depends on N, so it only matters where a step is short: <span class="amd-num" data-draw="val" data-source="by_n_view" data-where="n=50" data-field="ms_step">—</span>&nbsp;ms per step at N = 50 against <span class="amd-num" data-draw="val" data-source="by_n_view" data-where="n=5000" data-field="ms_step">—</span>&nbsp;ms at N = 5,000.</p>
     <p class="amd-meta">Code version <span data-draw="meta" data-key="label">—</span> (Allgather) · Xeon E5-2650 v4, one fully reserved 24-core node per N · P = 1 to 24 ranks · medians of 3 repeats · jobs <span data-draw="meta" data-key="jobs">—</span> · page made <span data-draw="meta" data-key="made">—</span></p>

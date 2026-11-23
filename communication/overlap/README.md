@@ -87,3 +87,15 @@ If 1–4 hold, the mechanism is the missing progress for rendezvous messages, an
 - **Tables:** what overlap could have saved in every ring run of C2 and C3 next to what C4 measured; the other explanations; the expectations with their verdicts; every point.
 
 The charts load d3 from cdnjs, so the page needs an internet connection.
+
+## Result (job 30264751, n-62-21-75 and n-62-21-48, UCX)
+
+All 2 × 17 sizes × 5 modes × 3 sweeps finished; Open MPI used UCX (`pml_ucx_priority` 51 against 20 for ob1, `UCX_RNDV_THRESH=auto`). Verdicts on `results.html`: 1 no, 2 no, 3 yes (but see below), 4 no, 5 yes, 6 yes, 7 yes, 8 yes.
+
+- **One node: nothing is hidden, at any size.** The whole transfer happens in `Waitall` (4 MB: 339 µs waiting for a 321 µs transfer). Through shared memory the CPU copies the data, and it does so only inside an MPI call.
+- **Two nodes: about 40 % is hidden from 64 KB on, without `Testall`** (up to 135 µs saved at 2 MB). The network card moves part of the data by itself. There is no switch at an eager/rendezvous limit (expectation 4): small messages are not hidden either, because the receiver still has to match and copy them inside an MPI call (expectation 1: `Waitall` 5–7 µs for ≤ 1 KB).
+- **`Testall` moves the copy, it does not hide it.** The time in `Waitall` drops (84–90 % "hidden", so expectation 3 is "yes" by its rule), but the computation gets longer by about the same time, because `Testall` does the copy itself: with `Testall` the exchange is slower than without, and on one node slower than blocking. The rule of expectation 3 measured the wrong thing; the table "What was really saved", added after the measurement, shows the net time.
+- **The extra calls cost 8–10 µs per exchange** (expectation 6), and that is the loss of the overlap ring at N = 50 in C2/C3: 8–12 µs per hop, ×1.2 the extra cost (expectation 8). The kernel is not slowed by a transfer (×1.01, expectation 5).
+- **In our runs overlap could have saved at most 0.57 % of a step at N ≥ 5 000** (expectation 7); at N ≤ 1 000 at most 2–5 %, less than the extra calls cost. After correcting for the node speed, C4 at N ≥ 5 000 is within ±4 %, i.e. noise (uncorrected it looked like ±11 %, which was the fast node n-62-21-75).
+
+So the ring's overlap cannot help here: on one node there is no background transfer at all, across nodes the network card hides less than half, and in both cases the transfers are tiny against the computation. Not worth a progress option in the ring. Open: why the share hidden across nodes drops again at 4 MB (−31 %); a UCX protocol detail, not needed for the conclusion.

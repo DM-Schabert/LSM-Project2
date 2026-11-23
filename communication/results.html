@@ -47,6 +47,7 @@
   .iso-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
   .iso-select:focus-visible, .iso-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
   .iso-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+  .page-nav a { color: var(--c0); text-underline-offset: 2px; }
 </style>
 <style>
   .iso { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
@@ -145,6 +146,7 @@
 <div class="iso-page">
 <div class="iso">
   <header class="iso-head">
+    <p class="iso-meta page-nav">All results: <a href="../overview.html">Overview</a> · <a href="../presentation.html">Presentation</a> · <a href="../amdahl/results.html">Amdahl</a> · <b>Communication</b> · <a href="../communication/2d_decomposition.html">2D explainer</a> · <a href="../communication/overlap/results.html">Overlap</a> · <a href="../memory/results.html">Memory</a></p>
     <h1 class="iso-title">Communication schemes: Allgather, ring and 2D, on one node and on two</h1>
     <p class="iso-lede">The same program with three ways of getting the positions to the ranks, all with the same tiled force kernel (<code class="iso-code">--tile-rows 0</code>): Allgather (v1), a ring with and without overlap, and the 2D force decomposition. Strong scaling at fixed N, first on one node (C2), then on two full nodes up to P = 48 (C3), where the ring with and without overlap is C4. How the 2D decomposition works: <a href="2d_decomposition.html">2d_decomposition.html</a>.</p>
     <p class="iso-meta" id="meta">—</p>
@@ -205,7 +207,7 @@
       <tbody>
         <tr><td class="iso-left">C2</td><td class="iso-text">Ring, one node, N = 50: about 26 µs more per step than v1 (C0), efficiency at P = 24 from 38 % to about 33 %.</td><td class="iso-text">2.5 ms per step against 0.19 ms: the ring calls the force kernel P times per step, about 100 µs each.</td><td class="iso-left"><span class="iso-no">no, about 90 times as much</span></td></tr>
         <tr><td class="iso-left">C2</td><td class="iso-text">2D, small N: less communication and less waiting than v1, so faster.</td><td class="iso-text">N = 50, P = 24: 10 % faster than v1 (node-corrected), mostly through less waiting.</td><td class="iso-left"><span class="iso-yes">yes</span></td></tr>
-        <tr><td class="iso-left">C2</td><td class="iso-text">Large N (≥ 1 000), one node: all schemes within a few percent.</td><td class="iso-text">N = 5 000, P = 24: ring 30 % and 2D 10 % slower than v1. The difference is in the force kernel, not in the bytes sent (see <a href="../kernel/README.md">kernel/</a>).</td><td class="iso-left"><span class="iso-no">no</span></td></tr>
+        <tr><td class="iso-left">C2</td><td class="iso-text">Large N (≥ 1 000), one node: all schemes within a few percent.</td><td class="iso-text">N = 5 000, P = 24: ring 30 % and 2D 10 % slower than v1. The difference is in the force kernel, not in the bytes sent.</td><td class="iso-left"><span class="iso-no">no</span></td></tr>
         <tr><td class="iso-left">C2, C4</td><td class="iso-text">Overlap helps only where communication is a real share of the step: small N, or two nodes.</td><td class="iso-text">One node: no gain at any N. Two nodes: 7–10 % slower at N ≤ 1 000, the same at N ≥ 5 000.</td><td class="iso-left"><span class="iso-no">no</span></td></tr>
         <tr><td class="iso-left">C3</td><td class="iso-text">C0: Allgatherv on two nodes, P = 48, large N: 579 µs at N = 10 000, so about 1.1 ms at N = 20 000.</td><td class="iso-text">0.96 ms (fastest rank), 1.08 ms (mean).</td><td class="iso-left"><span class="iso-yes">yes</span></td></tr>
         <tr><td class="iso-left">C3</td><td class="iso-text">C0: Allgatherv on two nodes, P = 48, small N: 26 µs (N = 50), 83 µs (N = 1 000).</td><td class="iso-text">65 µs and 157 µs (fastest rank): the call from Python costs more than the message.</td><td class="iso-left"><span class="iso-no">no, about 2.5 times as much</span></td></tr>
