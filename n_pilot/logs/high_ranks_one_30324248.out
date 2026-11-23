@@ -1,0 +1,117 @@
+
+=== Single node, 16 slots; hosts: n-62-21-75 16  ===
+     16 n-62-21-75
+Run logs: logs/high_ranks_one_node_30324248
+Allocation: n-62-21-75 16 
+Model name:                              Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+N50_P2_R1: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=38.962 s, 1283.32 nominal steps/s
+N50_P4_R1: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=22.144 s, 2257.94 nominal steps/s
+N50_P8_R1: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=15.386 s, 3249.80 nominal steps/s
+N50_P16_R1: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=12.285 s, 4069.97 nominal steps/s
+N100_P2_R1: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=84.915 s, 588.83 nominal steps/s
+N100_P4_R1: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=45.471 s, 1099.60 nominal steps/s
+N100_P8_R1: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=26.348 s, 1897.65 nominal steps/s
+N100_P16_R1: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=19.698 s, 2538.29 nominal steps/s
+N50_P2_R2: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=36.659 s, 1363.91 nominal steps/s
+N50_P4_R2: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=22.043 s, 2268.30 nominal steps/s
+N50_P8_R2: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=15.236 s, 3281.71 nominal steps/s
+N50_P16_R2: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=12.335 s, 4053.46 nominal steps/s
+N100_P2_R2: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=83.113 s, 601.59 nominal steps/s
+N100_P4_R2: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=44.820 s, 1115.57 nominal steps/s
+N100_P8_R2: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=27.800 s, 1798.58 nominal steps/s
+N100_P16_R2: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=18.846 s, 2653.13 nominal steps/s
+N50_P2_R3: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=37.411 s, 1336.51 nominal steps/s
+N50_P4_R3: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=22.695 s, 2203.12 nominal steps/s
+N50_P8_R3: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=15.086 s, 3314.42 nominal steps/s
+N50_P16_R3: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_50.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=12.435 s, 4021.02 nominal steps/s
+N100_P2_R3: mpirun -np 2 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=88.269 s, 566.45 nominal steps/s
+N100_P4_R3: mpirun -np 4 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=46.371 s, 1078.25 nominal steps/s
+N100_P8_R3: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=26.999 s, 1851.92 nominal steps/s
+N100_P16_R3: mpirun -np 16 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_100.csv --steps 50000 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+  exit=0, wall=19.144 s, 2611.83 nominal steps/s
+Complete. Raw results: /zhome/a4/6/187727/courses/02616_LSM/gaia/n_pilot/results/high_ranks_one_30324248.csv
+CAUTION: elapsed_s includes process launch, input, setup, and output; review logs for application-only timing.
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30324248: <nscale_one> in cluster <dcc> Done
+
+Job <nscale_one> was submitted from host <n-62-30-8> by user <s225141> in cluster <dcc> at Mon Nov 23 20:38:12 2026
+Job was executed on host(s) <16*n-62-21-75>, in queue <hpcintro>, as user <s225141> in cluster <dcc> at Mon Nov 23 20:38:14 2026
+</zhome/a4/6/187727> was used as the home directory.
+</zhome/a4/6/187727/courses/02616_LSM/gaia/n_pilot> was used as the working directory.
+Started at Mon Nov 23 20:38:14 2026
+Terminated at Mon Nov 23 20:51:30 2026
+Results reported at Mon Nov 23 20:51:30 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/usr/bin/env bash
+#BSUB -J nscale_one
+#BSUB -q hpcintro
+#BSUB -n 16
+#BSUB -R "span[hosts=1]"
+#BSUB -W 00:30
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/high_ranks_one_%J.out
+#BSUB -eo logs/high_ranks_one_%J.err
+set -euo pipefail
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+printf '\n=== Single node, %s slots; hosts: %s ===\n' "${LSB_DJOB_NUMPROC:-?}" "${LSB_MCPU_HOSTS:-?}"
+# Print rank placement once; the group's existing simulation is unchanged.
+mpirun -np 16 hostname | sort | uniq -c
+python3 -u run_high_ranks.py \
+    --n 50 100 --ranks 2 4 8 16 --steps 50000 --repeats 3 --timeout 900 \
+    --output "results/high_ranks_one_${LSB_JOBID}.csv"
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   3931.77 sec.
+    Max Memory :                                 2234 MB
+    Average Memory :                             1254.75 MB
+    Total Requested Memory :                     16384.00 MB
+    Delta Memory :                               14150.00 MB
+    Max Swap :                                   -
+    Max Processes :                              21
+    Max Threads :                                56
+    Run time :                                   796 sec.
+    Turnaround time :                            798 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <logs/high_ranks_one_30324248.err> for stderr output of this job.
+

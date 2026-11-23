@@ -1,0 +1,23 @@
+COMMAND: mpirun -np 8 python3 ParallelImplementation.py --data gaia_subsets/gaia_random_5000.csv --steps 100 --dt 0.01 --softening 0.01 --merge-radius 0 --no-results
+
+MPI: 8 ranks on 1 host(s): n-62-28-29
+Mode: normal (time limit 300 s, at most 100 steps)
+Loaded 5.000 stars from gaia_subsets/gaia_random_5000.csv; 625-625 stars per rank
+Total mass: 9181.9 M_sun
+Initial mean distance to centre of mass: 2568.961 pc
+Final mean distance to centre of mass: 2568.961 pc
+Stars: 5.000 at start, 5.000 at end (0 merged away)
+Total momentum at end: [ 0.  0. -0.] M_sun·km/s (starts at 0)
+Simulated 100 steps (0.98 Myr) in 28.12 s (281.23 ms/step, slowest rank)
+
+Performance (normal, completed, 100 iterations)
+  total          28.207 s
+  load            0.026 s
+  simulation     28.123 s
+    forces       28.075 s
+    merge         0.000 s
+    integrate     0.002 s
+  plotting        0.000 s
+  output          0.006 s
+  8.903e+07 interactions/s · ~1.78 GFLOP/s · model bandwidth 2.85 GB/s · peak memory 195 MB
+  communication    0.021 s (slowest rank) · sync 0.608 s · load imbalance (forces max/mean) 1.008
