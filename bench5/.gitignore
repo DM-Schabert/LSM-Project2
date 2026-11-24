@@ -1,0 +1,8 @@
+# files of LOCAL=1 runs (only check that the scripts run; never results)
+out/*local*
+out/plots_local/
+# made again by analyze.py
+out/plots/
+__pycache__/
+logs/*
+!logs/.gitkeep

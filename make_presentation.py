@@ -5,7 +5,7 @@ From the repository root, after the pages themselves are up to date (each folder
     python3 make_presentation.py
 
 It copies the data blocks of amdahl/, isoeff/, communication/, communication/overlap/ and memory/results.html,
-data_types/results/summary.csv and the CSVs of experiments/results/ into the one data block of presentation.html (<script id="deck-data">), keeping only
+data_types/results/summary.csv, the CSVs of experiments/results/ and cache/out/ (run cache/analyze.py first) into the one data block of presentation.html (<script id="deck-data">), keeping only
 what the presentation draws. Nothing is measured or fitted again here; the page computes the rest, the same way the
 results pages do.
 """
@@ -63,6 +63,24 @@ def merge() -> dict:
             "timing": read("timing_summary.csv"), "paired": read("paired_comparison.csv")}
 
 
+def cache() -> dict:
+    """The tables cache/analyze.py made from the cache jobs (K0 bandwidth, K1/K2 tiles, K3 N = 100 000, K4 communication)."""
+    out = ROOT / "cache" / "out"
+    read = lambda name: csv_rows((out / name).read_text()) if (out / name).exists() else []  # noqa: E731
+    return {"k0": read("k0_bandwidth.csv"), "k1": read("k1_tiles.csv"), "k3": read("k3_bign.csv"), "k4": read("k4_comm.csv")}
+
+
+def serial_steps() -> dict:
+    """Median ms per step of the serial program for the N the presentation compares (all serial rows of results.csv)."""
+    path = ROOT / "results.csv"
+    if not path.exists():
+        return {}
+    r = pd.read_csv(path, low_memory=False)
+    r = r[(r["implementation"] == "serial") & (r["iterations"] > 0) & r["n_stars_start"].isin([5000, 20000])]
+    ms = r["simulation_time_s"] / r["iterations"] * 1e3
+    return {str(int(n)): round(float(v), 1) for n, v in ms.groupby(r["n_stars_start"]).median().items()}
+
+
 def datatypes() -> list:
     path = ROOT / "data_types" / "results" / "summary.csv"
     return csv_rows(path.read_text()) if path.exists() else []
@@ -78,7 +96,7 @@ def main() -> None:
             "comm": {"meta": comm.get("meta", {}), "runs": comm.get("runs", [])},
             "overlap": block(ROOT / "communication" / "overlap" / "results.html", "overlap-data"),
             "memory": block(ROOT / "memory" / "results.html", "memory-data"),
-            "datatypes": datatypes(), "merge": merge()}
+            "datatypes": datatypes(), "merge": merge(), "cache": cache(), "serial": serial_steps()}
     text = json.dumps(data, separators=(",", ":"), allow_nan=False).replace("</", "<\\/")
     page = args.page.read_text()
     page, found = DECK.subn(lambda m: m.group(1) + text + m.group(2), page)
@@ -88,7 +106,8 @@ def main() -> None:
     print(f"Wrote {len(text) // 1024} KB into {args.page}: amdahl {len(data['amdahl'].get('loop', []))} points, "
           f"isoeff {len(data['isoeff'].get('capacity', []))}, communication {len(data['comm']['runs'])} runs, "
           f"overlap {len(data['overlap'].get('points', []))} points, memory {len(data['memory'].get('launches', []))} launches, "
-          f"datatypes {len(data['datatypes'])} rows, merge {len(data['merge']['steps'])} steps")
+          f"datatypes {len(data['datatypes'])} rows, merge {len(data['merge']['steps'])} steps, "
+          f"cache {len(data['cache']['k1'])} tile settings, serial {data['serial']}")
 
 
 if __name__ == "__main__":

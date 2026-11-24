@@ -1,17 +1,17 @@
-cache: 118 program runs, 6 bandwidth rows, 56 communication rows
+cache: 139 program runs, 22 bandwidth rows, 56 communication rows
 
-E0.1  n.a.  One core alone gets 3-15 GB/s (triad, STREAM counting).
-             no data
-E0.2  n.a.  One socket saturates: 12 cores on it give < 1.2x the bandwidth of 6.
-             no data
+E0.1  yes   One core alone gets 3-15 GB/s (triad, STREAM counting).
+             7.2 GB/s
+E0.2  yes   One socket saturates: 12 cores on it give < 1.2x the bandwidth of 6.
+             27.9 -> 30.6 GB/s
 E0.3  yes   12 ranks spread over both sockets get >= 1.5x the bandwidth of 12 on one.
-             close 30.6, spread 55.8 GB/s
-E1.1  n.a.  On one rank the tile size hardly matters: tiles of 2 rows to 2^18 pairs within 15 % (N = 5 000).
-             no data
+             close 30.6, spread 55.5 GB/s
+E1.1  yes   On one rank the tile size hardly matters: tiles of 2 rows to 2^18 pairs within 15 % (N = 5 000).
+             90-94 ns per pair
 E1.2  yes   On a full node (P = 24) tiles that fit a core's L3 share are >= 13 % faster per pair than 2^18-pair tiles.
              N=5000: 97 vs 124 ns
-E1.3  n.a.  With small tiles the kernel keeps >= 90 % of its one-rank speed per pair on 24 ranks (N = 5 000).
-             no data
+E1.3  yes   With small tiles the kernel keeps >= 90 % of its one-rank speed per pair on 24 ranks (N = 5 000).
+             best small tile 97%, 2^18-pair tiles 72%
 E1.4  yes   The whole block in one tile is the slowest per pair on a full node.
              N=5000: block 134 vs 124 ns; N=20000: block 122 vs 103 ns
 E2.1  no    With 2^18-pair tiles, 12 ranks spread over both sockets are >= 10 % faster per pair than on one socket.

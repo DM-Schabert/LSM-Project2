@@ -1,0 +1,19 @@
+# Every configuration the project went through, in the order it was introduced.
+# label | ranks | placement | scheme | tile rows | since | what it is
+#   placement: close (cores in order), full (24 ranks, one node), nodes2 (48 ranks, 24 per node)
+#   tile rows: 1 = the serial row loop, 0 = automatic (~2^18 pairs), small = 2 rows,
+#              piece = ring pieces of ~13 000 pairs (~1 MB), grid = 2D tiles of ~13 000 pairs, - = serial program
+serial        |  1 | close  | serial    | -     | 8 Nov  | the serial program
+v1-24         | 24 | full   | allgather | 1     | 9 Nov  | v1 (Allgatherv), untiled kernel, one node
+v1-tiles-24   | 24 | full   | allgather | 0     | 15 Nov | v1 with automatic tiles
+ring-24       | 24 | full   | ring      | 0     | 15 Nov | ring (overlap), automatic tiles
+2d-24         | 24 | full   | 2d        | 0     | 16 Nov | 2D grid, automatic tiles
+v1-tiles-48   | 48 | nodes2 | allgather | 0     | 17 Nov | v1 on two nodes
+ring-48       | 48 | nodes2 | ring      | 0     | 17 Nov | ring on two nodes
+2d-48         | 48 | nodes2 | 2d        | 0     | 17 Nov | 2D on two nodes
+v1-small-24   | 24 | full   | allgather | small | 24 Nov | v1 with 2-row tiles (cache/)
+v1-small-48   | 48 | nodes2 | allgather | small | 24 Nov | v1 with 2-row tiles, two nodes
+ring-small-24 | 24 | full   | ring      | piece | 24 Nov | ring with ~1 MB pieces (cache/)
+ring-small-48 | 48 | nodes2 | ring      | piece | 24 Nov | ring with ~1 MB pieces, two nodes
+2d-small-24   | 24 | full   | 2d        | grid  | 24 Nov | 2D with ~1 MB tiles
+2d-small-48   | 48 | nodes2 | 2d        | grid  | 24 Nov | 2D with ~1 MB tiles, two nodes
