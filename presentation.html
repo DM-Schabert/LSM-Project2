@@ -151,6 +151,26 @@
   .tl-mark { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2.5px dashed var(--mpi); }
   .holds svg { width: 100%; height: auto; display: block; overflow: visible; }
 
+  /* from serial to parallel: the tree of changes */
+  .cg { overflow-x: auto; min-width: 0; }
+  .cg svg { width: 100%; min-width: 760px; height: auto; display: block; }
+  .cg-node { cursor: pointer; }
+  .cg-node:focus { outline: none; }
+  .cg-node:hover .cg-box, .cg-node:focus-visible .cg-box { stroke-width: 2.75px; }
+  .cg-node.on .cg-box { stroke-width: 3.5px; }
+  .cg-edge { fill: none; stroke: var(--muted); stroke-width: 1.75; }
+  .cg-edge--own { stroke: var(--axis); stroke-dasharray: 5 4; }
+  .sw--own { background: transparent; border: 2px dashed var(--axis); box-sizing: border-box; }
+  .sw--open { background: transparent; border: 2px dotted var(--axis); box-sizing: border-box; }
+  .cg-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; min-height: 190px; align-content: start; }
+  @media (max-width: 860px) { .cg-card { grid-template-columns: minmax(0, 1fr); } }
+  .cg-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+  .cg-head h3 { font-size: 17px; }
+  .cg-meta { font-size: 13.5px; color: var(--muted); }
+  .cg-chip { font-size: 12.5px; border: 1.5px solid; border-radius: 999px; padding: 0 9px; }
+  .cg-card h4 { margin: 0 0 4px; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .cg-card ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; line-height: 1.45; }
+
   /* charts */
   .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; }
   @media (max-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr); } }
@@ -211,7 +231,7 @@
     <h1>What limits our N‑body code on the cluster</h1>
     <p class="lede">Direct summation of the forces between Gaia stars with MPI: how far v1 scales, what moving the positions costs, why overlapping it does not help, and whether time or memory runs out first.</p>
     <ol class="agenda">
-      <li><a href="#s-setup">Setup<span>one time step, hardware, correctness</span></a></li>
+      <li><a href="#s-setup">Setup<span>one time step, every change since the serial code, correctness</span></a></li>
       <li><a href="#s-amdahl">Strong scaling<span>Amdahl, v1 on one node</span></a></li>
       <li><a href="#s-isoeff">How many stars fit<span>scale-up: 10&nbsp;000 steps in 300&nbsp;s</span></a></li>
       <li><a href="#s-schemes">Communication schemes<span>Allgather, ring, 2D on one and two nodes</span></a></li>
@@ -241,6 +261,30 @@
         <li><b>One node is faster:</b> <span id="fast-node">n-62-21-75 is 12&nbsp;%</span> faster with the same CPU. Every time is corrected with a factor per node from its serial runs.</li>
       </ul>
     </div>
+  </div>
+</section>
+
+<!-- ================================================================ 1 setup: every change since the serial code -->
+<section class="slide slide--alt" id="s-changes">
+  <div class="inner">
+    <p class="eyebrow">1 · Setup · from serial to parallel</p>
+    <h2>Every change to the serial code, and how it was tested</h2>
+    <p class="p">One change at a time, each checked against the serial run before it was timed. The upper row is what the program can run; the lower row was tested on its own. The numbers give the order in which the changes were made.</p>
+    <div class="controls">
+      <button type="button" class="btn" id="cg-prev">← Previous</button>
+      <button type="button" class="btn" id="cg-next">Next →</button>
+      <span class="status" id="cg-pos">—</span>
+    </div>
+    <div class="legend">
+      <span class="key"><span class="sw" style="background: var(--c2)"></span>in use</span>
+      <span class="key"><span class="sw" style="background: var(--c0)"></span>option, not used</span>
+      <span class="key"><span class="sw sw--own"></span>tested on its own</span>
+      <span class="key"><span class="sw sw--open"></span>not built yet</span>
+      <span class="key">✓ how it was checked</span>
+    </div>
+    <div class="cg"><svg id="cg-svg" viewBox="0 0 1000 328" role="img" aria-label="The changes since the serial code: v1 with Allgatherv and the tiled kernel make up the final configuration; the ring and the 2D grid are options of the same program; re-distribution after merges, a derived datatype and Testall for the overlap were tested on their own; IO, a del in the tile loop and Numba are not built yet."></svg></div>
+    <div class="cg-card" id="cg-card" aria-live="polite"></div>
+    <p class="note">Dates and authors from the git history, <code>docs/</code> and <code>Ring_v2_summary.md</code>. C1 is <code>communication/tests/validate.sh</code> on the cluster (job 30082644): N = 5, 100, 1 000, P = 1 to 24, 20 steps, without merging.</p>
   </div>
 </section>
 
@@ -746,6 +790,138 @@
     if (r) setHTML('step-note', `Share of a step for v1 at N = ${nf(r.N)}, P = ${r.P} on one node (C2): forces ${pct(r.forces_us / r.step_us, 1)}, exchange ${pct((r.comm_us + r.sync_us) / r.step_us, 1)} (of which waiting for the slowest rank ${pct(r.sync_us / r.step_us, 1)}), kick–drift–kick ${pct(r.integrate_us / r.step_us, 2)}.`);
     const nf0 = median(RUNS.map((x) => x.node_factor)), fast = RUNS.reduce((a, x) => (x.node_factor != null && (!a || x.node_factor < a.node_factor) ? x : a), null);
     if (fast && nf0) setText('fast-node', `${fast.hosts.split(';')[0]} is ${nf((1 - fast.node_factor / nf0) * 100)} %`);
+  })();
+
+  // ================================================================ 1 setup: every change since the serial code
+  (() => {
+    const svg = document.getElementById('cg-svg'), card = document.getElementById('cg-card'), posEl = document.getElementById('cg-pos');
+    if (!svg || !card) return;
+    // the numbers that the data block has: ring and 2D against v1, untiled v1 (chapter 2) against tiled v1, merge, datatypes
+    const rel = (sch) => RUNS.filter((r) => r.scheme === sch && r.P > 1).map((r) => { const b = crun(r.campaign, 'v1-tile', r.N, r.P);
+      return b ? { N: r.N, P: r.P, x: r.step_corr_us / b.step_corr_us } : null; }).filter(Boolean);
+    const span = (q) => (q.length ? [Math.min(...q), Math.max(...q)] : null);
+    const ring = rel('v2-ring-tile'), grid = rel('v3-2d-tile');
+    const r50 = span(ring.filter((q) => q.N === 50 && q.P >= 24).map((q) => q.x)), rBig = span(ring.filter((q) => q.N >= 1000).map((q) => q.x));
+    const g50 = span(grid.filter((q) => q.N === 50 && q.P === 24).map((q) => q.x)), gBig = span(grid.filter((q) => q.N >= 1000).map((q) => q.x));
+    const wins = [...new Set(ring.filter((q) => q.N >= 1000 && q.x < 0.95).map((q) => q.N))].sort((a, b) => a - b)
+      .map((n) => `N = ${nf(n)} with ${[...new Set(ring.filter((q) => q.N === n && q.x < 0.95).map((q) => q.P))].sort((a, b) => a - b).join(' and ')} ranks`);
+    const BY = ((D.amdahl || {}).by_n || []), ser5 = BY.find((r) => r.n_stars === 5000);
+    const untiled = [1000, 5000].map((n) => { const a = BY.find((r) => r.n_stars === n && r.p_max === 24), t = crun('C2', 'v1-tile', n, 24);
+      return a && t ? `N = ${nf(n)}: ${nf(a.serial_ms_per_step / a.speedup_pmax, 1)} ms without, ${nf(t.step_corr_us / 1000, 1)} ms with tiles` : null; }).filter(Boolean);
+    const MT = ((D.merge || {}).timing || []), im = MT.find((r) => r.policy === 'immediate'), kept = MT.find((r) => r.policy === 'retained');
+    const DT = (D.datatypes || []), dtIn = DT.filter((r) => Math.abs(r.xyz_faster_pct) <= 4).length;
+    const ST = {
+      ref: { stroke: 'var(--fg)', fill: 'var(--panel)', op: 1, label: 'the reference' },
+      use: { stroke: 'var(--c2)', fill: 'var(--c2)', op: 0.15, label: 'in use' },
+      opt: { stroke: 'var(--c0)', fill: 'var(--c0)', op: 0.12, label: 'option, not used' },
+      own: { stroke: 'var(--axis)', fill: 'var(--panel)', op: 1, dash: '6 4', label: 'tested on its own' },
+      open: { stroke: 'var(--axis)', fill: 'var(--panel)', op: 0, dash: '2 4', label: 'not built yet' } };
+    const NODES = [
+      { id: 'serial', x: 8, y: 92, st: 'ref', title: 'Serial code', lines: ['8 Nov · Pelle', 'the reference'],
+        where: '<code>SerialImplementation.py</code>',
+        what: ['Direct summation: the force on every star from every other star, a Python loop over the stars with NumPy over all partners.', 'Kick–drift–kick; stars closer than the merge radius are merged.'],
+        test: ['The reference that every other version is compared with.'],
+        res: [ser5 ? `N = 5 000: ${nf(ser5.serial_ms_per_step / 1000, 1)} s per step on one core.` : 'The serial baseline of every speed-up.'] },
+      { id: 'v1', x: 202, y: 92, st: 'use', title: 'v1: Allgatherv', lines: ['9–10 Nov · group', '✓ bit-identical'],
+        where: '<code>ParallelImplementation.py</code>, plan §2 (weeks 1–6)',
+        what: ['Serial code: <code>compute_accelerations</code> takes a range of stars, so serial and MPI run the same kernel; positions in C order; one shared <code>results.csv</code> with a file lock.',
+          'Every rank owns a block of stars and gets all positions with one <code>Allgatherv</code> per step.',
+          'Merging and stopping are decided together (<code>Allreduce</code>), so every rank takes the same steps.'],
+        test: ['Bit-identical with the serial run for P = 1, 2, 3, 4, 7, with and without merging (290 of 300 stars merged in one test), and on the nearest 5 000 Gaia stars on the cluster.',
+          'C1: 30 of 30 runs bit-identical.', 'Found on the way: <code>Bcast</code> scrambled the column-major positions from pandas (about 2 pc off after one step); fixed with C order.'],
+        res: ['N = 5 000, 8 ranks: speed-up 7.8 (97 %); communication 0.04 % of the run time.', 'The default and the base of the final configuration.'] },
+      { id: 'merge', x: 202, y: 260, st: 'own', title: 'Re-distribute', lines: ['11 Nov · Rasmus', '✓ same final state'],
+        where: '<code>experiments/</code>',
+        what: ['After stars merge: hand the survivors out evenly again, as v1 does (new N, new blocks), or keep every star on its rank.'],
+        test: ['Rasmus\' own code with the same kernel: 1 000 Gaia stars, 100 steps, 12 prescribed merges, 4 ranks, 5 repeats per policy.', 'Both policies end in the same state.'],
+        res: [im && kept ? `Handing out again is ${nf((1 - im.mean_wall_s / kept.mean_wall_s) * 100, 1)} % faster (${nf(im.mean_wall_s, 2)} s against ${nf(kept.mean_wall_s, 2)} s).` : 'See chapter 7.', 'Confirms what v1 already does (chapter 7).'] },
+      { id: 'tiles', x: 396, y: 92, st: 'use', title: 'Tiled kernel', lines: ['15 Nov · Pelle', '✓ C1 30/30, ≤ 10⁻¹⁶'],
+        where: '<code>--tile-rows</code>, plan §7.1; lecture 2: blocking algorithms',
+        what: ['The kernel takes K own stars at once (2-D broadcasting) instead of one per Python iteration.', '<code>--tile-rows 0</code> picks K for about 2<sup>18</sup> pairs per tile; 1 is the serial kernel.'],
+        test: ['Locally with tiles of 1, 7 and automatic, with and without merging: v1 stays bit-identical.', 'C1: 30 of 30 tiled v1 runs, at most 1.3·10⁻¹⁶ relative (summation order); ring and 2D tiled: 60 of 60.'],
+        res: ['Laptop, N = 1 000, P = 2: 32.6 → 25.4 ms per step (ring 39.8 → 23.7 ms).', untiled.length ? `Cluster, 24 ranks: no clear gain over the untiled v1 of chapter 2 (${untiled.join('; ')}).` : 'Used for every comparison.',
+          'Temporaries: 79 B per pair, about 20 MB per tile. The tile size is not tuned for the cache.'] },
+      { id: 'ring', x: 610, y: 172, st: 'opt', title: 'Ring (v2)', lines: ['15 Nov · Pelle', '✓ C1 90/90, ≤ 10⁻¹³'],
+        where: '<code>--decomposition ring</code>, plan §8.1 iteration 7b (week 7)',
+        what: ['A 1-D periodic Cartesian communicator (<code>Create_cart</code>, <code>Shift</code>): every rank keeps only its own block, a copy travels around the ring in P rounds.',
+          '<code>--ring-comm overlap</code> (<code>Isend</code>/<code>Irecv</code>, <code>Waitall</code>) or <code>blocking</code> (<code>Sendrecv</code>).'],
+        test: ['Locally: at most 2·10⁻¹⁴ relative, the same merges (also 46 stars with 9 merges during the run).', 'C1: 90 of 90 runs (overlap, blocking, tiled), at most 1.3·10⁻¹³.'],
+        res: [r50 ? `N = 50: ×${nf(r50[0])}–${nf(r50[1])} slower than v1 at 24–48 ranks (P kernel calls per step).` : 'See chapter 4.',
+          rBig ? `N ≥ 1 000: from ${nf((1 - rBig[0]) * 100)} % faster to ×${nf(rBig[1], 1)} slower than v1, depending on N and P.` : '',
+          'Overlap: no gain (chapter 5).'].filter(Boolean) },
+      { id: 'grid', x: 610, y: 12, st: 'opt', title: '2D grid (v3)', lines: ['16 Nov · David', '✓ C1 78/78, ≤ 10⁻¹³'],
+        where: '<code>--decomposition 2d</code>, plan §8.1 iteration 7c (week 7)',
+        what: ['A p<sub>r</sub> × p<sub>c</sub> Cartesian grid, split into row and column communicators (<code>Sub</code>).', '<code>Allgatherv</code> of the positions in the column, <code>Allreduce</code> of the partial forces in the row; no merging.'],
+        test: ['C1: 78 of 78 runs (also with a fixed grid of 2 rows), at most 1.3·10⁻¹³.', 'Every run checks at the end that the copies within a grid row are still identical.'],
+        res: [g50 ? `N = 50, 24 ranks: ${nf((1 - g50[1]) * 100)}–${nf((1 - g50[0]) * 100)} % faster than v1.` : 'See chapter 4.',
+          gBig ? `N ≥ 1 000: ${sgn((gBig[0] - 1) * 100)} to ${sgn((gBig[1] - 1) * 100)} % against v1.` : ''].filter(Boolean) },
+      { id: 'dt', x: 396, y: 260, st: 'own', title: 'xyz datatype', lines: ['17 Nov · Rasmus', '✓ exact copy check'],
+        where: '<code>data_types/</code> (week 8)',
+        what: ['Send every position as one derived type, <code>MPI.DOUBLE.Create_contiguous(3)</code>, instead of three doubles.'],
+        test: ['Rasmus\' microbenchmark of one <code>Allgatherv</code>: every received array checked exactly; synthetic positions, N = 1 000, 5 000, 20 000, P = 2, 4, 8.'],
+        res: [DT.length ? `${dtIn} of ${DT.length} cases within ±4 %: no consistent gain.` : 'No consistent gain.', 'Not adopted: the positions are contiguous already (chapter 8).'] },
+      { id: 'poll', x: 610, y: 260, st: 'own', title: 'Testall', lines: ['23 Nov · David', '✓ 2 ranks, 64 B–4 MB'],
+        where: '<code>communication/overlap/</code>',
+        what: ['For the ring\'s overlap: call <code>Testall</code> after every tile, so that MPI can move the message during the computation.'],
+        test: ['Two ranks with the real kernel in 4 tiles, messages of 64 B to 4 MB, one node and two, 30 repetitions × 3 sweeps (job 30264751).'],
+        res: ['<code>Waitall</code> gets nearly empty, but the whole exchange takes longer than without: the copy moved into the computation.', 'Not adopted (chapter 5).'] },
+      { id: 'final', x: 824, y: 92, w: 168, st: 'use', title: 'Final setup', lines: ['v1 + tiled kernel', 'all timings'],
+        where: 'chapter 9',
+        what: ['v1 (<code>Allgatherv</code>, blocking) with <code>--tile-rows 0</code>; whole nodes, P chosen by N; stars handed out again after merges.'],
+        test: ['Every comparison in chapters 2–6 is against this configuration; C1: 228 of 228 runs agree with the serial run.'],
+        res: [wins.length ? `Best or equal at most measured points; the ring is faster only at ${wins.join(' and at ')} (a kernel effect, chapter 4).` : 'Best or equal at the measured points.',
+          'The computation per step is the limit.'] },
+      { id: 'open', x: 824, y: 244, w: 168, h: 82, st: 'open', title: 'Not built yet', lines: ['IO · Pelle, in progress', 'del in the tile loop', 'Numba kernel'],
+        where: 'open',
+        what: ['IO improvements (Pelle, <code>IO_Improvements/</code>): a first draft.', 'A <code>del</code> at the end of the tile loop: 79 → 56 B per pair (memory, chapter 6).', 'Numba for the kernel: the only large lever on absolute speed.'],
+        test: ['Not yet.'], res: ['—'] }];
+    const ORDER = ['serial', 'v1', 'merge', 'tiles', 'ring', 'grid', 'dt', 'poll', 'final', 'open'];
+    const at = (id) => NODES.find((n) => n.id === id), W = (n) => n.w || 160, H = (n) => n.h || 66;
+    const T = (x, y, s, o = {}) => { const t = svgEl('text', { x, y, 'font-size': o.size || 11.5, 'font-weight': o.bold ? 600 : null, fill: o.fill || 'var(--muted)', 'text-anchor': o.anchor || null }, o.parent || svg); t.textContent = s; return t; };
+    const defs = svgEl('defs', {}, svg);
+    [['cg-arrow', 'var(--muted)'], ['cg-arrow-own', 'var(--axis)']].forEach(([id, c]) => {
+      const mk = svgEl('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
+      svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: c }, mk); });
+    // the two rows
+    T(8, 30, 'In the program', { size: 13, bold: true, fill: 'var(--fg)' }); T(8, 47, 'ParallelImplementation.py');
+    T(8, 284, 'Tested on its own', { size: 13, bold: true, fill: 'var(--fg)' }); T(8, 301, 'not in the program');
+    // edges: the program's line, its options, and what the lower row tested
+    const edge = (d, own) => svgEl('path', { d, class: own ? 'cg-edge cg-edge--own' : 'cg-edge', 'marker-end': `url(#${own ? 'cg-arrow-own' : 'cg-arrow'})` }, svg);
+    edge('M168,125 L198,125'); edge('M362,125 L392,125'); edge('M556,125 L820,125');
+    edge('M556,113 C584,113 584,45 606,45'); edge('M556,137 C584,137 584,205 606,205');
+    T(688, 119, 'the default', { anchor: 'middle' });
+    edge('M282,260 L282,162', true); T(276, 214, 'its re-distribution', { anchor: 'end' });
+    edge('M436,260 L330,162', true); T(396, 214, 'its Allgatherv');
+    edge('M690,260 L690,242', true); T(698, 255, 'its overlap');
+    // the boxes
+    const els = {};
+    NODES.forEach((n) => {
+      const s = ST[n.st], k = ORDER.indexOf(n.id) + 1;
+      const g = svgEl('g', { class: 'cg-node', tabindex: 0, role: 'button', 'aria-label': `Step ${k}: ${n.title}, ${n.lines.join(', ')}. ${s.label}.` }, svg);
+      svgEl('rect', { x: n.x, y: n.y, width: W(n), height: H(n), rx: 10, fill: 'var(--bg)' }, g);
+      svgEl('rect', { class: 'cg-box', x: n.x, y: n.y, width: W(n), height: H(n), rx: 10, fill: s.fill, 'fill-opacity': s.op, stroke: s.stroke, 'stroke-width': 1.75, 'stroke-dasharray': s.dash }, g);
+      svgEl('circle', { cx: n.x + 17, cy: n.y + 18, r: 10, fill: 'var(--fg)' }, g);
+      T(n.x + 17, n.y + 22, String(k), { size: 11, bold: true, fill: 'var(--bg)', anchor: 'middle', parent: g });
+      T(n.x + 34, n.y + 23, n.title, { size: 13.5, bold: true, fill: 'var(--fg)', parent: g });
+      n.lines.forEach((l, i) => T(n.x + 12, n.y + 42 + i * 15, l, { fill: l.startsWith('✓') ? 'var(--fg)' : 'var(--muted)', parent: g }));
+      const pick = () => select(n.id);
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pick(); } });
+      els[n.id] = g;
+    });
+    const list = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+    let cur = 0;
+    const select = (id) => {
+      cur = ORDER.indexOf(id);
+      Object.entries(els).forEach(([k, g]) => g.classList.toggle('on', k === id));
+      const n = at(id), s = ST[n.st];
+      card.innerHTML = `<div class="cg-head"><h3>${cur + 1} · ${n.title}</h3><span class="cg-meta">${n.where}${n.lines[0] && n.st !== 'open' && n.id !== 'final' ? ` · ${n.lines[0]}` : ''}</span><span class="cg-chip" style="border-color: ${s.stroke}">${s.label}</span></div>
+        <div><h4>What changed</h4>${list(n.what)}</div><div><h4>How it was tested</h4>${list(n.test)}</div><div><h4>Result</h4>${list(n.res)}</div>`;
+      posEl.textContent = `Step ${cur + 1} of ${ORDER.length}`;
+    };
+    document.getElementById('cg-prev').addEventListener('click', () => select(ORDER[Math.max(0, cur - 1)]));
+    document.getElementById('cg-next').addEventListener('click', () => select(ORDER[Math.min(ORDER.length - 1, cur + 1)]));
+    select('serial');
   })();
 
   // ================================================================ 2 amdahl
