@@ -15,23 +15,32 @@ How it works
     * Between clusters, --far-field monopole (default, step 3): every other
       cluster pulls on a star as one point mass at its centre of mass,
           a_i += G · Σ_{B ≠ own} M_B (R_B − r_i) / (|R_B − r_i|² + ε²)^1.5.
-      At the start of every step, each rank adds the sums of its own stars
-      (count, Σm, Σm·r, Σm·|r|²) into its cluster's row of a small (C + 1, 6)
-      table, and ONE Allreduce(SUM) over the world gives every rank every
-      cluster's mass, centre of mass and rms radius. The last row carries the
-      stop requests, so this one collective also replaces agree_on_stop. The
-      far field is computed after any merges, for the stars the rank owns then
-      (merging keeps a cluster's mass and centre of mass).
+      Every cluster's mass, centre of mass and rms radius come from the step's
+      one world Allreduce (below). The far field is computed after any merges,
+      for the stars the rank owns then (merging keeps a cluster's mass and
+      centre of mass).
       Theta_AB = (r_A + r_B) / |R_A − R_B|, with rms radii, says how good the
       approximation is: the largest theta of the run, and how many steps went
       over --theta-max, go in the printout and in results.csv.
     * --far-field off: no pull between clusters. Every cluster evolves as if it
       were alone, so its result is bit-identical to a serial or v1 run on that
       cluster's stars only (step 2's check, compare_clusters.py).
-    * Stopping (time limit, Ctrl+C, SIGTERM) is agreed on the world
-      communicator, so all clusters stop after the same step. Whether to merge
-      is decided per cluster, so a cluster without close pairs never waits for
-      another cluster's merge.
+    * ONE collective per step (C4, 24 Nov). Right after its cluster's forces,
+      before anything moves, each rank writes into its cluster's row of a small
+      (C + 1, 7) table: the sums of its own stars (count, Σm, Σm·r, Σm·|r|²;
+      far field on) and how many close pairs it found. The last row carries
+      the stop requests (time limit, Ctrl+C, SIGTERM). One Allreduce(SUM) over
+      the world then gives every rank the stop decision, its cluster's merge
+      check and every cluster's summary. Before, these were up to three
+      collectives per step. All clusters stop after the same step; a step that
+      is told to stop ends before anything moves.
+      Merging is still per cluster: a merge can bring stars close to others,
+      so a cluster that merged checks again on its own communicator, and the
+      other clusters never wait for that.
+      With no merging and no far field, a step needs no exchange, and only
+      every --stop-check-every steps has one.
+      The step time includes the exchange, so it is everything a step costs
+      (v1 leaves its stop check out of the step time).
     * Output (--save-final, --plot, --plot-iter): each cluster is gathered on
       its first rank, then world rank 0 collects the clusters with one
       lower-case gather. This happens once per run (or per live-plot frame);
@@ -95,7 +104,7 @@ from SerialImplementation import BoolArray, FloatArray, IntArray, Pair, Perf, St
 # at once with a clear message instead of halfway through a job.
 USED_FROM_PARALLEL: Tuple[str, ...] = (
     "ParallelState", "state_from_stars", "allgather_rows", "gather_full_state", "close_pairs_anywhere",
-    "agree_on_stop", "ParallelStopRequest", "block_accelerations", "cpu_model",
+    "ParallelStopRequest", "block_accelerations", "cpu_model",
     "STOP_NONE", "STOP_INTERRUPTED", "STOP_WINDOW_CLOSED", "STOP_TIME_LIMIT", "STOP_REASONS")
 _missing: List[str] = [name for name in USED_FROM_PARALLEL if not hasattr(pi, name)]
 if _missing:
@@ -107,6 +116,8 @@ SECTIONS: Tuple[str, ...] = ("load", "distribute", "communication", "forces", "m
                              "integrate", "sync", "far_field", "plotting", "output")
 BYTES_PER_ROW: int = 3 * 8  # one star's x, y, z as float64
 SUMMARY_COLUMNS: int = 6    # count, Σm, Σm·x, Σm·y, Σm·z, Σm·|r|²
+PAIRS_COLUMN: int = 6       # close pairs found, in the same table
+TABLE_COLUMNS: int = 7
 DEFAULT_THETA_MAX: float = 0.5
 
 
@@ -299,25 +310,42 @@ def summary_row(positions: FloatArray, masses: FloatArray) -> FloatArray:
     return row
 
 
-def exchange_summaries(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm, my_code: int,
-                       perf: Perf) -> Tuple[ClusterSummaries, int]:
-    """Collective (world): every cluster's summary, and the agreed stop code, in ONE Allreduce.
+@dataclass
+class StepExchange:
+    """What the one world Allreduce of a step tells every rank."""
+    stop_code: int                          # the agreed stop code (pi.STOP_NONE: carry on)
+    pairs_in_my_cluster: int                # close pairs found by all ranks of this rank's cluster
+    summaries: Optional[ClusterSummaries]   # every cluster's summary (far field on), else None
 
-    Each rank writes the sums of its own stars into its cluster's row; the
-    Allreduce(SUM) adds the rows of a cluster's ranks together. The last row
-    counts stop requests per code (one-hot), and the highest code anyone asked
-    for wins, as with v1's Allreduce(MAX).
+
+def exchange_step(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm, my_code: int,
+                  my_pair_count: int, with_summaries: bool, perf: Perf) -> StepExchange:
+    """Collective (world): the stop requests, the merge check and the cluster summaries in ONE Allreduce.
+
+    A (C + 1, 7) table: in its cluster's row, each rank writes the summary sums
+    of its own stars (columns 0-5, only with the far field) and how many close
+    pairs it found (column 6). The Allreduce(SUM) adds the rows of a cluster's
+    ranks together. The last row counts stop requests per code (one-hot); the
+    highest code anyone asked for wins, as with v1's Allreduce(MAX).
+
+    Called after the force pass and before anything moves, so the summaries
+    are those of the positions at the start of the step, as before.
     """
     with perf.time("sync"):
-        table: FloatArray = np.zeros((layout.n_clusters + 1, SUMMARY_COLUMNS), dtype=np.float64)
-        start, stop = state.my_range
-        table[layout.cluster_id] = summary_row(state.my_positions, state.masses[start:stop])
+        table: FloatArray = np.zeros((layout.n_clusters + 1, TABLE_COLUMNS), dtype=np.float64)
+        if with_summaries:
+            start, stop = state.my_range
+            table[layout.cluster_id, :SUMMARY_COLUMNS] = summary_row(state.my_positions, state.masses[start:stop])
+        table[layout.cluster_id, PAIRS_COLUMN] = my_pair_count
         if my_code != pi.STOP_NONE:
             table[layout.n_clusters, my_code - 1] = 1.0
         total: FloatArray = np.empty_like(table)
         world.Allreduce(table, total, op=MPI.SUM)
     requested: List[int] = [code for code in pi.STOP_REASONS if total[layout.n_clusters, code - 1] > 0]
-    return ClusterSummaries.from_sums(total[:layout.n_clusters]), max(requested, default=pi.STOP_NONE)
+    return StepExchange(
+        stop_code=max(requested, default=pi.STOP_NONE),
+        pairs_in_my_cluster=int(round(total[layout.cluster_id, PAIRS_COLUMN])),
+        summaries=ClusterSummaries.from_sums(total[:layout.n_clusters, :SUMMARY_COLUMNS]) if with_summaries else None)
 
 
 def monopole_accelerations(positions: FloatArray, centres: FloatArray, cluster_masses: FloatArray,
@@ -347,35 +375,46 @@ def far_field_accelerations(state: "pi.ParallelState", layout: ClusterLayout,
                                       layout.cluster_id, args.softening)
 
 
-def cluster_step(state: "pi.ParallelState", layout: ClusterLayout, summaries: Optional[ClusterSummaries],
-                 args: argparse.Namespace, perf: Perf) -> Tuple["pi.ParallelState", int]:
+def cluster_step(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm, my_code: Optional[int],
+                 use_far_field: bool, args: argparse.Namespace,
+                 perf: Perf) -> Tuple["pi.ParallelState", int, StepExchange]:
     """One time step of this rank's cluster; same order as serial.step and v1.
 
-    `summaries` are this step's cluster summaries (from the positions before
-    the step), or None without a far field. Returns the new state and how
-    many stars of this cluster merged away.
+    my_code: this rank's stop request when this step has the world exchange,
+    None when it has none (no merging, no far field, and not a stop-check
+    step). The step ends early, with nothing moved, when the exchange says
+    stop. Returns the new state, how many stars of this cluster merged away,
+    and what the exchange said.
     """
     comm: MPI.Comm = layout.comm
     n_before: int = state.count
     accelerations, my_pairs = cluster_accelerations(state, comm, args, perf)
 
-    # Decided per cluster: every rank of a cluster gets the same answer, and the
-    # other clusters don't take part, so they never wait for this merge.
-    if args.merge_radius > 0:
-        while pi.close_pairs_anywhere(comm, my_pairs, perf):
-            state = cluster_merge(state, my_pairs, comm, perf)
-            accelerations, my_pairs = cluster_accelerations(state, comm, args, perf)
+    exchange: StepExchange = StepExchange(stop_code=pi.STOP_NONE, pairs_in_my_cluster=0, summaries=None)
+    if my_code is not None:  # collective (world): stop requests + merge check + far-field summaries
+        exchange = exchange_step(state, layout, world, my_code, len(my_pairs), use_far_field, perf)
+        if exchange.stop_code != pi.STOP_NONE:
+            return state, 0, exchange  # stop before anything moves: the state is that of the last full step
+
+    # The first merge check came with the exchange. Any further ones (a merge can
+    # bring stars within the merge radius of others) are per cluster: only the
+    # clusters that merged take part, so the others never wait for them.
+    has_pairs: bool = exchange.pairs_in_my_cluster > 0
+    while has_pairs:
+        state = cluster_merge(state, my_pairs, comm, perf)
+        accelerations, my_pairs = cluster_accelerations(state, comm, args, perf)
+        has_pairs = pi.close_pairs_anywhere(comm, my_pairs, perf)
 
     # After any merges: for the stars this rank owns now. Merging keeps every
     # cluster's mass and centre of mass, so the summaries are still valid.
-    far: Optional[FloatArray] = far_field_accelerations(state, layout, summaries, args, perf)
+    far: Optional[FloatArray] = far_field_accelerations(state, layout, exchange.summaries, args, perf)
 
     with perf.time("integrate"):
         if far is not None:
             accelerations += far
         state.my_velocities += accelerations * args.dt
         state.my_positions += state.my_velocities * args.dt
-    return state, n_before - state.count
+    return state, n_before - state.count, exchange
 
 
 # ---------------------------------------------------------------- output
@@ -589,7 +628,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-results", action="store_true", help="Don't write to the results file")
     # v1's MPI options
     parser.add_argument("--stop-check-every", type=serial.positive_int, default=1, metavar="K",
-                        help="Agree on stopping (time limit / signals) every K steps (default: 1)")
+                        help="Agree on stopping (time limit / signals) every K steps. Only matters with "
+                             "--merge-radius 0 and no far field: otherwise every step has the exchange "
+                             "and the stop check comes with it for free (default: 1)")
     parser.add_argument("--tile-rows", type=non_negative_int, default=1, metavar="K",
                         help="Force kernel: K own stars per loop iteration (1 = the v1 kernel, "
                              "bit-identical to serial; 0 = automatic). Default: 1")
@@ -673,10 +714,13 @@ def main() -> None:
     stop_reason: str = "finished"
     steps_done: int = 0
 
-    # With a far field, the summaries are exchanged at the start of every step,
-    # and the stop requests ride along, so stopping is checked every step for free.
+    # One world Allreduce per step carries the stop requests, the merge check and
+    # (far field on) the cluster summaries. A step needs it when merging is on or
+    # the far field is on; then stopping is checked every step for free. With
+    # neither, only every --stop-check-every steps has the exchange.
     use_far_field: bool = args.far_field == "monopole" and n_clusters > 1
-    check_every: int = 1 if use_far_field else args.stop_check_every
+    exchange_every_step: bool = use_far_field or args.merge_radius > 0
+    check_every: int = 1 if exchange_every_step else args.stop_check_every
     theta_log: Optional[ThetaLog] = ThetaLog(limit=args.theta_max) if use_far_field and is_root else None
     far_interactions: int = 0
 
@@ -694,23 +738,18 @@ def main() -> None:
     world.Barrier()  # start the step clock together
     try:
         for i in range(1, args.steps + 1):
+            # Everything a step costs is in its time, the exchange (and so the stop check) too
             step_start: float = time.perf_counter()
-            summaries: Optional[ClusterSummaries] = None
-            code: int = pi.STOP_NONE
-            if use_far_field:
-                summaries, code = exchange_summaries(state, layout, world, my_stop_code(), perf)  # collective
-            elif (i - 1) % check_every == 0:
-                code = pi.agree_on_stop(world, my_stop_code(), perf)  # world: all clusters stop together
-            if code != pi.STOP_NONE:
-                stop_reason = pi.STOP_REASONS[code]
+            has_exchange: bool = exchange_every_step or (i - 1) % check_every == 0
+            state, n_merged, exchange = cluster_step(state, layout, world,
+                                                     my_stop_code() if has_exchange else None,
+                                                     use_far_field, args, perf)
+            if exchange.stop_code != pi.STOP_NONE:
+                stop_reason = pi.STOP_REASONS[exchange.stop_code]
                 break
-            if theta_log is not None and summaries is not None:  # only for steps that are taken
-                theta_log.add(summaries.theta(), i)
-            if not use_far_field:  # as in v1, the stop check is not part of the step time
-                step_start = time.perf_counter()
-
-            state, n_merged = cluster_step(state, layout, summaries, args, perf)
             perf.step_times.append(time.perf_counter() - step_start)
+            if theta_log is not None and exchange.summaries is not None:
+                theta_log.add(exchange.summaries.theta(), i)
             steps_done = i
             if use_far_field:
                 far_interactions += state.my_count * (n_clusters - 1)
