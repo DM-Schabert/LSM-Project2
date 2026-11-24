@@ -98,7 +98,7 @@ class StarSelector:
     are always nested inside larger ones.
     """
 
-    def __init__(self, data: pd.DataFrame, seed: int, cluster=False: bool) -> None:
+    def __init__(self, data: pd.DataFrame, seed: int, cluster: bool = False) -> None:
         self.data: pd.DataFrame = data
 
         # Random: a fixed seed gives the same stars every time.
@@ -309,4 +309,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()pass
+    main()
