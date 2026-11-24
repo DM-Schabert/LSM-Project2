@@ -11,6 +11,7 @@ Two commands:
             python3 IO_Improvements/compare_clusters.py compare final_clusters.csv final_k0.csv final_k1.csv
             final_clusters.csv: --save-final of ClusterImplementation.py (has a 'cluster' column)
             final_k<k>.csv:     --save-final of SerialImplementation.py (or v1) on cluster k's file
+            (or ONE file with a cluster column, e.g. cluster_reference.py simulate --save-final)
 
 compare checks positions, velocities, masses and merged_from. With --tile-rows 1
 the clusters run must be bit-identical (the default --tol 0); with tiling, pass
@@ -59,14 +60,22 @@ def relative_difference(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def compare(clusters_path: Path, reference_paths: List[Path], tol: float) -> bool:
+    """Compare per cluster. The reference is one file per cluster, or one file with a 'cluster'
+    column for all of them (e.g. cluster_reference.py simulate --save-final)."""
     run: pd.DataFrame = pd.read_csv(clusters_path)
     n_clusters: int = int(run["cluster"].max()) + 1
-    if len(reference_paths) != n_clusters:
+    references: List[pd.DataFrame]
+    if len(reference_paths) == 1 and "cluster" in pd.read_csv(reference_paths[0], nrows=0).columns:
+        combined: pd.DataFrame = pd.read_csv(reference_paths[0])
+        references = [combined[combined["cluster"] == k].reset_index(drop=True) for k in range(n_clusters)]
+        reference_paths = reference_paths * n_clusters
+    elif len(reference_paths) == n_clusters:
+        references = [pd.read_csv(path) for path in reference_paths]
+    else:
         sys.exit(f"{clusters_path} has {n_clusters} clusters, but {len(reference_paths)} reference files were given")
     all_ok: bool = True
-    for k, ref_path in enumerate(reference_paths):
+    for k, (ref_path, ref) in enumerate(zip(reference_paths, references)):
         mine: pd.DataFrame = run[run["cluster"] == k].reset_index(drop=True)
-        ref: pd.DataFrame = pd.read_csv(ref_path)
         if len(mine) != len(ref):
             print(f"cluster {k}: FAILED, {len(mine)} stars here vs {len(ref)} in {ref_path}")
             all_ok = False

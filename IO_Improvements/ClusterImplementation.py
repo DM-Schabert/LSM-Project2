@@ -1,6 +1,6 @@
 """Cluster decomposition (v3): each group of ranks simulates one cluster of stars.
 
-Cluster_Plan_v3.md, step 2. The input is a CSV with a `cluster` column
+Cluster_Plan_v3.md, steps 2 and 3. The input is a CSV with a `cluster` column
 (0 .. C-1), e.g. made by IO_Improvements/MakeClusters.py.
 
 How it works
@@ -12,11 +12,22 @@ How it works
       the serial force kernel on their own block, the collective merge path.
       Only the communicator and the stars differ: the cluster's communicator
       and the cluster's stars, with star indices local to the cluster.
-    * Between clusters: nothing yet (--far-field off). Every cluster evolves as
-      if it were alone, so its result is bit-identical to a serial or v1 run on
-      that cluster's stars only; compare_clusters.py checks this. Step 3 adds
-      the far field (one Allreduce of cluster summaries per step) where
-      far_field_accelerations is now.
+    * Between clusters, --far-field monopole (default, step 3): every other
+      cluster pulls on a star as one point mass at its centre of mass,
+          a_i += G · Σ_{B ≠ own} M_B (R_B − r_i) / (|R_B − r_i|² + ε²)^1.5.
+      At the start of every step, each rank adds the sums of its own stars
+      (count, Σm, Σm·r, Σm·|r|²) into its cluster's row of a small (C + 1, 6)
+      table, and ONE Allreduce(SUM) over the world gives every rank every
+      cluster's mass, centre of mass and rms radius. The last row carries the
+      stop requests, so this one collective also replaces agree_on_stop. The
+      far field is computed after any merges, for the stars the rank owns then
+      (merging keeps a cluster's mass and centre of mass).
+      Theta_AB = (r_A + r_B) / |R_A − R_B|, with rms radii, says how good the
+      approximation is: the largest theta of the run, and how many steps went
+      over --theta-max, go in the printout and in results.csv.
+    * --far-field off: no pull between clusters. Every cluster evolves as if it
+      were alone, so its result is bit-identical to a serial or v1 run on that
+      cluster's stars only (step 2's check, compare_clusters.py).
     * Stopping (time limit, Ctrl+C, SIGTERM) is agreed on the world
       communicator, so all clusters stop after the same step. Whether to merge
       is decided per cluster, so a cluster without close pairs never waits for
@@ -41,10 +52,15 @@ The number of ranks must be a multiple of the number of clusters.
 
 results.csv gets one row per run, with the same columns as v1 and
 implementation=mpi, decomposition=clusters_C<C>, plus n_clusters,
-ranks_per_cluster, far_field, cluster_hosts and cluster_forces_max_s (the
+ranks_per_cluster, far_field, cluster_hosts, cluster_forces_max_s (the
 slowest rank's force time in each cluster, which shows load imbalance between
-clusters, e.g. when only one of them merges). --save-final writes the serial
-columns plus `cluster`.
+clusters, e.g. when only one of them merges), far_field_time_s,
+far_interactions, theta_max and theta_steps_over. --save-final writes the
+serial columns plus `cluster`.
+
+Checks: compare_clusters.py (far field off: each cluster alone) and
+cluster_reference.py (far field on: the same approximation without MPI, and
+its force error against direct summation). validate_clusters.sh runs both.
 """
 
 import argparse
@@ -73,7 +89,7 @@ from mpi4py import MPI
 
 import ParallelImplementation as pi
 import SerialImplementation as serial
-from SerialImplementation import FloatArray, IntArray, Pair, Perf, Stars, Value, format_thousands
+from SerialImplementation import BoolArray, FloatArray, IntArray, Pair, Perf, Stars, Value, format_thousands
 
 # v1's building blocks used here. If ParallelImplementation.py renames one, fail
 # at once with a clear message instead of halfway through a job.
@@ -88,8 +104,10 @@ if _missing:
 
 # Every timed section, in a fixed order, so all ranks reduce the same vector (as in v1)
 SECTIONS: Tuple[str, ...] = ("load", "distribute", "communication", "forces", "merge",
-                             "integrate", "sync", "plotting", "output")
+                             "integrate", "sync", "far_field", "plotting", "output")
 BYTES_PER_ROW: int = 3 * 8  # one star's x, y, z as float64
+SUMMARY_COLUMNS: int = 6    # count, Σm, Σm·x, Σm·y, Σm·z, Σm·|r|²
+DEFAULT_THETA_MAX: float = 0.5
 
 
 # ---------------------------------------------------------------- clusters and communicators
@@ -245,22 +263,97 @@ def cluster_merge(state: "pi.ParallelState", my_pairs: List[Pair], comm: MPI.Com
         return pi.state_from_stars(merged, comm)  # new N -> new blocks
 
 
-def far_field_accelerations(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm,
-                            args: argparse.Namespace, perf: Perf) -> Optional[FloatArray]:
-    """The pull of the other clusters on the own stars; None while --far-field is off.
+# ---------------------------------------------------------------- the far field (step 3)
 
-    Step 3 (Cluster_Plan_v3.md): one world Allreduce of every cluster's mass,
-    centre of mass and rms radius, then G·M_B·(R_B − r_i)/|R_B − r_i|³ for
-    every other cluster B.
+@dataclass
+class ClusterSummaries:
+    """Every cluster's size, mass, centre of mass and rms radius, the same on every rank."""
+    counts: IntArray       # (C,)
+    masses: FloatArray     # (C,)   M_sun
+    centres: FloatArray    # (C, 3) pc, centre of mass
+    rms_radii: FloatArray  # (C,)   pc, mass-weighted rms distance from the centre of mass
+
+    @classmethod
+    def from_sums(cls, sums: FloatArray) -> "ClusterSummaries":
+        """From a (C, 6) table of [count, Σm, Σm·x, Σm·y, Σm·z, Σm·|r|²] per cluster."""
+        masses: FloatArray = sums[:, 1]
+        centres: FloatArray = sums[:, 2:5] / masses[:, np.newaxis]
+        mean_sq: FloatArray = sums[:, 5] / masses - np.sum(centres ** 2, axis=1)  # <|r|²> − |R|²
+        return cls(counts=np.rint(sums[:, 0]).astype(np.int64), masses=masses, centres=centres,
+                   rms_radii=np.sqrt(np.maximum(mean_sq, 0.0)))
+
+    def theta(self) -> FloatArray:
+        """(C, C) opening angles (r_A + r_B) / |R_A − R_B|; 0 on the diagonal."""
+        distance: FloatArray = np.linalg.norm(self.centres[:, np.newaxis] - self.centres[np.newaxis], axis=2)
+        np.fill_diagonal(distance, np.inf)
+        return (self.rms_radii[:, np.newaxis] + self.rms_radii[np.newaxis]) / distance
+
+
+def summary_row(positions: FloatArray, masses: FloatArray) -> FloatArray:
+    """[count, Σm, Σm·x, Σm·y, Σm·z, Σm·|r|²] of the given stars (zeros for none)."""
+    row: FloatArray = np.zeros(SUMMARY_COLUMNS, dtype=np.float64)
+    row[0] = len(masses)
+    row[1] = masses.sum()
+    row[2:5] = masses @ positions
+    row[5] = masses @ np.sum(positions ** 2, axis=1)
+    return row
+
+
+def exchange_summaries(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm, my_code: int,
+                       perf: Perf) -> Tuple[ClusterSummaries, int]:
+    """Collective (world): every cluster's summary, and the agreed stop code, in ONE Allreduce.
+
+    Each rank writes the sums of its own stars into its cluster's row; the
+    Allreduce(SUM) adds the rows of a cluster's ranks together. The last row
+    counts stop requests per code (one-hot), and the highest code anyone asked
+    for wins, as with v1's Allreduce(MAX).
     """
-    return None
+    with perf.time("sync"):
+        table: FloatArray = np.zeros((layout.n_clusters + 1, SUMMARY_COLUMNS), dtype=np.float64)
+        start, stop = state.my_range
+        table[layout.cluster_id] = summary_row(state.my_positions, state.masses[start:stop])
+        if my_code != pi.STOP_NONE:
+            table[layout.n_clusters, my_code - 1] = 1.0
+        total: FloatArray = np.empty_like(table)
+        world.Allreduce(table, total, op=MPI.SUM)
+    requested: List[int] = [code for code in pi.STOP_REASONS if total[layout.n_clusters, code - 1] > 0]
+    return ClusterSummaries.from_sums(total[:layout.n_clusters]), max(requested, default=pi.STOP_NONE)
 
 
-def cluster_step(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm,
+def monopole_accelerations(positions: FloatArray, centres: FloatArray, cluster_masses: FloatArray,
+                           own_cluster: int, softening: float) -> FloatArray:
+    """Pull of every cluster except `own_cluster`, each as a point mass at its centre of mass.
+
+    a_i = G · Σ_{B ≠ own} M_B (R_B − r_i) / (|R_B − r_i|² + ε²)^1.5, the same
+    softened formula as the star-star force. Shared with cluster_reference.py.
+    """
+    others: BoolArray = np.arange(len(cluster_masses)) != own_cluster
+    if not others.any() or len(positions) == 0:
+        return np.zeros_like(positions)
+    to_centres: FloatArray = centres[others][np.newaxis, :, :] - positions[:, np.newaxis, :]  # (n, C-1, 3)
+    dist_sq: FloatArray = np.sum(to_centres ** 2, axis=2) + softening ** 2                   # (n, C-1)
+    weights: FloatArray = cluster_masses[others][np.newaxis, :] * dist_sq ** -1.5
+    return serial.G * np.einsum("nc,ncd->nd", weights, to_centres)
+
+
+def far_field_accelerations(state: "pi.ParallelState", layout: ClusterLayout,
+                            summaries: Optional[ClusterSummaries], args: argparse.Namespace,
+                            perf: Perf) -> Optional[FloatArray]:
+    """The pull of the other clusters on the own stars; None when there is no far field."""
+    if summaries is None:
+        return None
+    with perf.time("far_field"):
+        return monopole_accelerations(state.my_positions, summaries.centres, summaries.masses,
+                                      layout.cluster_id, args.softening)
+
+
+def cluster_step(state: "pi.ParallelState", layout: ClusterLayout, summaries: Optional[ClusterSummaries],
                  args: argparse.Namespace, perf: Perf) -> Tuple["pi.ParallelState", int]:
     """One time step of this rank's cluster; same order as serial.step and v1.
 
-    Returns the new state and how many stars of this cluster merged away.
+    `summaries` are this step's cluster summaries (from the positions before
+    the step), or None without a far field. Returns the new state and how
+    many stars of this cluster merged away.
     """
     comm: MPI.Comm = layout.comm
     n_before: int = state.count
@@ -273,7 +366,9 @@ def cluster_step(state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Co
             state = cluster_merge(state, my_pairs, comm, perf)
             accelerations, my_pairs = cluster_accelerations(state, comm, args, perf)
 
-    far: Optional[FloatArray] = far_field_accelerations(state, layout, world, args, perf)
+    # After any merges: for the stars this rank owns now. Merging keeps every
+    # cluster's mass and centre of mass, so the summaries are still valid.
+    far: Optional[FloatArray] = far_field_accelerations(state, layout, summaries, args, perf)
 
     with perf.time("integrate"):
         if far is not None:
@@ -343,8 +438,30 @@ def code_fingerprint() -> str:
     return digest.hexdigest()[:10]
 
 
+@dataclass
+class ThetaLog:
+    """The far field's opening angles over the run (kept on world rank 0)."""
+    limit: float
+    largest: float = 0.0
+    steps_over: int = 0
+    warned: bool = False
+
+    def add(self, theta: FloatArray, step: int) -> None:
+        worst: float = float(theta.max()) if theta.size else 0.0
+        self.largest = max(self.largest, worst)
+        if worst > self.limit:
+            self.steps_over += 1
+            if not self.warned:
+                a, b = np.unravel_index(int(np.argmax(theta)), theta.shape)
+                print(f"WARNING: step {format_thousands(step)}: theta = {worst:.2f} between clusters {a} and {b} "
+                      f"is above --theta-max {self.limit:g}; the far field is less accurate for them "
+                      f"(reported once; the count is in the summary)")
+                self.warned = True
+
+
 def reduce_cluster_perf(world: MPI.Comm, perf: Perf, layout: ClusterLayout, args: argparse.Namespace,
-                        hosts_by_cluster: Optional[List[List[str]]]) -> Tuple[Optional[Perf], Dict[str, Value]]:
+                        hosts_by_cluster: Optional[List[List[str]]], far_interactions: int,
+                        theta_log: Optional[ThetaLog]) -> Tuple[Optional[Perf], Dict[str, Value]]:
     """Collective (world): combine every rank's timings on world rank 0, as v1's reduce_perf does.
 
     Section and step times are the MAX over ranks (the slowest rank decides when
@@ -361,7 +478,7 @@ def reduce_cluster_perf(world: MPI.Comm, perf: Perf, layout: ClusterLayout, args
     steps_max: FloatArray = np.empty_like(steps)
     world.Reduce(steps, steps_max, op=MPI.MAX, root=0)
 
-    counters: IntArray = np.array([perf.interactions, perf.comm_bytes], dtype=np.int64)
+    counters: IntArray = np.array([perf.interactions, perf.comm_bytes, far_interactions], dtype=np.int64)
     counters_sum: IntArray = np.empty_like(counters)
     world.Reduce(counters, counters_sum, op=MPI.SUM, root=0)
 
@@ -407,9 +524,14 @@ def reduce_cluster_perf(world: MPI.Comm, perf: Perf, layout: ClusterLayout, args
         "far_field": args.far_field,
         "cluster_hosts": "|".join(f"{k}:{'+'.join(h)}" for k, h in enumerate(hosts_by_cluster)),
         "cluster_forces_max_s": ";".join(f"{t:.3f}" for t in per_cluster_max),
+        "far_field_time_s": float(t_max[SECTIONS.index("far_field")]),
+        "far_interactions": int(counters_sum[2]),
+        "theta_max": theta_log.largest if theta_log is not None else float("nan"),
+        "theta_steps_over": theta_log.steps_over if theta_log is not None else 0,
+        "theta_limit": args.theta_max,
     }
     for s, mn, mean in zip(SECTIONS, t_min, t_mean):
-        if s in ("load", "plotting", "output"):  # rank 0 only, min/mean add nothing
+        if s in ("load", "plotting", "output", "far_field"):  # rank 0 only / tiny: min/mean add nothing
             continue
         extra[f"{s}_time_min_s"] = float(mn)
         extra[f"{s}_time_mean_s"] = float(mean)
@@ -475,9 +597,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--clusters", type=serial.positive_int, default=None, metavar="C",
                         help="Expected number of clusters; the run stops if the file has another number "
                              "(default: take it from the file)")
-    parser.add_argument("--far-field", choices=("off",), default="off",
-                        help="Pull between clusters. off: none, every cluster evolves alone "
-                             "(step 3 of Cluster_Plan_v3.md adds the far field). Default: off")
+    parser.add_argument("--far-field", choices=("monopole", "off"), default="monopole",
+                        help="Pull between clusters. monopole: every other cluster as a point mass at its "
+                             "centre of mass (one Allreduce per step). off: none, every cluster evolves alone "
+                             "(bit-identical to running each cluster on its own). Default: monopole")
+    parser.add_argument("--theta-max", type=serial.non_negative_float, default=DEFAULT_THETA_MAX,
+                        help="Warn when (r_A + r_B) / distance between two clusters goes above this; "
+                             f"the run carries on (default: {DEFAULT_THETA_MAX:g})")
     return parser.parse_args()
 
 
@@ -547,26 +673,47 @@ def main() -> None:
     stop_reason: str = "finished"
     steps_done: int = 0
 
+    # With a far field, the summaries are exchanged at the start of every step,
+    # and the stop requests ride along, so stopping is checked every step for free.
+    use_far_field: bool = args.far_field == "monopole" and n_clusters > 1
+    check_every: int = 1 if use_far_field else args.stop_check_every
+    theta_log: Optional[ThetaLog] = ThetaLog(limit=args.theta_max) if use_far_field and is_root else None
+    far_interactions: int = 0
+
+    def my_stop_code() -> int:
+        """This rank's stop request; only world rank 0's clock and window count, so there is one decision."""
+        code: int = pi.STOP_INTERRUPTED if stop_request.requested else pi.STOP_NONE
+        if is_root:
+            if live is not None and not live.is_open():
+                code = max(code, pi.STOP_WINDOW_CLOSED)
+            expected_step_time: float = perf.step_times[-1] if perf.step_times else 0.0
+            if time.perf_counter() + expected_step_time * check_every > deadline:
+                code = max(code, pi.STOP_TIME_LIMIT)
+        return code
+
     world.Barrier()  # start the step clock together
     try:
         for i in range(1, args.steps + 1):
-            if (i - 1) % args.stop_check_every == 0:
-                my_code: int = pi.STOP_INTERRUPTED if stop_request.requested else pi.STOP_NONE
-                if is_root:  # only world rank 0's clock and window count: one decision for everyone
-                    if live is not None and not live.is_open():
-                        my_code = max(my_code, pi.STOP_WINDOW_CLOSED)
-                    expected_step_time: float = perf.step_times[-1] if perf.step_times else 0.0
-                    if time.perf_counter() + expected_step_time * args.stop_check_every > deadline:
-                        my_code = max(my_code, pi.STOP_TIME_LIMIT)
-                code: int = pi.agree_on_stop(world, my_code, perf)  # world: all clusters stop together
-                if code != pi.STOP_NONE:
-                    stop_reason = pi.STOP_REASONS[code]
-                    break
-
             step_start: float = time.perf_counter()
-            state, n_merged = cluster_step(state, layout, world, args, perf)
+            summaries: Optional[ClusterSummaries] = None
+            code: int = pi.STOP_NONE
+            if use_far_field:
+                summaries, code = exchange_summaries(state, layout, world, my_stop_code(), perf)  # collective
+            elif (i - 1) % check_every == 0:
+                code = pi.agree_on_stop(world, my_stop_code(), perf)  # world: all clusters stop together
+            if code != pi.STOP_NONE:
+                stop_reason = pi.STOP_REASONS[code]
+                break
+            if theta_log is not None and summaries is not None:  # only for steps that are taken
+                theta_log.add(summaries.theta(), i)
+            if not use_far_field:  # as in v1, the stop check is not part of the step time
+                step_start = time.perf_counter()
+
+            state, n_merged = cluster_step(state, layout, summaries, args, perf)
             perf.step_times.append(time.perf_counter() - step_start)
             steps_done = i
+            if use_far_field:
+                far_interactions += state.my_count * (n_clusters - 1)
             if n_merged > 0 and layout.is_leader:
                 print(f"Iteration {format_thousands(i)}: cluster {cluster_id}: {n_merged} star(s) merged, "
                       f"{format_thousands(state.count)} left")
@@ -582,7 +729,8 @@ def main() -> None:
 
     with perf.time("output"):
         final, final_cluster_of = gather_world_state(state, layout, world, rows_by_cluster, n_original, perf)
-    combined, extra = reduce_cluster_perf(world, perf, layout, args, hosts_by_cluster)  # collective
+    combined, extra = reduce_cluster_perf(world, perf, layout, args, hosts_by_cluster,  # collective
+                                          far_interactions, theta_log)
     layout.comm.Free()
     world.Free()  # last collective on our communicators
 
@@ -600,7 +748,11 @@ def main() -> None:
           f"({format_thousands(n_original - final.count)} merged away); per cluster: "
           + ", ".join(f"{k}: {int(np.sum(final_cluster_of == k))}" for k in range(n_clusters)))
     print(f"Final mean distance to centre of mass: {serial.mean_distance_to_centre_of_mass(final):.3f} pc")
-    print(f"Total momentum at end: {np.round(serial.total_momentum(final), 10)} M_sun·km/s (starts at 0)")
+    print(f"Total momentum at end: {np.round(serial.total_momentum(final), 10)} M_sun·km/s (starts at 0; "
+          f"the monopole far field does not conserve it exactly)")
+    if theta_log is not None:
+        print(f"Far field: largest theta {theta_log.largest:.3f} (limit {args.theta_max:g}), "
+              f"above the limit in {theta_log.steps_over} of {steps_done} steps")
     print(f"Simulated {format_thousands(steps_done)} steps "
           f"({steps_done * args.dt * serial.MYR_PER_TIME_UNIT:.2f} Myr) in {simulation_time:.2f} s "
           f"({simulation_time / max(steps_done, 1) * 1000:.2f} ms/step, slowest rank)")
@@ -641,7 +793,8 @@ def main() -> None:
     print(f"  communication {float(row['communication_time_s']):8.3f} s (slowest rank) · "
           f"sync {float(row['sync_time_s']):.3f} s · "
           f"load imbalance (forces max/mean) {float(row['load_imbalance']):.3f} · "
-          f"slowest force time per cluster {row['cluster_forces_max_s']} s")
+          f"slowest force time per cluster {row['cluster_forces_max_s']} s · "
+          f"far field {float(row['far_field_time_s']):.3f} s")
     if not args.no_results:
         serial.append_results(args.results, row)
         print(f"Added run '{row['run_name']}' to {args.results}")

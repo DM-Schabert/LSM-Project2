@@ -1,19 +1,24 @@
 #!/bin/bash
 # =============================================================================
-#  Step 2 check (Cluster_Plan_v3.md): with the far field off, every cluster of
-#  a ClusterImplementation.py run must be bit-identical to a serial run on that
-#  cluster's stars alone.
+#  Checks of the cluster version (Cluster_Plan_v3.md, steps 2 and 3).
 #
 #  Submit from the project root (where SerialImplementation.py is):
 #      bsub < IO_Improvements/validate_clusters.sh
-#  To use other settings, edit DATA / STEPS / MERGE_RADIUS below: LSF does not
-#  pass shell variables on to the job.
+#  To use other settings, edit the settings below: LSF does not pass shell
+#  variables on to the job.
 #
-#  The job:
-#    1. splits DATA into one CSV per cluster (DATA stem + _k0.csv, _k1.csv, ...)
-#    2. runs SerialImplementation.py on each of them
-#    3. runs ClusterImplementation.py on DATA with all reserved ranks
-#    4. compares cluster by cluster and prints PASSED / FAILED at the end of the .out file
+#  Step 2, far field off: every cluster must be bit-identical to a serial run
+#    on that cluster's stars alone.
+#      1. split DATA into one CSV per cluster (DATA stem + _k0.csv, _k1.csv, ...)
+#      2. SerialImplementation.py on each of them
+#      3. ClusterImplementation.py --far-field off on DATA, then compare
+#  Step 3, far field on:
+#      4. cluster_reference.py simulate: the same approximation without MPI
+#      5. ClusterImplementation.py --far-field monopole, then compare (to TOL_FAR:
+#         the ranks add their parts of a cluster's sums in another order)
+#      6. cluster_reference.py forces: the approximation's error against direct
+#         summation at t = 0, for the distance factors in SCALES; also saved as CSV
+#  The last lines of the .out file say PASSED or FAILED for steps 2 and 3.
 #  The number of ranks (#BSUB -n) must be a multiple of the number of clusters.
 # =============================================================================
 #BSUB -J clusters_validate
@@ -26,11 +31,13 @@
 #BSUB -e clusters_validate_%J.err
 
 DATA=${DATA:-gaia_subsets/gaia_clusters_C2_n1000.csv}
-STEPS=${STEPS:-300}            # each serial run must finish within TIME_LIMIT (1 000 stars: ~0.13 s/step)
+STEPS=${STEPS:-300}            # each serial run must finish within TIME_LIMIT (1 000 stars: ~0.14 s/step)
 DT=${DT:-0.01}
 SOFTENING=${SOFTENING:-0.01}
 MERGE_RADIUS=${MERGE_RADIUS:-0.001}
-TIME_LIMIT=${TIME_LIMIT:-240}  # per run; the serial runs come one after another, so keep the sum below -W
+TIME_LIMIT=${TIME_LIMIT:-240}  # per run; the runs come one after another, so keep the total below -W
+TOL_FAR=${TOL_FAR:-1e-12}      # step 3: largest allowed relative difference to the serial reference
+SCALES=${SCALES:-"0.25 0.5 1 2 4"}  # step 3: distance factors between the clusters for the force error
 MPIRUN=${MPIRUN:-mpirun --report-bindings}
 JOB=${LSB_JOBID:-local}
 
@@ -50,21 +57,43 @@ fi
 ARGS="--steps $STEPS --dt $DT --softening $SOFTENING --merge-radius $MERGE_RADIUS --time-limit $TIME_LIMIT"
 STEM="${DATA%.csv}"
 
+# ---- step 2: far field off, each cluster alone
 python3 IO_Improvements/compare_clusters.py split "$DATA" || exit 1
 C=$(python3 -c "import pandas as pd, sys; print(int(pd.read_csv(sys.argv[1], usecols=['cluster'])['cluster'].max()) + 1)" "$DATA")
 
 REFS=()
 for (( k = 0; k < C; k++ )); do
-    echo "--- serial run on cluster $k alone"
+    echo "--- step 2: serial run on cluster $k alone"
     python3 SerialImplementation.py --data "${STEM}_k${k}.csv" $ARGS --no-results \
         --save-final "clusters_ref_k${k}_${JOB}.csv" || exit 1
     REFS+=("clusters_ref_k${k}_${JOB}.csv")
 done
 
-echo "--- ClusterImplementation.py on all $C clusters"
-$MPIRUN python3 IO_Improvements/ClusterImplementation.py --data "$DATA" $ARGS \
+echo "--- step 2: ClusterImplementation.py --far-field off on all $C clusters"
+$MPIRUN python3 IO_Improvements/ClusterImplementation.py --data "$DATA" $ARGS --far-field off \
     --save-final "clusters_final_${JOB}.csv" || exit 1
 
-echo "--- comparison"
+echo "--- step 2: comparison"
 python3 IO_Improvements/compare_clusters.py compare "clusters_final_${JOB}.csv" "${REFS[@]}"
+STEP2=$?
+
+# ---- step 3: far field on
+echo "--- step 3: serial reference of the same approximation (cluster_reference.py simulate)"
+python3 IO_Improvements/cluster_reference.py simulate "$DATA" --steps $STEPS --dt $DT --softening $SOFTENING \
+    --merge-radius $MERGE_RADIUS --save-final "clusters_farref_${JOB}.csv" || exit 1
+
+echo "--- step 3: ClusterImplementation.py --far-field monopole on all $C clusters"
+$MPIRUN python3 IO_Improvements/ClusterImplementation.py --data "$DATA" $ARGS --far-field monopole \
+    --save-final "clusters_far_${JOB}.csv" || exit 1
+
+echo "--- step 3: comparison"
+python3 IO_Improvements/compare_clusters.py compare "clusters_far_${JOB}.csv" "clusters_farref_${JOB}.csv" --tol $TOL_FAR
+STEP3=$?
+
+echo "--- step 3: force error against direct summation at t = 0"
+python3 IO_Improvements/cluster_reference.py forces "$DATA" --softening $SOFTENING --scale $SCALES \
+    --out "force_error_$(basename "$STEM")_${JOB}.csv"
+
+echo "=== step 2 (far field off, each cluster alone): $([ $STEP2 -eq 0 ] && echo PASSED || echo FAILED)"
+echo "=== step 3 (far field on, against the serial reference): $([ $STEP3 -eq 0 ] && echo PASSED || echo FAILED)"
 echo "=== job ${JOB} finished $(date)"
