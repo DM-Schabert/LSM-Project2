@@ -1,0 +1,223 @@
+=== job 30351064 started Tue Nov 24 11:00:20 CET 2026 on n-62-21-75 8 
+data: gaia_subsets/gaia_clusters_C2_n1000.csv   steps: 300   dt: 0.01   softening: 0.01   merge radius: 0.001
+Saved gaia_subsets/gaia_clusters_C2_n1000_k0.csv (1,000 stars)
+Saved gaia_subsets/gaia_clusters_C2_n1000_k1.csv (1,000 stars)
+--- step 2: serial run on cluster 0 alone
+Mode: custom (time limit 240 s, at most 300 steps)
+Loaded 1.000 stars from gaia_subsets/gaia_clusters_C2_n1000_k0.csv
+Total mass: 1141.8 M_sun
+Initial mean distance to centre of mass: 43.864 pc
+Merging stars closer than 0.001 pc
+Final mean distance to centre of mass: 43.859 pc
+Stars: 1.000 at start, 1.000 at end (0 merged away)
+Total momentum at end: [0. 0. 0.] M_sun·km/s (starts at 0)
+Simulated 300 steps (2.93 Myr) in 41.84 s (139.46 ms/step)
+Saved final state to clusters_ref_k0_30351064.csv
+
+Performance (custom, completed, 300 iterations)
+  total          41.878 s
+  load            0.012 s
+  simulation     41.839 s
+    forces       41.831 s
+    merge         0.000 s
+    integrate     0.004 s
+  plotting        0.000 s
+  output          0.024 s
+  7.165e+06 interactions/s · ~0.14 GFLOP/s · model bandwidth 0.23 GB/s · peak memory 101 MB
+--- step 2: serial run on cluster 1 alone
+Mode: custom (time limit 240 s, at most 300 steps)
+Loaded 1.000 stars from gaia_subsets/gaia_clusters_C2_n1000_k1.csv
+Total mass: 2205.5 M_sun
+Initial mean distance to centre of mass: 325.457 pc
+Merging stars closer than 0.001 pc
+Final mean distance to centre of mass: 325.457 pc
+Stars: 1.000 at start, 1.000 at end (0 merged away)
+Total momentum at end: [0. 0. 0.] M_sun·km/s (starts at 0)
+Simulated 300 steps (2.93 Myr) in 40.67 s (135.58 ms/step)
+Saved final state to clusters_ref_k1_30351064.csv
+
+Performance (custom, completed, 300 iterations)
+  total          40.715 s
+  load            0.012 s
+  simulation     40.674 s
+    forces       40.666 s
+    merge         0.000 s
+    integrate     0.004 s
+  plotting        0.000 s
+  output          0.026 s
+  7.370e+06 interactions/s · ~0.15 GFLOP/s · model bandwidth 0.24 GB/s · peak memory 101 MB
+--- step 2: ClusterImplementation.py --far-field off on all 2 clusters
+MPI: 8 ranks = 2 cluster(s) × 4 ranks
+Mode: custom (time limit 240 s, at most 300 steps)
+Loaded 2.000 stars from gaia_subsets/gaia_clusters_C2_n1000.csv; far field: off; kernel tile rows: 1
+  cluster 0: 1.000 stars, 1141.8 M_sun, ranks 0-3, host(s) n-62-21-75
+  cluster 1: 1.000 stars, 2205.5 M_sun, ranks 4-7, host(s) n-62-21-75
+Merging stars closer than 0.001 pc (decided per cluster)
+Stars: 2.000 at start, 2.000 at end (0 merged away); per cluster: 0: 1000, 1: 1000
+Final mean distance to centre of mass: 1151.652 pc
+Total momentum at end: [0. 0. 0.] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Simulated 300 steps (2.93 Myr) in 11.24 s (37.46 ms/step, slowest rank)
+Saved final state to clusters_final_30351064.csv
+
+Performance (custom, completed, 300 iterations)
+  total          11.332 s
+  load            0.022 s
+  simulation     11.239 s
+    forces       11.208 s
+    merge         0.000 s
+    integrate     0.004 s
+  plotting        0.000 s
+  output          0.047 s
+  5.348e+07 interactions/s · ~1.07 GFLOP/s · model bandwidth 1.71 GB/s · peak memory 194 MB
+  communication    0.013 s (slowest rank) · sync 1.208 s · load imbalance (forces max/mean) 1.092 · slowest force time per cluster 10.195;11.208 s · far field 0.000 s
+Added run 'clusters_custom_gaia_clusters_C2_n1000_8ranks' to results.csv
+--- step 2: comparison
+cluster 0: 1,000 stars, identical=True, max relative difference: positions 0.00e+00, velocities 0.00e+00, same merges=True -> PASSED  (clusters_ref_k0_30351064.csv)
+cluster 1: 1,000 stars, identical=True, max relative difference: positions 0.00e+00, velocities 0.00e+00, same merges=True -> PASSED  (clusters_ref_k1_30351064.csv)
+Clusters validation (tolerance 0): PASSED
+--- step 3: serial reference of the same approximation (cluster_reference.py simulate)
+2,000 stars in 2 clusters; 300 steps with the monopole far field
+Done in 83.8 s; stars per cluster at the end: 1000, 1000
+Saved final state to clusters_farref_30351064.csv
+--- step 3: ClusterImplementation.py --far-field monopole on all 2 clusters
+MPI: 8 ranks = 2 cluster(s) × 4 ranks
+Mode: custom (time limit 240 s, at most 300 steps)
+Loaded 2.000 stars from gaia_subsets/gaia_clusters_C2_n1000.csv; far field: monopole; kernel tile rows: 1
+  cluster 0: 1.000 stars, 1141.8 M_sun, ranks 0-3, host(s) n-62-21-75
+  cluster 1: 1.000 stars, 2205.5 M_sun, ranks 4-7, host(s) n-62-21-75
+Merging stars closer than 0.001 pc (decided per cluster)
+Stars: 2.000 at start, 2.000 at end (0 merged away); per cluster: 0: 1000, 1: 1000
+Final mean distance to centre of mass: 1151.652 pc
+Total momentum at end: [ 2.61660e-06  2.18399e-05 -1.74131e-05] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Far field: largest theta 0.170 (limit 0.5), above the limit in 0 of 300 steps
+Simulated 300 steps (2.93 Myr) in 11.44 s (38.15 ms/step, slowest rank)
+Saved final state to clusters_far_30351064.csv
+
+Performance (custom, completed, 300 iterations)
+  total          11.494 s
+  load            0.022 s
+  simulation     11.444 s
+    forces       11.300 s
+    merge         0.000 s
+    integrate     0.003 s
+  plotting        0.000 s
+  output          0.046 s
+  5.304e+07 interactions/s · ~1.06 GFLOP/s · model bandwidth 1.70 GB/s · peak memory 193 MB
+  communication    0.028 s (slowest rank) · sync 1.169 s · load imbalance (forces max/mean) 1.091 · slowest force time per cluster 10.340;11.300 s · far field 0.030 s
+Added run 'clusters_custom_gaia_clusters_C2_n1000_8ranks' to results.csv
+--- step 3: comparison
+cluster 0: 1,000 stars, identical=False, max relative difference: positions 0.00e+00, velocities 1.69e-18, same merges=True -> PASSED  (clusters_farref_30351064.csv)
+cluster 1: 1,000 stars, identical=False, max relative difference: positions 0.00e+00, velocities 7.44e-18, same merges=True -> PASSED  (clusters_farref_30351064.csv)
+Clusters validation (tolerance 1e-12): PASSED
+--- step 3: force error against direct summation at t = 0
+2,000 stars in 2 clusters from gaia_subsets/gaia_clusters_C2_n1000.csv; direct summation over all of them for every scale
+  scale 0.25 done in 0.7 s
+  scale 0.5 done in 0.7 s
+  scale 1 done in 0.7 s
+  scale 2 done in 0.7 s
+  scale 4 done in 0.7 s
+ scale  closest pair of centres (pc)  largest theta  far field / total (median)  error median  error 99%  error max  error without far field (median)  error without far field (max)
+  0.25                           565          0.679                      0.0709       0.00115    0.00566     0.0247                            0.0716                           5.29
+   0.5                      1.13e+03           0.34                      0.0189      5.64e-05   0.000256    0.00143                             0.019                           3.35
+     1                      2.26e+03           0.17                     0.00463      2.82e-06   1.59e-05   9.34e-05                           0.00464                          0.348
+     2                      4.52e+03         0.0849                     0.00112       1.7e-07      1e-06   5.96e-06                           0.00112                         0.0684
+     4                      9.04e+03         0.0425                    0.000286      1.07e-08   6.37e-08   3.77e-07                          0.000286                         0.0174
+error = |a_approx − a_direct| / |a_direct| per star; 'without far field' leaves the other clusters out
+Saved force_error_gaia_clusters_C2_n1000_30351064.csv
+=== step 2 (far field off, each cluster alone): PASSED
+=== step 3 (far field on, against the serial reference): PASSED
+=== job 30351064 finished Tue Nov 24 11:03:44 CET 2026
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30351064: <clusters_validate> in cluster <dcc> Done
+
+Job <clusters_validate> was submitted from host <n-62-30-5> by user <s123142> in cluster <dcc> at Tue Nov 24 11:00:00 2026
+Job was executed on host(s) <8*n-62-21-75>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Tue Nov 24 11:00:19 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Tue Nov 24 11:00:19 2026
+Terminated at Tue Nov 24 11:03:44 2026
+Results reported at Tue Nov 24 11:03:44 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  Checks of the cluster version (Cluster_Plan_v3.md, steps 2 and 3).
+#
+#  Submit from the project root (where SerialImplementation.py is):
+#      bsub < IO_Improvements/validate_clusters.sh
+#  To use other settings, edit the settings below: LSF does not pass shell
+#  variables on to the job.
+#
+#  Step 2, far field off: every cluster must be bit-identical to a serial run
+#    on that cluster's stars alone.
+#      1. split DATA into one CSV per cluster (DATA stem + _k0.csv, _k1.csv, ...)
+#      2. SerialImplementation.py on each of them
+#      3. ClusterImplementation.py --far-field off on DATA, then compare
+#  Step 3, far field on:
+#      4. cluster_reference.py simulate: the same approximation without MPI
+#      5. ClusterImplementation.py --far-field monopole, then compare (to TOL_FAR:
+#         the ranks add their parts of a cluster's sums in another order)
+#      6. cluster_reference.py forces: the approximation's error against direct
+#         summation at t = 0, for the distance factors in SCALES; also saved as CSV
+#  The last lines of the .out file say PASSED or FAILED for steps 2 and 3.
+#  The number of ranks (#BSUB -n) must be a multiple of the number of clusters.
+# =============================================================================
+#BSUB -J clusters_validate
+#BSUB -q hpcintro
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:10
+#BSUB -o clusters_validate_%J.out
+#BSUB -e clusters_validate_%J.err
+
+DATA=${DATA:-gaia_subsets/gaia_clusters_C2_n1000.csv}
+STEPS=${STEPS:-300}            # each serial run must finish within TIME_LIMIT (1 000 stars: ~0.14 s/step)
+DT=${DT:-0.01}
+SOFTENING=${SOFTENING:-0.01}
+MERGE_RADIUS=${MERGE_RADIUS:-0.001}
+TIME_LIMIT=${TIME_LIMIT:-240}  # per run; the runs come one after another, so keep the total below -W
+TOL_FAR=${TOL_FAR:-1e-12}      # step 3: largest allowed relative difference to the serial reference
+SCALES=${SCALES:-"0.25 0.5 1 2 4"}  # step 3: distance factors between the clusters for the force error
+MPIRUN=${MPIRUN:-mpirun --report-bindings}
+JOB=${LSB_JOBID:-local}
+
+module load pandas/2.3.0-python-3.12.11
+module load matplotlib/3.10.3-numpy-2.3.1-python-3.12.11
+module load mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export MPLBACKEND=Agg PYTHONUNBUFFERED=1
+
+echo "=== job ${JOB} started $(date) on ${LSB_MCPU_HOSTS:-this machine}"
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   378.99 sec.
+    Max Memory :                                 142 MB
+    Average Memory :                             118.33 MB
+    Total Requested Memory :                     16384.00 MB
+    Delta Memory :                               16242.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                7
+    Run time :                                   205 sec.
+    Turnaround time :                            224 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <clusters_validate_30351064.err> for stderr output of this job.
+
