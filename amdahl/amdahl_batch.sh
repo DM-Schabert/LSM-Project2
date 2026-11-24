@@ -47,6 +47,8 @@ WALLTIME_MIN=${WALLTIME_MIN:-30}      # keep equal to #BSUB -W above
 RESULTS=${RESULTS:-results.csv}       # the shared results file (file-locked by the programs)
 LAUNCH=${LAUNCH:-amdahl/launch_times.csv}
 LOCAL=${LOCAL:-0}                     # 1: laptop test, no LSF and no modules
+PROGRAM_ARGS=${PROGRAM_ARGS:-""}      # options for ParallelImplementation.py only, e.g.
+                                      # "--decomposition 2d --tile-rows 0" (the serial baseline never gets them)
 # compact placement: fill socket 0 first. Record it, and keep it fixed when comparing versions
 MPIRUN_OPTS_CLUSTER="--report-bindings --map-by core --bind-to core"
 # ---------------------------------------------------------------------------
@@ -85,6 +87,7 @@ DEADLINE=$(awk -v s="$JOB_START" -v w="$WALLTIME_MIN" 'BEGIN { printf "%d", s + 
 echo "=== Amdahl sweep, job ${JOBID}, started $(date)"
 echo "label: $LABEL   data: $DATA   steps: $STEPS   dt: $DT   softening: $SOFTENING   merge radius: $MERGE_RADIUS"
 echo "P: $P_LIST   repeats: $REPEATS   serial baseline: $SERIAL   slots: $SLOTS   mpirun options: ${MPIRUN_OPTS:-none}"
+echo "program options (MPI runs only): ${PROGRAM_ARGS:-none}"
 CPU=$(lscpu 2>/dev/null | grep -m1 'Model name' | sed 's/Model name:[[:space:]]*//')
 [ -z "$CPU" ] && CPU=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
 echo "host: $(hostname)   cpu: $CPU"
@@ -121,7 +124,7 @@ launch() {   # launch <serial|mpi> <ranks> <repeat>
         python3 SerialImplementation.py $args
     else
         opts=$MPIRUN_OPTS
-        mpirun $opts -np "$np" python3 ParallelImplementation.py $args
+        mpirun $opts -np "$np" python3 ParallelImplementation.py $args $PROGRAM_ARGS
     fi
     code=$?
     t1=$(now)

@@ -1,0 +1,86 @@
+Running N=50 P=2 repeat=1
+Running N=50 P=2 repeat=2
+Running N=50 P=4 repeat=1
+Running N=50 P=4 repeat=2
+Running N=50 P=8 repeat=1
+Running N=50 P=8 repeat=2
+Running N=100 P=2 repeat=1
+Running N=100 P=2 repeat=2
+Running N=100 P=4 repeat=1
+Running N=100 P=4 repeat=2
+Running N=100 P=8 repeat=1
+Running N=100 P=8 repeat=2
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30323044: <small_n> in cluster <dcc> Done
+
+Job <small_n> was submitted from host <n-62-30-8> by user <s225141> in cluster <dcc> at Mon Nov 23 20:13:37 2026
+Job was executed on host(s) <8*n-62-13-7>, in queue <hpc>, as user <s225141> in cluster <dcc> at Mon Nov 23 20:13:39 2026
+</zhome/a4/6/187727> was used as the home directory.
+</zhome/a4/6/187727/courses/02616_LSM/gaia/n_pilot> was used as the working directory.
+Started at Mon Nov 23 20:13:39 2026
+Terminated at Mon Nov 23 20:15:20 2026
+Results reported at Mon Nov 23 20:15:20 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+
+#!/usr/bin/env bash
+#BSUB -J small_n
+#BSUB -q hpc
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -W 00:30
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -oo logs/small_n_%J.out
+#BSUB -eo logs/small_n_%J.err
+
+set -euo pipefail
+cd "${LS_SUBCWD:-$PWD}"
+source ./config.sh
+
+for N in 50 100; do
+    for P in 2 4 8; do
+        for R in 1 2; do
+            echo "Running N=$N P=$P repeat=$R"
+
+            mpirun -np "$P" python3 ../ParallelImplementation.py \
+                --data "../gaia_subsets/gaia_random_${N}.csv" \
+                --steps 10000 \
+                --dt 0.01 \
+                --softening 0.01 \
+                --merge-radius 0 \
+                --no-results \
+                > "logs/N${N}_P${P}_long_R${R}.log" 2>&1
+        done
+    done
+done
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   241.78 sec.
+    Max Memory :                                 561 MB
+    Average Memory :                             406.33 MB
+    Total Requested Memory :                     8192.00 MB
+    Delta Memory :                               7631.00 MB
+    Max Swap :                                   -
+    Max Processes :                              6
+    Max Threads :                                13
+    Run time :                                   101 sec.
+    Turnaround time :                            103 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <logs/small_n_30323044.err> for stderr output of this job.
+

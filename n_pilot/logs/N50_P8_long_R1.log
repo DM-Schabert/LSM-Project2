@@ -1,0 +1,21 @@
+MPI: 8 ranks on 1 host(s): n-62-13-7
+Mode: normal (time limit 300 s, at most 10.000 steps)
+Loaded 50 stars from ../gaia_subsets/gaia_random_50.csv; 6-7 stars per rank
+Total mass: 92.6 M_sun
+Initial mean distance to centre of mass: 2135.809 pc
+Final mean distance to centre of mass: 2135.809 pc
+Stars: 50 at start, 50 at end (0 merged away)
+Total momentum at end: [-0.  0.  0.] M_sun·km/s (starts at 0)
+Simulated 10.000 steps (97.78 Myr) in 1.42 s (0.14 ms/step, slowest rank)
+
+Performance (normal, completed, 10000 iterations)
+  total           1.569 s
+  load            0.033 s
+  simulation      1.420 s
+    forces        1.208 s
+    merge         0.000 s
+    integrate     0.031 s
+  plotting        0.000 s
+  output          0.000 s
+  2.028e+07 interactions/s · ~0.41 GFLOP/s · model bandwidth 0.65 GB/s · peak memory 264 MB
+  communication    0.111 s (slowest rank) · sync 0.318 s · load imbalance (forces max/mean) 1.205

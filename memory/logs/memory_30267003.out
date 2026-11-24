@@ -1,0 +1,167 @@
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30267003: <memory> in cluster <dcc> Done
+
+Job <memory> was submitted from host <n-62-27-22> by user <s262028> in cluster <dcc> at Mon Nov 23 10:23:50 2026
+Job was executed on host(s) <24*n-62-21-77>, in queue <hpcintro>, as user <s262028> in cluster <dcc> at Mon Nov 23 10:23:52 2026
+                            <24*n-62-21-47>
+</zhome/c7/3/231979> was used as the home directory.
+</zhome/c7/3/231979/LSM-Project2> was used as the working directory.
+Started at Mon Nov 23 10:23:52 2026
+Terminated at Mon Nov 23 10:27:00 2026
+Results reported at Mon Nov 23 10:27:00 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  Memory in depth: what fills the memory of a rank, and which limit comes first?  (two nodes, ~15 min)
+#
+#  On the cluster, from the repository root:  bsub < memory/memory_batch.sh
+#  Results page afterwards (on the laptop):   python3 memory/make_page.py
+#
+#  M3  memory against P: v1, N = 1 000, P = 1 ... 24 on one node, 32 and 48 on two
+#  M1  memory against N: v1, ring, 2D at P = 24, N = 1 000 ... all 589 993 stars, kernel on one tile
+#  M2  memory against tile size: v1, N = 20 000, P = 24, the whole block per step, --tile-rows 0 ... 417
+#      (417 = half the block; the largest stays below 1 GB per rank, the reservation of this job)
+#  Output: memory/out/memory_<jobid>.csv; the log has the node's memory, the LSF limits and, at the
+#  end, LSF's "Max Memory" of the whole job (a cross-check of the sum over the ranks).
+# =============================================================================
+#BSUB -J memory
+#BSUB -q hpcintro
+#BSUB -n 48
+#BSUB -R "span[ptile=24]"
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -W 00:30
+#BSUB -o memory/logs/memory_%J.out
+#BSUB -e memory/logs/memory_%J.err
+
+M1_N=${M1_N:-"1000 5000 20000 50000 100000 200000 500000 589993"}
+M1_SCHEMES=${M1_SCHEMES:-"allgather ring 2d"}
+M2_TILES=${M2_TILES:-"0 32 104 208 417"}
+M3_P=${M3_P:-"1 2 4 8 12 16 24 32 48"}
+OPTS="--report-bindings --map-by core --bind-to core"   # P <= 24 on the first node, as in all our runs
+
+cd "${LS_SUBCWD:-$PWD}" || exit 1
+[ -f memory/memory_probe.py ] || { echo "Start this from the repository root"; exit 1; }
+mkdir -p memory/logs memory/out
+module load pandas/2.3.0-python-3.12.11
+module load matplotlib/3.10.3-numpy-2.3.1-python-3.12.11
+module load mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1 LC_ALL=C
+OUT=memory/out/memory_${LSB_JOBID}.csv
+
+echo "=== memory, job $LSB_JOBID, $(date), hosts: $(echo $LSB_HOSTS | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+echo "--- node memory (free -m) and limits"
+free -m
+ulimit -a | grep -i -E 'memory|virtual|data'
+lshosts -w "$(hostname)" 2>/dev/null
+bjobs -l "$LSB_JOBID" 2>/dev/null | grep -i -E 'rusage|mem|limit' | head -10
+
+echo "--- subsets (made from gaia_cleaned.csv where missing)"
+for n in $M1_N; do
+    [ -f "gaia_subsets/gaia_nearest_${n}.csv" ] || python3 isoeff/make_subset.py --n "$n" || echo "could not make N=$n"
+done
+
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   2076.45 sec.
+    Max Memory :                                 2539 MB
+    Average Memory :                             1747.33 MB
+    Total Requested Memory :                     49152.00 MB
+    Delta Memory :                               46613.00 MB
+    Max Swap :                                   -
+    Max Processes :                              29
+    Max Threads :                                80
+    Run time :                                   188 sec.
+    Turnaround time :                            190 sec.
+
+The output (if any) follows:
+
+=== memory, job 30267003, Mon Nov 23 10:23:53 CET 2026, hosts: n-62-21-47 n-62-21-77 
+--- node memory (free -m) and limits
+               total        used        free      shared  buff/cache   available
+Mem:          257010        3039      253560           3        1992      253971
+Swap:          36863           0       36863
+data seg size               (kbytes, -d) unlimited
+max locked memory           (kbytes, -l) unlimited
+max memory size             (kbytes, -m) unlimited
+virtual memory              (kbytes, -v) unlimited
+HOST_NAME                       type       model  cpuf ncpus maxmem maxswp server RESOURCES
+n-62-21-77                    X86_64 XeonE5_2650v4   1.0    24 250.9G  35.9G    Yes (avx avx2 sebotest1 tmpssd)
+Job <30267003>, Job Name <memory>, User <s262028>, Project <default>, Status <P
+                          ==================;#  Memory in depth: what fills the
+                           memory of a rank, and which limit comes first?  (two
+                          tory root:  bsub < memory/memory_batch.sh;#  Results 
+                          page afterwards (on the laptop):   python3 memory/mak
+                          e_page.py;#;#  M3  memory against P: v1, N = 1 000, P
+                           = 1 ... 24 on one node, 32 and 48 on two;#  M1  memo
+                          ll 589 993 stars, kernel on one tile;#  M2  memory ag
+                          he reservation of this job);#  Output: memory/out/mem
+                          ory_<jobid>.csv; the log has the node's memory, the L
+--- subsets (made from gaia_cleaned.csv where missing)
+Made gaia_subsets/gaia_nearest_50000.csv
+Subsets made with isoeff/make_subset.py (copy) in 4.0 s
+Made gaia_subsets/gaia_nearest_100000.csv
+Subsets made with isoeff/make_subset.py (copy) in 3.3 s
+Made gaia_subsets/gaia_nearest_200000.csv
+Subsets made with isoeff/make_subset.py (copy) in 5.3 s
+Made gaia_subsets/gaia_nearest_500000.csv
+Subsets made with isoeff/make_subset.py (copy) in 11.6 s
+Made gaia_subsets/gaia_nearest_589993.csv
+Subsets made with isoeff/make_subset.py (copy) in 13.4 s
+--- M3: against P (10:24:35)
+M3 allgather N=   1000 P= 1 tile rows    0 kernel tile  (262 x 1000): peak rank 0     266 MB, other ranks up to     266 MB,   0.1 s
+M3 allgather N=   1000 P= 2 tile rows    0 kernel tile  (262 x 1000): peak rank 0     202 MB, other ranks up to     198 MB,   0.1 s
+M3 allgather N=   1000 P= 4 tile rows    0 kernel tile  (250 x 1000): peak rank 0     200 MB, other ranks up to     200 MB,   0.1 s
+M3 allgather N=   1000 P= 8 tile rows    0 kernel tile  (125 x 1000): peak rank 0     198 MB, other ranks up to     196 MB,   0.1 s
+M3 allgather N=   1000 P=12 tile rows    0 kernel tile  (84 x 1000): peak rank 0     192 MB, other ranks up to     195 MB,   0.1 s
+M3 allgather N=   1000 P=16 tile rows    0 kernel tile  (63 x 1000): peak rank 0     194 MB, other ranks up to     193 MB,   0.1 s
+M3 allgather N=   1000 P=24 tile rows    0 kernel tile  (42 x 1000): peak rank 0     194 MB, other ranks up to     192 MB,   0.2 s
+M3 allgather N=   1000 P=32 tile rows    0 kernel tile  (32 x 1000): peak rank 0     269 MB, other ranks up to     269 MB,   1.4 s
+M3 allgather N=   1000 P=48 tile rows    0 kernel tile  (21 x 1000): peak rank 0     268 MB, other ranks up to     269 MB,   0.8 s
+--- M1: against N (10:24:58)
+M1 allgather N=   1000 P=24 tile rows    0 kernel tile  (42 x 1000): peak rank 0     194 MB, other ranks up to     194 MB,   0.0 s
+M1      ring N=   1000 P=24 tile rows    0 kernel tile  (42 x 42): peak rank 0     192 MB, other ranks up to     192 MB,   0.5 s
+M1        2d N=   1000 P=24 tile rows    0 kernel tile  (167 x 250): peak rank 0     194 MB, other ranks up to     194 MB,   0.1 s
+M1 allgather N=   5000 P=24 tile rows    0 kernel tile  (52 x 5000): peak rank 0     205 MB, other ranks up to     206 MB,   0.4 s
+M1      ring N=   5000 P=24 tile rows    0 kernel tile  (209 x 209): peak rank 0     194 MB, other ranks up to     195 MB,   0.2 s
+M1        2d N=   5000 P=24 tile rows    0 kernel tile  (209 x 1250): peak rank 0     209 MB, other ranks up to     207 MB,   0.2 s
+M1 allgather N=  20000 P=24 tile rows    0 kernel tile  (13 x 20000): peak rank 0     209 MB, other ranks up to     208 MB,   0.3 s
+M1      ring N=  20000 P=24 tile rows    0 kernel tile  (314 x 834): peak rank 0     211 MB, other ranks up to     207 MB,   0.3 s
+M1        2d N=  20000 P=24 tile rows    0 kernel tile  (52 x 5000): peak rank 0     209 MB, other ranks up to     207 MB,   0.2 s
+M1 allgather N=  50000 P=24 tile rows    0 kernel tile  (5 x 50000): peak rank 0     211 MB, other ranks up to     209 MB,   0.6 s
+M1      ring N=  50000 P=24 tile rows    0 kernel tile  (125 x 2084): peak rank 0     213 MB, other ranks up to     209 MB,   0.4 s
+M1        2d N=  50000 P=24 tile rows    0 kernel tile  (20 x 12500): peak rank 0     213 MB, other ranks up to     209 MB,   0.4 s
+M1 allgather N= 100000 P=24 tile rows    0 kernel tile  (2 x 100000): peak rank 0     228 MB, other ranks up to     210 MB,   0.6 s
+M1      ring N= 100000 P=24 tile rows    0 kernel tile  (62 x 4167): peak rank 0     227 MB, other ranks up to     211 MB,   0.5 s
+M1        2d N= 100000 P=24 tile rows    0 kernel tile  (10 x 25000): peak rank 0     228 MB, other ranks up to     212 MB,   0.5 s
+M1 allgather N= 200000 P=24 tile rows    0 kernel tile  (1 x 200000): peak rank 0     262 MB, other ranks up to     221 MB,   1.1 s
+M1      ring N= 200000 P=24 tile rows    0 kernel tile  (31 x 8334): peak rank 0     265 MB, other ranks up to     215 MB,   0.8 s
+M1        2d N= 200000 P=24 tile rows    0 kernel tile  (5 x 50000): peak rank 0     264 MB, other ranks up to     217 MB,   0.8 s
+M1 allgather N= 500000 P=24 tile rows    0 kernel tile  (1 x 500000): peak rank 0     387 MB, other ranks up to     263 MB,   2.5 s
+M1      ring N= 500000 P=24 tile rows    0 kernel tile  (12 x 20834): peak rank 0     383 MB, other ranks up to     233 MB,   1.7 s
+M1        2d N= 500000 P=24 tile rows    0 kernel tile  (2 x 125000): peak rank 0     384 MB, other ranks up to     235 MB,   1.7 s
+M1 allgather N= 589993 P=24 tile rows    0 kernel tile  (1 x 589993): peak rank 0     418 MB, other ranks up to     275 MB,   2.8 s
+M1      ring N= 589993 P=24 tile rows    0 kernel tile  (10 x 24584): peak rank 0     418 MB, other ranks up to     240 MB,   2.0 s
+M1        2d N= 589993 P=24 tile rows    0 kernel tile  (1 x 147499): peak rank 0     421 MB, other ranks up to     243 MB,   2.3 s
+--- M2: against tile size (10:26:21)
+M2 allgather N=  20000 P=24 tile rows    0 kernel block (834 x 20000): peak rank 0     219 MB, other ranks up to     218 MB,   1.8 s
+M2 allgather N=  20000 P=24 tile rows   32 kernel block (834 x 20000): peak rank 0     260 MB, other ranks up to     257 MB,   1.9 s
+M2 allgather N=  20000 P=24 tile rows  104 kernel block (834 x 20000): peak rank 0     369 MB, other ranks up to     368 MB,   2.0 s
+M2 allgather N=  20000 P=24 tile rows  208 kernel block (834 x 20000): peak rank 0     546 MB, other ranks up to     543 MB,   2.2 s
+M2 allgather N=  20000 P=24 tile rows  417 kernel block (834 x 20000): peak rank 0     830 MB, other ranks up to     830 MB,   2.2 s
+=== finished Mon Nov 23 10:26:48 CET 2026. Copy memory/out/memory_30267003.csv and memory/logs/memory_30267003.* (LSF adds 'Max Memory' at the end of the .out) off the cluster, then: python3 memory/make_page.py
+
+
+PS:
+
+Read file <memory/logs/memory_30267003.err> for stderr output of this job.
+

@@ -4,4 +4,7 @@ dataGaia2.csv
 /__pycache__
 /Plots
 /gaia_subsets
+/communication/overlap/out/*.lock
+/communication/overlap/out/*local*
+/memory/out/*local*
 /venv

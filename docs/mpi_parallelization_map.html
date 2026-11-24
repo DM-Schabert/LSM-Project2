@@ -19,11 +19,11 @@
   --line-strong: #bfc7d3;
   --faint: #e7ebf1;
   --t-parallel: #2a78d6;
-  --t-komm: #eb6834;
-  --t-lokal: #1baf7a;
+  --t-comm: #eb6834;
+  --t-local: #1baf7a;
   --t-sync: #e34948;
   --t-rank0: #6250d6;
-  --t-seriell: #898781;
+  --t-serial: #898781;
   --on-fill: #ffffff;
   --shadow: rgba(18, 24, 35, 0.12);
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
@@ -34,7 +34,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0d1016; --surface: #151a22; --ink: #e6eaf0; --ink-2: #b0b8c5; --muted: #8a92a2;
     --line: #252c37; --line-strong: #3a4350; --faint: #1e242e;
-    --t-parallel: #3987e5; --t-komm: #d95926; --t-lokal: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-seriell: #898781;
+    --t-parallel: #3987e5; --t-comm: #d95926; --t-local: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-serial: #898781;
     --shadow: rgba(0, 0, 0, 0.45);
     color-scheme: dark;
   }
@@ -42,7 +42,7 @@
 :root[data-theme="dark"] {
   --bg: #0d1016; --surface: #151a22; --ink: #e6eaf0; --ink-2: #b0b8c5; --muted: #8a92a2;
   --line: #252c37; --line-strong: #3a4350; --faint: #1e242e;
-  --t-parallel: #3987e5; --t-komm: #d95926; --t-lokal: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-seriell: #898781;
+  --t-parallel: #3987e5; --t-comm: #d95926; --t-local: #199e70; --t-sync: #e66767; --t-rank0: #9085e9; --t-serial: #898781;
   --shadow: rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }
@@ -72,11 +72,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--t-parallel)
 
 /* tag colours */
 .tag-PARALLEL { --c: var(--t-parallel); }
-.tag-KOMM { --c: var(--t-komm); }
-.tag-LOKAL { --c: var(--t-lokal); }
+.tag-COMM { --c: var(--t-comm); }
+.tag-LOCAL { --c: var(--t-local); }
 .tag-SYNC { --c: var(--t-sync); }
 .tag-RANK0 { --c: var(--t-rank0); }
-.tag-SERIELL { --c: var(--t-seriell); }
+.tag-SERIAL { --c: var(--t-serial); }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em; line-height: 1;
@@ -157,8 +157,8 @@ figcaption { font-size: 14px; color: var(--muted); max-width: 78ch; }
 .sv-w { font-family: var(--font-body); font-size: 12.5px; font-weight: 500; fill: var(--on-fill); }
 .sv-s { font-size: 11px; }
 .sv-par { fill: var(--t-parallel); }
-.sv-komm { fill: var(--t-komm); }
-.sv-lok { fill: var(--t-lokal); }
+.sv-comm { fill: var(--t-comm); }
+.sv-lok { fill: var(--t-local); }
 .sv-sync { fill: var(--t-sync); }
 .sv-tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; fill: var(--muted); }
 .sv-guide { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 4; }
@@ -188,20 +188,20 @@ pre.snip { margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-hei
 .mx-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--ink-2); }
 .mx-legend span { display: inline-flex; align-items: center; gap: 7px; }
 .sw { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
-.sw-line { width: 20px; height: 0; border-top: 2px solid var(--t-komm); display: inline-block; flex: none; }
+.sw-line { width: 20px; height: 0; border-top: 2px solid var(--t-comm); display: inline-block; flex: none; }
 .sw-line.dash { border-top-style: dashed; }
 .t-other { fill: var(--faint); }
 .t-mine { fill: var(--t-parallel); }
 .t-cur { fill: color-mix(in srgb, var(--t-parallel) 42%, var(--faint)); }
 .t-done { fill: color-mix(in srgb, var(--t-parallel) 15%, var(--faint)); }
 .t-minedone { fill: color-mix(in srgb, var(--t-parallel) 30%, var(--faint)); }
-.t-band { fill: color-mix(in srgb, var(--t-komm) 18%, var(--faint)); }
+.t-band { fill: color-mix(in srgb, var(--t-comm) 18%, var(--faint)); }
 .h-idle { fill: var(--faint); stroke: var(--line-strong); stroke-width: 1; }
 .h-own { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
-.h-recv { fill: var(--t-komm); }
+.h-recv { fill: var(--t-comm); }
 .h-me { fill: var(--t-parallel); }
-.b-row { fill: none; stroke: var(--t-komm); stroke-width: 2; }
-.b-col { fill: none; stroke: var(--t-komm); stroke-width: 2; stroke-dasharray: 6 4; }
+.b-row { fill: none; stroke: var(--t-comm); stroke-width: 2; }
+.b-col { fill: none; stroke: var(--t-comm); stroke-width: 2; stroke-dasharray: 6 4; }
 .mx-ax { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
 .mx-lab { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
 .mx-lab.on { fill: var(--ink); font-weight: 500; }
@@ -341,11 +341,11 @@ h3.sub { font-size: 21px; }
 #bChart { display: block; width: 100%; height: auto; }
 .bc-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
 .bc-line.bc-time { stroke: var(--t-parallel); }
-.bc-line.bc-bytes { stroke: var(--t-komm); }
+.bc-line.bc-bytes { stroke: var(--t-comm); }
 .bc-line.bc-ref { stroke: var(--muted); stroke-dasharray: 5 5; stroke-width: 1.5; }
 .bc-dot { stroke: var(--surface); stroke-width: 2; }
 .bc-dot.bc-time { fill: var(--t-parallel); }
-.bc-dot.bc-bytes { fill: var(--t-komm); }
+.bc-dot.bc-bytes { fill: var(--t-comm); }
 .bc-end { font-family: var(--font-mono); font-size: 11.5px; fill: var(--ink-2); }
 .bc-hit { fill: transparent; cursor: crosshair; }
 
@@ -515,7 +515,7 @@ h3.sub { font-size: 21px; }
           <text x="98" y="197" class="sv-lane" text-anchor="end">Rank 1</text>
           <text x="98" y="245" class="sv-lane" text-anchor="end">Rank 2</text>
 
-          <rect x="110" y="128" width="88" height="130" rx="4" class="sv-komm"/>
+          <rect x="110" y="128" width="88" height="130" rx="4" class="sv-comm"/>
           <text x="154" y="189" class="sv-w" text-anchor="middle">Allgatherv</text>
           <text x="154" y="204" class="sv-w sv-s" text-anchor="middle">positions</text>
 
@@ -544,10 +544,10 @@ h3.sub { font-size: 21px; }
           <text x="516" y="189" class="sv-w" text-anchor="middle">Stop?</text>
           <text x="516" y="204" class="sv-w sv-s" text-anchor="middle">allreduce</text>
 
-          <text x="154" y="276" class="sv-tag" text-anchor="middle">KOMM</text>
+          <text x="154" y="276" class="sv-tag" text-anchor="middle">COMM</text>
           <text x="277" y="276" class="sv-tag" text-anchor="middle">PARALLEL</text>
           <text x="388" y="276" class="sv-tag" text-anchor="middle">SYNC</text>
-          <text x="452" y="276" class="sv-tag" text-anchor="middle">LOKAL</text>
+          <text x="452" y="276" class="sv-tag" text-anchor="middle">LOCAL</text>
           <text x="516" y="276" class="sv-tag" text-anchor="middle">SYNC</text>
 
           <line x1="548" y1="122" x2="548" y2="300" class="sv-guide"/>
@@ -649,7 +649,7 @@ h3.sub { font-size: 21px; }
         <p>Today every process checks the time limit and Ctrl+C/SIGTERM on its own. If one rank stops a step early, the others wait forever in the next <code>Allgatherv</code>. Fix: one <code>comm.allreduce(stop, op=MPI.LOR)</code> per step.</p>
       </div>
       <div class="pit">
-        <div class="pt"><h3>Uneven blocks</h3><span class="chip tag-KOMM">MPI-KOMM</span></div>
+        <div class="pt"><h3>Uneven blocks</h3><span class="chip tag-COMM">MPI-COMM</span></div>
         <p>If N is not divisible by P, you need <code>Allgatherv</code> and <code>Gatherv</code> with <code>counts</code> and <code>displs</code>. The ring needs equal-sized buffers: pad every block to the largest one and give the padding stars mass 0.</p>
       </div>
       <div class="pit">
@@ -678,7 +678,7 @@ h3.sub { font-size: 21px; }
       <div class="sp-head">5,000 stars · node n-62-21-75 · merge radius 0</div>
       <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;serial, 1 process · n-62-21-75&lt;/b&gt;&lt;br&gt;&lt;span&gt;2,499.4 ms per step (± 1.2)&lt;br&gt;forces 249.9 s of 249.9 s&lt;br&gt;10.0 M pairs per second&lt;/span&gt;">
         <span class="sp-lab">Serial</span>
-        <div class="sp-track"><i class="sp-fill tag-SERIELL" style="width:68.64%"></i><span class="sp-val">2,499&nbsp;ms</span></div>
+        <div class="sp-track"><i class="sp-fill tag-SERIAL" style="width:68.64%"></i><span class="sp-val">2,499&nbsp;ms</span></div>
       </div>
       <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;MPI, 8 ranks · n-62-21-75&lt;/b&gt;&lt;br&gt;&lt;span&gt;322.3 ms per step (± 0.5)&lt;br&gt;forces 32.2 s of 32.2 s&lt;br&gt;77.6 M pairs per second&lt;/span&gt;">
         <span class="sp-lab">8 ranks</span>
@@ -689,7 +689,7 @@ h3.sub { font-size: 21px; }
       <div class="sp-head">5,000 stars · node n-62-21-77 · merge radius 0.001&nbsp;pc</div>
       <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;serial, 1 process · n-62-21-77&lt;/b&gt;&lt;br&gt;&lt;span&gt;2,913.0 ms per step (± 1.6)&lt;br&gt;forces 291.3 s of 291.3 s&lt;br&gt;8.6 M pairs per second&lt;/span&gt;">
         <span class="sp-lab">Serial</span>
-        <div class="sp-track"><i class="sp-fill tag-SERIELL" style="width:80.00%"></i><span class="sp-val">2,913&nbsp;ms</span></div>
+        <div class="sp-track"><i class="sp-fill tag-SERIAL" style="width:80.00%"></i><span class="sp-val">2,913&nbsp;ms</span></div>
       </div>
       <div class="sp-row" tabindex="0" data-tip="&lt;b&gt;MPI, 8 ranks · n-62-21-77&lt;/b&gt;&lt;br&gt;&lt;span&gt;374.7 ms per step (± 0.6)&lt;br&gt;forces 37.4 s of 37.5 s&lt;br&gt;66.8 M pairs per second&lt;/span&gt;">
         <span class="sp-lab">8 ranks</span>
@@ -716,7 +716,7 @@ h3.sub { font-size: 21px; }
     <figure class="bchart">
       <div class="bc-legend">
         <span><i class="sw" style="background:var(--t-parallel)"></i>Time per step, measured</span>
-        <span><i class="sw" style="background:var(--t-komm)"></i>Data exchanged, measured</span>
+        <span><i class="sw" style="background:var(--t-comm)"></i>Data exchanged, measured</span>
         <span><i class="sw-line bc-refkey"></i>N² for comparison</span>
       </div>
       <svg id="bChart" viewBox="0 0 680 300" role="img" aria-label="Indexed to 5,000 stars: time per step grows 3.79 and 8.35 times for 10,000 and 15,000 stars, close to N squared; data exchanged grows exactly 2 and 3 times, like N."><line x1="58" y1="252.0" x2="520" y2="252.0" class="rc-grid"/><text x="50" y="256.0" class="rc-ax" text-anchor="end">0</text><line x1="58" y1="206.0" x2="520" y2="206.0" class="rc-grid"/><text x="50" y="210.0" class="rc-ax" text-anchor="end">2</text><line x1="58" y1="160.0" x2="520" y2="160.0" class="rc-grid"/><text x="50" y="164.0" class="rc-ax" text-anchor="end">4</text><line x1="58" y1="114.0" x2="520" y2="114.0" class="rc-grid"/><text x="50" y="118.0" class="rc-ax" text-anchor="end">6</text><line x1="58" y1="68.0" x2="520" y2="68.0" class="rc-grid"/><text x="50" y="72.0" class="rc-ax" text-anchor="end">8</text><line x1="58" y1="22.0" x2="520" y2="22.0" class="rc-grid"/><text x="50" y="26.0" class="rc-ax" text-anchor="end">10×</text><text x="58.0" y="272" class="rc-ax" text-anchor="middle">5,000</text><text x="289.0" y="272" class="rc-ax" text-anchor="middle">10,000</text><text x="520.0" y="272" class="rc-ax" text-anchor="middle">15,000 stars</text><polyline points="58.0,229.0 289.0,160.0 520.0,45.0" class="bc-line bc-ref"/><polyline points="58.0,229.0 289.0,164.9 520.0,59.9" class="bc-line bc-time"/><polyline points="58.0,229.0 289.0,206.0 520.0,183.0" class="bc-line bc-bytes"/><circle cx="58.0" cy="229.0" r="4.5" class="bc-dot bc-time"/><circle cx="289.0" cy="164.9" r="4.5" class="bc-dot bc-time"/><circle cx="520.0" cy="59.9" r="4.5" class="bc-dot bc-time"/><circle cx="58.0" cy="229.0" r="4.5" class="bc-dot bc-bytes"/><circle cx="289.0" cy="206.0" r="4.5" class="bc-dot bc-bytes"/><circle cx="520.0" cy="183.0" r="4.5" class="bc-dot bc-bytes"/><text x="530" y="49.0" class="bc-end">N² would give 9×</text><text x="530" y="64.0" class="bc-end">time per step 8.35×</text><text x="530" y="187.0" class="bc-end">data exchanged 3.00×</text><line id="bcHov" x1="0" y1="22" x2="0" y2="252" class="rc-hov" visibility="hidden"/><rect x="28.0" y="12" width="145.5" height="250" class="bc-hit" data-i="0" data-x="58.0"/><rect x="173.5" y="12" width="231.0" height="250" class="bc-hit" data-i="1" data-x="289.0"/><rect x="404.5" y="12" width="145.5" height="250" class="bc-hit" data-i="2" data-x="520.0"/></svg>
@@ -761,42 +761,42 @@ h3.sub { font-size: 21px; }
 (() => {
   const TAGS = {
     PARALLEL: { name: 'Parallel', desc: 'Work is split: each rank computes only its own block.' },
-    KOMM: { name: 'Communication', desc: 'Ranks exchange data: Allgatherv, Allreduce, Gatherv, reduce.' },
-    LOKAL: { name: 'Local', desc: 'Runs unchanged on every rank, for its own stars only.' },
+    COMM: { name: 'Communication', desc: 'Ranks exchange data: Allgatherv, Allreduce, Gatherv, reduce.' },
+    LOCAL: { name: 'Local', desc: 'Runs unchanged on every rank, for its own stars only.' },
     SYNC: { name: 'Shared decision', desc: 'All ranks must decide the same way, or the program hangs.' },
     RANK0: { name: 'Rank 0 only', desc: 'Console, files and plots.' },
-    SERIELL: { name: 'Serial', desc: 'Stays serial or runs redundantly on every rank.' },
+    SERIAL: { name: 'Serial', desc: 'Stays serial or runs redundantly on every rank.' },
   };
-  const ORDER = ['PARALLEL', 'KOMM', 'LOKAL', 'SYNC', 'RANK0', 'SERIELL'];
+  const ORDER = ['PARALLEL', 'COMM', 'LOCAL', 'SYNC', 'RANK0', 'SERIAL'];
 
   // at = first [MPI-] line in the annotated file, lines = line count in SerialImplementation.py
   const SECTIONS = [
-    { name: 'Header and imports', at: 49, lines: 121, tags: ['SERIELL', 'KOMM'], note: 'Guide to all tags at the top of the file. New: <code>from mpi4py import MPI</code>; matplotlib on rank 0 only.' },
+    { name: 'Header and imports', at: 49, lines: 121, tags: ['SERIAL', 'COMM'], note: 'Guide to all tags at the top of the file. New: <code>from mpi4py import MPI</code>; matplotlib on rank 0 only.' },
     { name: 'Stars', mono: true, at: 174, lines: 23, tags: ['PARALLEL'], note: 'Each rank holds only its own block <code>[lo:hi]</code>. Distribute the masses of all stars once at the start. For the struct datatype, use a NumPy structured array.' },
-    { name: 'load_subset', mono: true, at: 209, lines: 49, tags: ['SERIELL', 'RANK0'], note: 'Each rank reads the small CSV itself (same seed) and slices out its block. <code>print</code> on rank 0 only.' },
-    { name: 'guess_ / parse_spectral_classes', mono: true, at: 263, lines: 13, tags: ['SERIELL'], note: 'Unchanged. Only needed for plots and output.' },
-    { name: 'Perf, peak_memory_mb', mono: true, at: 278, lines: 41, tags: ['KOMM'], note: 'Each rank times itself. At the end, <code>reduce</code> with MAX and the mean, which gives <code>load_imbalance</code>. New timing section <code>communication</code>.' },
-    { name: 'compute_accelerations', mono: true, at: 327, lines: 40, tags: ['PARALLEL', 'KOMM'], hot: true, note: 'Restrict the loop over i to the rank’s own block and change the signature to “targets against sources”. Then the same function works for Allgather, Ring and 2D.' },
-    { name: 'group_close_stars', mono: true, at: 399, lines: 25, tags: ['SERIELL', 'KOMM'], note: 'Share the pair list with every rank via <code>allgather</code>; union-find then runs identically on each rank.' },
+    { name: 'load_subset', mono: true, at: 209, lines: 49, tags: ['SERIAL', 'RANK0'], note: 'Each rank reads the small CSV itself (same seed) and slices out its block. <code>print</code> on rank 0 only.' },
+    { name: 'guess_ / parse_spectral_classes', mono: true, at: 263, lines: 13, tags: ['SERIAL'], note: 'Unchanged. Only needed for plots and output.' },
+    { name: 'Perf, peak_memory_mb', mono: true, at: 278, lines: 41, tags: ['COMM'], note: 'Each rank times itself. At the end, <code>reduce</code> with MAX and the mean, which gives <code>load_imbalance</code>. New timing section <code>communication</code>.' },
+    { name: 'compute_accelerations', mono: true, at: 327, lines: 40, tags: ['PARALLEL', 'COMM'], hot: true, note: 'Restrict the loop over i to the rank’s own block and change the signature to “targets against sources”. Then the same function works for Allgather, Ring and 2D.' },
+    { name: 'group_close_stars', mono: true, at: 399, lines: 25, tags: ['SERIAL', 'COMM'], note: 'Share the pair list with every rank via <code>allgather</code>; union-find then runs identically on each rank.' },
     { name: 'merge_stars', mono: true, at: 430, lines: 37, tags: ['SYNC'], note: 'Changes N and the block split. Turn it off for scaling runs (<code>--merge-radius 0</code>) or treat it as a rare event with a full gather.' },
-    { name: 'timed_accelerations', mono: true, at: 480, lines: 9, tags: ['KOMM'], note: 'Counts the pairs. With MPI, count locally and sum at the end.' },
-    { name: 'step', mono: true, at: 491, lines: 23, tags: ['PARALLEL', 'KOMM', 'SYNC', 'LOKAL'], note: 'The time step: exchange positions, compute forces for the own block, kick and drift locally. The merge loop needs a shared condition.' },
-    { name: 'mean_distance_to_centre_of_mass, total_momentum', mono: true, at: 535, lines: 9, tags: ['KOMM'], note: 'Sum locally, then <code>Allreduce</code>. The same goes for the energy, which is still missing.' },
+    { name: 'timed_accelerations', mono: true, at: 480, lines: 9, tags: ['COMM'], note: 'Counts the pairs. With MPI, count locally and sum at the end.' },
+    { name: 'step', mono: true, at: 491, lines: 23, tags: ['PARALLEL', 'COMM', 'SYNC', 'LOCAL'], note: 'The time step: exchange positions, compute forces for the own block, kick and drift locally. The merge loop needs a shared condition.' },
+    { name: 'mean_distance_to_centre_of_mass, total_momentum', mono: true, at: 535, lines: 9, tags: ['COMM'], note: 'Sum locally, then <code>Allreduce</code>. The same goes for the energy, which is still missing.' },
     { name: 'Plot helpers', at: 554, lines: 78, tags: ['RANK0'], note: 'Rank 0 only.' },
-    { name: 'LivePlot', mono: true, at: 638, lines: 43, tags: ['RANK0', 'KOMM'], note: 'Rank 0 only, after a <code>Gatherv</code> of the positions. Turn it off for scaling runs.' },
+    { name: 'LivePlot', mono: true, at: 638, lines: 43, tags: ['RANK0', 'COMM'], note: 'Rank 0 only, after a <code>Gatherv</code> of the positions. Turn it off for scaling runs.' },
     { name: 'plot_start_to_end', mono: true, at: 681, lines: 31, tags: ['RANK0'], note: 'Rank 0 only, once the final state has been gathered.' },
     { name: 'StopRequest, run_mode', mono: true, at: 711, lines: 39, tags: ['SYNC'], note: 'The time limit and signals reach the ranks at different moments. Stop via <code>allreduce</code> or a <code>bcast</code> from rank 0, otherwise deadlock.' },
     { name: 'build_results_row, append_results', mono: true, at: 757, lines: 121, tags: ['RANK0'], note: 'Rank 0 only. Parameters for <code>n_ranks</code>, <code>comm_bytes</code> and <code>load_imbalance</code> already exist.' },
-    { name: 'parse_args', mono: true, at: 898, lines: 57, tags: ['SERIELL'], note: 'Every rank parses the same command line. New: <code>--scheme allgather|ring|2d</code>.' },
-    { name: 'main: setup and loading', at: 950, lines: 34, tags: ['SERIELL', 'KOMM', 'RANK0'], note: 'Set up <code>comm</code>, <code>rank</code>, <code>size</code>, <code>counts</code> and <code>displs</code>. Output and LivePlot on rank 0 only.' },
+    { name: 'parse_args', mono: true, at: 898, lines: 57, tags: ['SERIAL'], note: 'Every rank parses the same command line. New: <code>--scheme allgather|ring|2d</code>.' },
+    { name: 'main: setup and loading', at: 950, lines: 34, tags: ['SERIAL', 'COMM', 'RANK0'], note: 'Set up <code>comm</code>, <code>rank</code>, <code>size</code>, <code>counts</code> and <code>displs</code>. Output and LivePlot on rank 0 only.' },
     { name: 'main: time limit and loop', at: 982, lines: 41, tags: ['SYNC', 'PARALLEL'], note: 'Merge the two stop checks into one shared decision. <code>step()</code> is the parallel part.' },
-    { name: 'main: results and output', at: 1036, lines: 63, tags: ['RANK0', 'KOMM'], note: 'Gather timings via <code>reduce</code> and the final state via <code>Gatherv</code>. Files, plots and console on rank 0 only.' },
+    { name: 'main: results and output', at: 1036, lines: 63, tags: ['RANK0', 'COMM'], note: 'Gather timings via <code>reduce</code> and the final state via <code>Gatherv</code>. Files, plots and console on rank 0 only.' },
     { name: 'print_performance_summary', mono: true, at: 1110, lines: 22, tags: ['RANK0'], note: 'Rank 0 only.' },
   ];
   const TIME = [
     { label: 'Forces (compute_accelerations)', s: 168.884, cls: 'tag-PARALLEL' },
     { label: 'Plotting (rank 0 only)', s: 0.649, cls: 'tag-RANK0' },
-    { label: 'Everything else: loading, merge, kick/drift, output', s: 0.114, cls: 'tag-SERIELL' },
+    { label: 'Everything else: loading, merge, kick/drift, output', s: 0.114, cls: 'tag-SERIAL' },
   ];
   const TOTAL_S = 169.647;
   const en = (x, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -913,19 +913,19 @@ row_comm.Allreduce(MPI.IN_PLACE, acc_part, op=MPI.SUM)`,
     if (M.scheme === 'allgather') return [
       sw('background:var(--t-parallel)', 'computed by the selected rank'),
       sw('background:var(--faint);border:1px solid var(--line-strong)', 'computed by the others'),
-      sw('background:var(--t-komm)', 'received via Allgatherv'),
+      sw('background:var(--t-comm)', 'received via Allgatherv'),
       sw('background:var(--surface);border:1.5px solid var(--ink)', 'own block'),
     ].join('');
     if (M.scheme === 'ring') return [
       sw('background:var(--t-parallel)', 'selected rank, now'),
       sw('background:color-mix(in srgb,var(--t-parallel) 42%,var(--faint))', 'other ranks, now'),
       sw('background:color-mix(in srgb,var(--t-parallel) 15%,var(--faint))', 'already computed'),
-      sw('background:var(--t-komm)', 'block it currently holds'),
+      sw('background:var(--t-comm)', 'block it currently holds'),
       sw('background:var(--surface);border:1.5px solid var(--ink)', 'own block'),
     ].join('');
     return [
       sw('background:var(--t-parallel)', 'selected rank'),
-      sw('background:var(--t-komm)', 'received blocks i and j'),
+      sw('background:var(--t-comm)', 'received blocks i and j'),
       `<span><i class="sw-line"></i>row_comm</span>`,
       `<span><i class="sw-line dash"></i>col_comm</span>`,
     ].join('');

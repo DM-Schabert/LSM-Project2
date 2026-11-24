@@ -44,6 +44,8 @@ python3 amdahl/amdahl_analysis.py --job <jobid> ...   # analyse by hand (needs t
 | `MERGE_RADIUS` | `0` | merging off, so the work per step stays constant |
 | `WALLTIME_MIN` | `30` | must match `#BSUB -W`. Runs stop themselves before the walltime |
 | `RESULTS` | `results.csv` | the shared file. Rows are found again by `run_name = amdahl_<label>_j<jobid>_r<repeat>` |
+| `PROGRAM_ARGS` | empty | options for `ParallelImplementation.py` only, e.g. `"--decomposition 2d --tile-rows 0"`. The serial baseline never gets them. See `communication/README.md` |
+| `NODES` (run_all.sh) | `1` | `2`: two full nodes (`-n 48`, `span[ptile=24]`), P up to 48 |
 
 **Time budget** (Xeon E5-2650 v4): one repeat costs about 3 × the serial run (serial, MPI at P = 1, then halving). The campaign's sweeps take 6–15 min each (N = 300 with 10 000 steps about 25 min, hence 2 repeats). With `-W` 00:30 the jobs ran fine on `hpcintro`.
 

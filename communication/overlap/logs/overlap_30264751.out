@@ -1,0 +1,252 @@
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30264751: <overlap> in cluster <dcc> Done
+
+Job <overlap> was submitted from host <n-62-27-22> by user <s262028> in cluster <dcc> at Mon Nov 23 09:59:59 2026
+Job was executed on host(s) <24*n-62-21-75>, in queue <hpcintro>, as user <s262028> in cluster <dcc> at Mon Nov 23 10:00:01 2026
+                            <24*n-62-21-48>
+</zhome/c7/3/231979> was used as the home directory.
+</zhome/c7/3/231979/LSM-Project2> was used as the working directory.
+Started at Mon Nov 23 10:00:01 2026
+Terminated at Mon Nov 23 10:00:25 2026
+Results reported at Mon Nov 23 10:00:25 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  Overlap in depth: Isend/Irecv against Sendrecv across the eager/rendezvous limit, 2 ranks
+#
+#  On the cluster, from the repository root:  bsub < communication/overlap/overlap_batch.sh
+#  Results page afterwards (on the laptop):   python3 communication/overlap/make_page.py
+#
+#  Two full nodes are reserved, so nobody else shares them. The pair runs twice: both ranks on
+#  the first node (intra) and one rank per node (inter). The log also records which transport and
+#  which eager/rendezvous limits Open MPI uses, so the measured switch can be compared with them.
+#  Output: communication/overlap/out/overlap_<jobid>.csv
+# =============================================================================
+#BSUB -J overlap
+#BSUB -q hpcintro
+#BSUB -n 48
+#BSUB -R "span[ptile=24]"
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -W 00:20
+#BSUB -o communication/overlap/logs/overlap_%J.out
+#BSUB -e communication/overlap/logs/overlap_%J.err
+
+PLACEMENTS=${PLACEMENTS:-"intra inter"}
+BENCH_ARGS=${BENCH_ARGS:-""}            # e.g. "--reps 50" (see overlap_bench.py --help)
+INTRA_OPTS="--report-bindings --map-by core --bind-to core"         # ranks 0 and 1 on cores 0 and 1 of the first node
+INTER_OPTS="--report-bindings --map-by ppr:1:node --bind-to core"   # one rank on each node
+
+cd "${LS_SUBCWD:-$PWD}" || exit 1
+[ -f communication/overlap/overlap_bench.py ] || { echo "Start this from the repository root"; exit 1; }
+mkdir -p communication/overlap/logs communication/overlap/out
+module load pandas/2.3.0-python-3.12.11
+module load matplotlib/3.10.3-numpy-2.3.1-python-3.12.11
+module load mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1 LC_ALL=C
+OUT=communication/overlap/out/overlap_${LSB_JOBID}.csv
+
+echo "=== overlap, job $LSB_JOBID, $(date), hosts: $(echo $LSB_HOSTS | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+echo "--- transports and limits (Open MPI, UCX)"
+ompi_info 2>/dev/null | grep -E 'MCA (pml|btl|osc|coll): (ucx|ob1|cm|sm|vader|tcp|self|uct|tuned)' | sed 's/^ */  /'
+ompi_info --param pml all --level 9 2>/dev/null | grep -i -E 'eager|rndv|thresh|priority' | sed 's/^ */  /' | head -20
+ompi_info --param btl all --level 9 2>/dev/null | grep -i -E 'eager_limit|rndv_eager|max_send_size' | sed 's/^ */  /' | head -20
+command -v ucx_info >/dev/null && ucx_info -c 2>/dev/null | grep -E 'UCX_(RNDV_THRESH|RNDV_SCHEME|ZCOPY_THRESH|TLS|PROTO_ENABLE)' | sed 's/^/  /'
+env | grep -E '^(UCX_|OMPI_MCA_)' | sed 's/^/  env /'
+
+for placement in $PLACEMENTS; do
+    if [ "$placement" = inter ]; then opts=$INTER_OPTS; else opts=$INTRA_OPTS; fi
+    export MPIRUN_OPTS="$opts"
+    echo "--- $placement ($(date +%H:%M:%S)): mpirun $opts -np 2"
+    mpirun $opts -np 2 python3 communication/overlap/overlap_bench.py --out "$OUT" --placement "$placement" $BENCH_ARGS 2>&1
+    echo "--- $placement: exit code $?"
+done
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   37.44 sec.
+    Max Memory :                                 189 MB
+    Average Memory :                             15.00 MB
+    Total Requested Memory :                     49152.00 MB
+    Delta Memory :                               48963.00 MB
+    Max Swap :                                   -
+    Max Processes :                              6
+    Max Threads :                                10
+    Run time :                                   24 sec.
+    Turnaround time :                            26 sec.
+
+The output (if any) follows:
+
+=== overlap, job 30264751, Mon Nov 23 10:00:02 CET 2026, hosts: n-62-21-48 n-62-21-75 
+--- transports and limits (Open MPI, UCX)
+  MCA btl: self (MCA v2.1.0, API v3.3.0, Component v5.0.8)
+  MCA btl: sm (MCA v2.1.0, API v3.3.0, Component v5.0.8)
+  MCA btl: tcp (MCA v2.1.0, API v3.3.0, Component v5.0.8)
+  MCA btl: uct (MCA v2.1.0, API v3.3.0, Component v5.0.8)
+  MCA coll: self (MCA v2.1.0, API v2.4.0, Component v5.0.8)
+  MCA coll: tuned (MCA v2.1.0, API v2.4.0, Component v5.0.8)
+  MCA coll: sm (MCA v2.1.0, API v2.4.0, Component v5.0.8)
+  MCA osc: sm (MCA v2.1.0, API v3.0.0, Component v5.0.8)
+  MCA osc: ucx (MCA v2.1.0, API v3.0.0, Component v5.0.8)
+  MCA pml: cm (MCA v2.1.0, API v2.1.0, Component v5.0.8)
+  MCA pml: ob1 (MCA v2.1.0, API v2.1.0, Component v5.0.8)
+  MCA pml: ucx (MCA v2.1.0, API v2.1.0, Component v5.0.8)
+  MCA pml ob1: parameter "pml_ob1_priority" (current value: "20", data source: default, level: 9 dev/all, type: int)
+  MCA pml ucx: parameter "pml_ucx_priority" (current value: "51", data source: default, level: 3 user/all, type: int)
+  Priority of the UCX component
+  List of device driver pattern names, which, if supported by UCX, will bump its priority above ob1. Special values: any (any available)
+  MCA btl self: parameter "btl_self_rndv_eager_limit" (current value: "131072", data source: default, level: 4 tuner/basic, type: size_t)
+  Size (in bytes, including header) of "phase 1" fragment sent for all large messages (must be >= 0 and <= eager_limit)
+  MCA btl self: parameter "btl_self_eager_limit" (current value: "1024", data source: default, level: 4 tuner/basic, type: size_t)
+  MCA btl self: parameter "btl_self_accelerator_max_send_size" (current value: "0", data source: default, level: 4 tuner/basic, type: size_t)
+  MCA btl self: parameter "btl_self_max_send_size" (current value: "16384", data source: default, level: 4 tuner/basic, type: size_t)
+  Length of the "phase 2" portion of a large message (in bytes) when using the pipeline protocol.  This part of the message will be split into fragments of size max_send_size and sent using send/receive semantics (must be >= 0; only relevant when the PUT flag is set)
+  Messages smaller than this size (in bytes) will not use the RDMA pipeline protocol.  Instead, they will be split into fragments of max_send_size and sent using send/receive semantics (must be >=0, and is automatically adjusted up to at least (eager_limit+btl_rdma_pipeline_send_length); only relevant when the PUT flag is set)
+  MCA btl sm: parameter "btl_sm_rndv_eager_limit" (current value: "32768", data source: default, level: 4 tuner/basic, type: size_t, synonyms: btl_vader_rndv_eager_limit)
+  Size (in bytes, including header) of "phase 1" fragment sent for all large messages (must be >= 0 and <= eager_limit)
+  MCA btl sm: parameter "btl_sm_eager_limit" (current value: "4096", data source: default, level: 4 tuner/basic, type: size_t, synonyms: btl_vader_eager_limit)
+  MCA btl sm: parameter "btl_sm_accelerator_max_send_size" (current value: "0", data source: default, level: 4 tuner/basic, type: size_t, synonyms: btl_vader_accelerator_max_send_size)
+  MCA btl sm: parameter "btl_sm_max_send_size" (current value: "32768", data source: default, level: 4 tuner/basic, type: size_t, synonyms: btl_vader_max_send_size)
+  MCA btl vader: parameter "btl_vader_rndv_eager_limit" (current value: "32768", data source: default, level: 4 tuner/basic, type: size_t, synonym of: btl_sm_rndv_eager_limit)
+  Size (in bytes, including header) of "phase 1" fragment sent for all large messages (must be >= 0 and <= eager_limit)
+  MCA btl vader: parameter "btl_vader_eager_limit" (current value: "4096", data source: default, level: 4 tuner/basic, type: size_t, synonym of: btl_sm_eager_limit)
+  MCA btl vader: parameter "btl_vader_accelerator_max_send_size" (current value: "0", data source: default, level: 4 tuner/basic, type: size_t, synonym of: btl_sm_accelerator_max_send_size)
+  MCA btl vader: parameter "btl_vader_max_send_size" (current value: "32768", data source: default, level: 4 tuner/basic, type: size_t, synonym of: btl_sm_max_send_size)
+  MCA btl tcp: parameter "btl_tcp_rndv_eager_limit" (current value: "65536", data source: default, level: 4 tuner/basic, type: size_t)
+  Size (in bytes, including header) of "phase 1" fragment sent for all large messages (must be >= 0 and <= eager_limit)
+  MCA btl tcp: parameter "btl_tcp_eager_limit" (current value: "65536", data source: default, level: 4 tuner/basic, type: size_t)
+  UCX_TLS=all
+  UCX_RNDV_THRESH=intra:auto,inter:auto
+  UCX_RNDV_THRESH_FALLBACK=inf
+  UCX_RNDV_SCHEME=auto
+  UCX_ZCOPY_THRESH=auto
+  UCX_PROTO_ENABLE=y
+--- intra (10:00:02): mpirun --report-bindings --map-by core --bind-to core -np 2
+[n-62-21-75:170932] Rank 0 bound to package[0][core:0]
+[n-62-21-75:170932] Rank 1 bound to package[0][core:1]
+overlap: intra (n-62-21-75 / n-62-21-75, cpus 0 / 1), 17 sizes 64-4194304 B, 30 reps, 3 sweeps, kernel tile 2 x 1000 = 227 us
+  sweep 1       64 B: comm       2.3 us, compute     915.7 us (4 tiles); overlap nonblocking -11.20, polling -12.95
+  sweep 1      128 B: comm       5.7 us, compute     927.5 us (4 tiles); overlap nonblocking -3.49, polling -2.95
+  sweep 1      256 B: comm       5.8 us, compute     928.9 us (4 tiles); overlap nonblocking -3.39, polling -3.88
+  sweep 1      512 B: comm       2.7 us, compute     927.5 us (4 tiles); overlap nonblocking -5.56, polling -7.46
+  sweep 1     1024 B: comm       5.6 us, compute     929.8 us (4 tiles); overlap nonblocking -1.86, polling -2.74
+  sweep 1     2048 B: comm       8.2 us, compute     928.9 us (4 tiles); overlap nonblocking -1.24, polling -1.72
+  sweep 1     4096 B: comm       9.0 us, compute     926.4 us (4 tiles); overlap nonblocking -0.50, polling -1.65
+  sweep 1     8192 B: comm       9.1 us, compute     927.2 us (4 tiles); overlap nonblocking -1.65, polling -2.72
+  sweep 1    16384 B: comm      11.3 us, compute     928.5 us (4 tiles); overlap nonblocking -1.21, polling -2.10
+  sweep 1    32768 B: comm      14.4 us, compute     921.8 us (4 tiles); overlap nonblocking -0.88, polling -1.75
+  sweep 1    65536 B: comm      17.4 us, compute     932.7 us (4 tiles); overlap nonblocking -0.62, polling -1.15
+  sweep 1   131072 B: comm      32.6 us, compute     916.9 us (4 tiles); overlap nonblocking -0.07, polling -0.37
+  sweep 1   262144 B: comm      23.8 us, compute     926.8 us (4 tiles); overlap nonblocking -0.87, polling -1.45
+  sweep 1   524288 B: comm      44.8 us, compute     917.2 us (4 tiles); overlap nonblocking -0.45, polling -0.67
+  sweep 1  1048576 B: comm      84.1 us, compute     916.0 us (4 tiles); overlap nonblocking -0.27, polling -0.49
+  sweep 1  2097152 B: comm     163.3 us, compute     917.6 us (4 tiles); overlap nonblocking -0.17, polling -0.29
+  sweep 1  4194304 B: comm     324.7 us, compute     915.9 us (4 tiles); overlap nonblocking -0.09, polling -0.15
+  sweep 2  4194304 B: comm     320.7 us, compute     927.7 us (4 tiles); overlap nonblocking -0.07, polling -0.14
+  sweep 2  2097152 B: comm     160.8 us, compute     915.6 us (4 tiles); overlap nonblocking -0.15, polling -0.29
+  sweep 2  1048576 B: comm      87.1 us, compute     927.5 us (4 tiles); overlap nonblocking -0.23, polling -0.40
+  sweep 2   524288 B: comm      44.6 us, compute     927.5 us (4 tiles); overlap nonblocking -0.50, polling -0.73
+  sweep 2   262144 B: comm      23.7 us, compute     915.0 us (4 tiles); overlap nonblocking -0.95, polling -1.43
+  sweep 2   131072 B: comm      37.8 us, compute     928.5 us (4 tiles); overlap nonblocking  0.03, polling -0.19
+  sweep 2    65536 B: comm      17.1 us, compute     926.2 us (4 tiles); overlap nonblocking -0.82, polling -1.39
+  sweep 2    32768 B: comm       9.6 us, compute     915.2 us (4 tiles); overlap nonblocking -1.89, polling -2.85
+  sweep 2    16384 B: comm       5.9 us, compute     927.1 us (4 tiles); overlap nonblocking -3.52, polling -5.15
+  sweep 2     8192 B: comm       4.3 us, compute     926.2 us (4 tiles); overlap nonblocking -4.78, polling -6.92
+  sweep 2     4096 B: comm       3.4 us, compute     915.5 us (4 tiles); overlap nonblocking -6.58, polling -9.18
+  sweep 2     2048 B: comm       2.8 us, compute     913.2 us (4 tiles); overlap nonblocking -5.62, polling -7.11
+  sweep 2     1024 B: comm       2.6 us, compute     916.9 us (4 tiles); overlap nonblocking -5.09, polling -7.12
+  sweep 2      512 B: comm       2.5 us, compute     915.5 us (4 tiles); overlap nonblocking -5.96, polling -8.28
+  sweep 2      256 B: comm       2.4 us, compute     917.5 us (4 tiles); overlap nonblocking -5.46, polling -7.22
+  sweep 2      128 B: comm       2.3 us, compute     916.4 us (4 tiles); overlap nonblocking -6.20, polling -7.60
+  sweep 2       64 B: comm       2.1 us, compute     916.1 us (4 tiles); overlap nonblocking -6.05, polling -8.51
+  sweep 3       64 B: comm       2.2 us, compute     917.0 us (4 tiles); overlap nonblocking -6.08, polling -8.08
+  sweep 3      128 B: comm       2.4 us, compute     917.8 us (4 tiles); overlap nonblocking -8.59, polling -12.51
+  sweep 3      256 B: comm       5.2 us, compute     916.3 us (4 tiles); overlap nonblocking -3.77, polling -3.29
+  sweep 3      512 B: comm       5.2 us, compute     917.0 us (4 tiles); overlap nonblocking -2.81, polling -3.18
+  sweep 3     1024 B: comm       5.2 us, compute     916.4 us (4 tiles); overlap nonblocking -2.34, polling -3.26
+  sweep 3     2048 B: comm       6.1 us, compute     916.5 us (4 tiles); overlap nonblocking -2.31, polling -2.70
+  sweep 3     4096 B: comm       6.8 us, compute     916.8 us (4 tiles); overlap nonblocking -2.40, polling -3.69
+  sweep 3     8192 B: comm       7.3 us, compute     926.7 us (4 tiles); overlap nonblocking -2.38, polling -3.53
+  sweep 3    16384 B: comm       9.1 us, compute     928.5 us (4 tiles); overlap nonblocking -1.92, polling -3.02
+  sweep 3    32768 B: comm      11.7 us, compute     918.1 us (4 tiles); overlap nonblocking -1.27, polling -2.06
+  sweep 3    65536 B: comm      17.6 us, compute     933.2 us (4 tiles); overlap nonblocking -0.63, polling -1.16
+  sweep 3   131072 B: comm      32.6 us, compute     916.2 us (4 tiles); overlap nonblocking -0.08, polling -0.39
+  sweep 3   262144 B: comm      24.2 us, compute     927.6 us (4 tiles); overlap nonblocking -0.90, polling -1.26
+  sweep 3   524288 B: comm      44.7 us, compute     917.0 us (4 tiles); overlap nonblocking -0.48, polling -0.69
+  sweep 3  1048576 B: comm      82.7 us, compute     927.4 us (4 tiles); overlap nonblocking -0.27, polling -0.50
+  sweep 3  2097152 B: comm     164.8 us, compute     917.9 us (4 tiles); overlap nonblocking -0.14, polling -0.26
+  sweep 3  4194304 B: comm     318.6 us, compute     927.6 us (4 tiles); overlap nonblocking -0.09, polling -0.16
+Wrote 255 rows to communication/overlap/out/overlap_30264751.csv
+--- intra: exit code 0
+--- inter (10:00:14): mpirun --report-bindings --map-by ppr:1:node --bind-to core -np 2
+[n-62-21-75:170988] Rank 0 bound to package[0][core:0]
+[n-62-21-48:171152] Rank 1 bound to package[0][core:0]
+overlap: inter (n-62-21-75 / n-62-21-48, cpus 0 / 0), 17 sizes 64-4194304 B, 30 reps, 3 sweeps, kernel tile 2 x 1000 = 262 us
+  sweep 1       64 B: comm       4.9 us, compute    1058.6 us (4 tiles); overlap nonblocking -3.28, polling -4.37
+  sweep 1      128 B: comm       6.2 us, compute    1058.6 us (4 tiles); overlap nonblocking -1.76, polling -3.05
+  sweep 1      256 B: comm       5.7 us, compute    1058.3 us (4 tiles); overlap nonblocking -2.29, polling -3.42
+  sweep 1      512 B: comm       6.0 us, compute    1057.0 us (4 tiles); overlap nonblocking -2.52, polling -4.63
+  sweep 1     1024 B: comm       5.9 us, compute    1056.6 us (4 tiles); overlap nonblocking -2.52, polling -4.79
+  sweep 1     2048 B: comm       7.3 us, compute    1056.7 us (4 tiles); overlap nonblocking -2.02, polling -3.85
+  sweep 1     4096 B: comm       7.3 us, compute    1052.7 us (4 tiles); overlap nonblocking -2.11, polling -3.56
+  sweep 1     8192 B: comm       9.3 us, compute    1055.2 us (4 tiles); overlap nonblocking -1.50, polling -2.89
+  sweep 1    16384 B: comm      11.3 us, compute    1058.5 us (4 tiles); overlap nonblocking -1.13, polling -2.32
+  sweep 1    32768 B: comm      14.5 us, compute    1057.2 us (4 tiles); overlap nonblocking -0.86, polling -1.74
+  sweep 1    65536 B: comm      20.2 us, compute    1050.6 us (4 tiles); overlap nonblocking -0.52, polling -1.22
+  sweep 1   131072 B: comm      36.8 us, compute    1059.5 us (4 tiles); overlap nonblocking -0.10, polling -0.50
+  sweep 1   262144 B: comm      65.5 us, compute    1053.6 us (4 tiles); overlap nonblocking  0.09, polling -0.26
+  sweep 1   524288 B: comm      98.3 us, compute    1058.8 us (4 tiles); overlap nonblocking  0.07, polling -0.19
+  sweep 1  1048576 B: comm     215.9 us, compute    1061.2 us (4 tiles); overlap nonblocking  0.27, polling  0.15
+  sweep 1  2097152 B: comm     467.0 us, compute    1061.6 us (4 tiles); overlap nonblocking  0.36, polling  0.32
+  sweep 1  4194304 B: comm     779.3 us, compute    1586.4 us (6 tiles); overlap nonblocking -0.12, polling -0.25
+  sweep 2  4194304 B: comm     793.9 us, compute    1847.9 us (7 tiles); overlap nonblocking -0.12, polling -0.19
+  sweep 2  2097152 B: comm     383.6 us, compute    1059.5 us (4 tiles); overlap nonblocking  0.23, polling  0.17
+  sweep 2  1048576 B: comm     201.1 us, compute    1057.7 us (4 tiles); overlap nonblocking  0.21, polling  0.09
+  sweep 2   524288 B: comm     101.6 us, compute    1058.4 us (4 tiles); overlap nonblocking  0.13, polling -0.13
+  sweep 2   262144 B: comm      53.8 us, compute    1058.5 us (4 tiles); overlap nonblocking -0.07, polling -0.49
+  sweep 2   131072 B: comm      33.1 us, compute    1061.0 us (4 tiles); overlap nonblocking -0.21, polling -0.56
+  sweep 2    65536 B: comm      26.7 us, compute    1041.8 us (4 tiles); overlap nonblocking -0.14, polling -0.62
+  sweep 2    32768 B: comm      15.4 us, compute    1054.6 us (4 tiles); overlap nonblocking -0.73, polling -1.63
+  sweep 2    16384 B: comm      13.2 us, compute    1058.0 us (4 tiles); overlap nonblocking -0.90, polling -1.87
+  sweep 2     8192 B: comm       9.3 us, compute    1043.2 us (4 tiles); overlap nonblocking -1.29, polling -2.76
+  sweep 2     4096 B: comm       7.6 us, compute    1057.9 us (4 tiles); overlap nonblocking -2.10, polling -3.57
+  sweep 2     2048 B: comm       6.5 us, compute    1055.2 us (4 tiles); overlap nonblocking -2.43, polling -4.55
+  sweep 2     1024 B: comm       5.9 us, compute    1058.9 us (4 tiles); overlap nonblocking -2.19, polling -4.71
+  sweep 2      512 B: comm       5.7 us, compute    1055.8 us (4 tiles); overlap nonblocking -2.77, polling -5.28
+  sweep 2      256 B: comm       6.0 us, compute    1058.2 us (4 tiles); overlap nonblocking -1.97, polling -3.44
+  sweep 2      128 B: comm       5.6 us, compute    1057.5 us (4 tiles); overlap nonblocking -2.48, polling -3.90
+  sweep 2       64 B: comm       4.2 us, compute    1056.8 us (4 tiles); overlap nonblocking -3.03, polling -5.22
+  sweep 3       64 B: comm       4.8 us, compute    1055.8 us (4 tiles); overlap nonblocking -2.92, polling -4.48
+  sweep 3      128 B: comm       5.9 us, compute    1056.3 us (4 tiles); overlap nonblocking -2.32, polling -3.40
+  sweep 3      256 B: comm       5.8 us, compute    1056.8 us (4 tiles); overlap nonblocking -2.14, polling -3.68
+  sweep 3      512 B: comm       5.3 us, compute    1055.6 us (4 tiles); overlap nonblocking -3.03, polling -5.58
+  sweep 3     1024 B: comm       6.3 us, compute    1056.4 us (4 tiles); overlap nonblocking -2.24, polling -4.47
+  sweep 3     2048 B: comm       7.0 us, compute    1056.0 us (4 tiles); overlap nonblocking -2.13, polling -4.04
+  sweep 3     4096 B: comm       7.6 us, compute    1043.8 us (4 tiles); overlap nonblocking -1.44, polling -3.31
+  sweep 3     8192 B: comm      10.0 us, compute    1054.4 us (4 tiles); overlap nonblocking -1.23, polling -2.90
+  sweep 3    16384 B: comm      11.5 us, compute    1056.5 us (4 tiles); overlap nonblocking -1.06, polling -2.20
+  sweep 3    32768 B: comm      15.6 us, compute    1042.9 us (4 tiles); overlap nonblocking -0.71, polling -1.62
+  sweep 3    65536 B: comm      24.0 us, compute    1060.8 us (4 tiles); overlap nonblocking -0.31, polling -0.89
+  sweep 3   131072 B: comm      38.3 us, compute    1040.3 us (4 tiles); overlap nonblocking -0.04, polling -0.43
+  sweep 3   262144 B: comm      67.2 us, compute    1057.1 us (4 tiles); overlap nonblocking  0.16, polling -0.21
+  sweep 3   524288 B: comm     100.2 us, compute    1055.4 us (4 tiles); overlap nonblocking  0.09, polling -0.17
+  sweep 3  1048576 B: comm     199.7 us, compute    1057.1 us (4 tiles); overlap nonblocking  0.21, polling  0.07
+  sweep 3  2097152 B: comm     366.3 us, compute    1057.3 us (4 tiles); overlap nonblocking  0.19, polling  0.12
+  sweep 3  4194304 B: comm     907.5 us, compute    1844.2 us (7 tiles); overlap nonblocking -0.06, polling -0.17
+Wrote 255 rows to communication/overlap/out/overlap_30264751.csv
+--- inter: exit code 0
+=== finished Mon Nov 23 10:00:25 CET 2026. Copy communication/overlap/out/overlap_30264751.csv and communication/overlap/logs/overlap_30264751.* off the cluster, then: python3 communication/overlap/make_page.py
+
+
+PS:
+
+Read file <communication/overlap/logs/overlap_30264751.err> for stderr output of this job.
+

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Results overview</title>
+<!-- Written by hand: the numbers are copied from the detail pages it links to. When a detail page is made again
+     with its make_page.py, check the numbers here too. Same style as isoeff/, amdahl/, communication/ and memory/. -->
+<style>
+  :root {
+    --color-bg: #fcfcfb; --color-fg: #1b1f27; --color-fg-muted: #5d6573; --color-panel: #f3f4f6; --color-border-line: #e2e5ea;
+    --c0: #2a78d6;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --cds-font-size-caption: 12.5px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 36px;
+    --cds-pad-sm: 6px; --cds-pad-md: 10px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+      --c0: #6da7ec;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+    --c0: #6da7ec;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: var(--cds-font-size-body)/1.5 var(--font-sans); }
+  a { color: var(--c0); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; border-radius: 2px; }
+  .iso-page { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .iso { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; }
+  .iso-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .iso-title { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.2; text-wrap: balance; }
+  .iso-lede { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 68ch; }
+  .iso-meta { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }
+
+  .iso-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); }
+  .iso-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .iso-tile-n { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+  .iso-tile-big { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .iso-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+  .iso-sec { display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .iso-sec-h { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-sec-h3 { margin: var(--cds-gap-md) 0 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+  .iso-p { margin: 0; line-height: 1.55; max-width: 72ch; }
+  .iso-note { margin: 0; line-height: 1.5; max-width: 72ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 76ch; }
+
+  .iso-table-wrap { overflow-x: auto; min-width: 0; }
+  .iso-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); }
+  .iso-table td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); line-height: 1.45; }
+  .iso-table .iso-r { text-align: right; white-space: nowrap; }
+  .iso-table .iso-nowrap { white-space: nowrap; }
+  .iso-now td { font-weight: var(--cds-font-weight-medium); }
+</style>
+</head>
+<body>
+<div class="iso-page">
+<div class="iso">
+  <header class="iso-head">
+    <h1 class="iso-title">Results overview: Amdahl, communication and memory</h1>
+    <p class="iso-lede">Everything measured on the scaling of v1, the communication schemes and the memory per rank, on one page, with links to the detail pages. In short: v1 (Allgather, blocking) stays the best scheme, and neither the network nor the memory is the limit. The computation per step is.</p>
+    <p class="iso-meta">Xeon E5-2650 v4, 24 cores per node, DTU HPC · jobs 29980070 to 30267003 · as of 23 Nov 2026, branch <span class="iso-code">communication</span> merged with <span class="iso-code">main</span></p>
+    <p class="iso-meta page-nav">All results: <b>Overview</b> · <a href="presentation.html">Presentation</a> · <a href="amdahl/results.html">Amdahl</a> · <a href="communication/results.html">Communication</a> · <a href="communication/2d_decomposition.html">2D explainer</a> · <a href="communication/overlap/results.html">Overlap</a> · <a href="memory/results.html">Memory</a></p>
+  </header>
+
+  <div class="iso-tiles">
+    <div class="iso-tile"><span class="iso-tile-n">S(24) at N = 5 000</span><span class="iso-tile-big">23.3</span><span class="iso-tile-sub">97 % efficiency on one node</span></div>
+    <div class="iso-tile"><span class="iso-tile-n">Second node, v1, N = 20 000</span><span class="iso-tile-big">×1.98</span><span class="iso-tile-sub">from P = 24 to 48</span></div>
+    <div class="iso-tile"><span class="iso-tile-n">Network share of a step</span><span class="iso-tile-big">0.12 %</span><span class="iso-tile-sub">Allgatherv, N = 20 000, P = 48</span></div>
+    <div class="iso-tile"><span class="iso-tile-n">Most overlap could save</span><span class="iso-tile-big">0.57 %</span><span class="iso-tile-sub">of a ring step at N ≥ 5 000</span></div>
+    <div class="iso-tile"><span class="iso-tile-n">Stars before rank 0 fills 1 GB</span><span class="iso-tile-big">2.2 M</span><span class="iso-tile-sub">time allows 607 k for one step in 30 min</span></div>
+  </div>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">The pages</h2>
+    <div class="iso-table-wrap">
+      <table class="iso-table">
+        <thead><tr><th>Page</th><th>Question</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td class="iso-nowrap"><a href="amdahl/results.html">Amdahl</a></td><td>How does v1 scale on one node?</td><td>Efficiency at P = 24 rises from 38 % (N = 50) to 97 % (N = 5 000). The serial fraction, about 0.1 ms per step, does not get faster with more ranks.</td></tr>
+          <tr><td class="iso-nowrap"><a href="communication/results.html">Communication schemes</a></td><td>Allgather, ring or 2D, on one node and on two?</td><td>v1 is the best or equal from N = 1 000 on. The network costs at most 0.7 % of a step from N = 5 000 on.</td></tr>
+          <tr><td class="iso-nowrap"><a href="communication/2d_decomposition.html">2D decomposition</a></td><td>How does 2D split the work?</td><td>Interactive explainer with pseudo code, no measurements.</td></tr>
+          <tr><td class="iso-nowrap"><a href="communication/overlap/results.html">Overlap</a></td><td>Why does the ring's overlap not help?</td><td>On one node nothing is hidden, across two nodes about 40 %, and there is almost nothing to hide.</td></tr>
+          <tr><td class="iso-nowrap"><a href="memory/results.html">Memory</a></td><td>What fills a rank, and which limit comes first?</td><td>187 MB plus 85 B per star on every rank. Time is the limit long before memory.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">What was measured</h2>
+    <div class="iso-table-wrap">
+      <table class="iso-table">
+        <thead><tr><th>Experiment</th><th>Jobs</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td class="iso-nowrap">Amdahl, v1</td><td class="iso-nowrap">29980070–29992755</td><td>one node, N = 50, 100, 1 000, 5 000, P = 1 to 24</td></tr>
+          <tr><td class="iso-nowrap">C0: communication alone</td><td class="iso-nowrap">30045015, 30045016</td><td>Allgatherv, ring, 2D and ping-pong without physics, one and two nodes</td></tr>
+          <tr><td class="iso-nowrap">C1: correctness</td><td class="iso-nowrap">30082644</td><td>every scheme against the serial run: 228 of 228 passed</td></tr>
+          <tr><td class="iso-nowrap">C2: schemes on one node</td><td class="iso-nowrap">30083330–30083344</td><td>v1, ring with and without overlap, 2D; N = 50, 1 000, 5 000; P = 1 to 24</td></tr>
+          <tr><td class="iso-nowrap">C3 and C4: two nodes</td><td class="iso-nowrap">30099619–30099637</td><td>the same four variants; N up to 20 000; P up to 48; 480 runs</td></tr>
+          <tr><td class="iso-nowrap">Overlap in depth</td><td class="iso-nowrap">30264751</td><td>two ranks, 64 B to 4 MB, <span class="iso-code">Isend</span>/<span class="iso-code">Irecv</span> against <span class="iso-code">Sendrecv</span>, with and without <span class="iso-code">Testall</span>, one and two nodes</td></tr>
+          <tr><td class="iso-nowrap">Memory in depth</td><td class="iso-nowrap">30267003</td><td>memory of every rank after every phase; N up to the whole catalogue (589 993); tile size; P = 1 to 48; 38 launches</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Results</h2>
+
+    <h3 class="iso-sec-h3">Amdahl (<a href="amdahl/results.html">details</a>)</h3>
+    <ul class="iso-list">
+      <li>At N = 5 000, S(24) = 23.3 (97 %). At N = 50 it stops at S(24) = 9.1 (38 %).</li>
+      <li>The serial fraction s of Amdahl's law (lecture 8), about 0.1 ms per step, does not get faster with more ranks, whatever N is. At small N that is a large share: the uneven split of the stars, the Allgather latency and the fixed Python work per step.</li>
+      <li>Every launch costs 1.80 s plus 28 ms per rank before the first step.</li>
+    </ul>
+
+    <h3 class="iso-sec-h3">Communication schemes, C0 to C4 (<a href="communication/results.html">details</a>)</h3>
+    <ul class="iso-list">
+      <li><b>The network is not the limit.</b> The Allgatherv is 0.12 % of a step at N = 20 000 and P = 48, and at most 0.7 % from N = 5 000 on.</li>
+      <li><b>The second node pays off from N ≈ 1 000 on.</b> From P = 24 to 48, v1 gets ×1.76 (N = 1 000) to ×1.98 (N = 20 000) faster. At N = 50 every scheme gets slower.</li>
+      <li><b>v1 is the best or equal from N = 1 000 on.</b> 2D is better only at N = 50 (14 % on one node, 6 % at P = 48). The ring collapses at small N, because it calls the force kernel P times per step at about 70 µs per call.</li>
+      <li>At large N the differences between the schemes come from the force kernel, not from the bytes sent (not followed up).</li>
+    </ul>
+
+    <h3 class="iso-sec-h3">Overlap in depth (<a href="communication/overlap/results.html">details</a>)</h3>
+    <ul class="iso-list">
+      <li><b>On one node nothing is hidden,</b> at any message size. Through shared memory the CPU copies the data, and only while the program is inside an MPI call.</li>
+      <li><b>Across two nodes about 40 % is hidden from 64 KB on,</b> because the network card moves part of the data by itself.</li>
+      <li><b><span class="iso-code">Testall</span> between the tiles moves the copy instead of hiding it:</b> the time in <span class="iso-code">Waitall</span> drops, the computation gets longer by the same amount, and the exchange is slower in net.</li>
+      <li><span class="iso-code">Irecv</span> + <span class="iso-code">Isend</span> + <span class="iso-code">Waitall</span> cost 8–10 µs more per exchange than one <span class="iso-code">Sendrecv</span>. That is the loss of the overlap ring at N = 50.</li>
+      <li>Even a perfect overlap could have saved at most 0.57 % of a step at N ≥ 5 000.</li>
+    </ul>
+
+    <h3 class="iso-sec-h3">Memory in depth (<a href="memory/results.html">details</a>)</h3>
+    <ul class="iso-list">
+      <li><b>187 MB per rank before any star</b> (Python, NumPy, pandas, matplotlib, mpi4py). The second node adds 76 MB per rank (the network transport).</li>
+      <li><b>Every rank holds the whole catalogue,</b> 85–88 B per star, the same for v1, ring and 2D. The ring and 2D save only after the peak.</li>
+      <li><b>Rank 0 sets the limit:</b> pandas needs 321 B per star more while it reads the CSV. At 589 993 stars rank 0 needs 418 MB, the other ranks 275 MB.</li>
+      <li><b>Without tiles memory would come first:</b> one tile for a rank's whole block fills 1 GB per rank from about 16 000 stars at P = 24.</li>
+      <li>The kernel needs 79 B per pair of a tile, not 56: the previous tile's arrays stay alive until the next tile replaces them. A <span class="iso-code">del</span> at the end of the tile loop would bring it back to 56 B.</li>
+    </ul>
+    <div class="iso-table-wrap">
+      <table class="iso-table">
+        <thead><tr><th>Which limit comes first</th><th class="iso-r">Largest N</th></tr></thead>
+        <tbody>
+          <tr><td>Memory: rank 0 fills 1 GB</td><td class="iso-r">2.2 M</td></tr>
+          <tr><td>Memory: the other ranks fill 1 GB</td><td class="iso-r">10.3 M</td></tr>
+          <tr><td>Memory: rank 0 fills its share of the node (10.7 GB per rank)</td><td class="iso-r">27 M</td></tr>
+          <tr class="iso-now"><td>Time: one step in 30 min, P = 24 (P = 48: 859 k)</td><td class="iso-r">607 k</td></tr>
+          <tr class="iso-now"><td>Time: 10 000 steps in 300 s, P = 24</td><td class="iso-r">2 479</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="iso-note">1 GB per rank is the LSF reservation of our jobs (<span class="iso-code">rusage[mem=1GB]</span>), not a hard limit. Even in the most generous case time comes first, by a factor of 3.6. All limits are estimates from the measured bytes per star, bytes per pair and time per pair, not runs at these sizes.</p>
+
+    <h3 class="iso-sec-h3">Side findings</h3>
+    <ul class="iso-list">
+      <li><b>One fast node:</b> n-62-21-75 is 12 % faster than the other nodes with the same CPU. The communication pages correct every time for the slowest node of its run; after that, C3 repeats C2 within 1–2 %.</li>
+      <li><b>P = 32</b> (24 + 8 ranks): at N ≥ 5 000 the Allgatherv is 4–6 times slower than at P = 48 (about twice at N = 1 000), most likely because Open MPI picks another algorithm (not checked).</li>
+      <li><b>LSF's "Max Memory" misses short peaks:</b> it samples every few seconds and saw 2.5 GB of a real peak of about 20 GB.</li>
+    </ul>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">What this means for the final configuration</h2>
+    <div class="iso-table-wrap">
+      <table class="iso-table">
+        <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>v1: Allgather, blocking</td><td>The best or equal from N = 1 000 on, on one node and on two.</td></tr>
+          <tr><td>No overlap, no ring</td><td>There is nothing to hide, and the ring's extra calls cost more than they save.</td></tr>
+          <tr><td>Whole nodes only; avoid P = 32</td><td>At 24 + 8 ranks the Allgatherv is 4–6 times slower (N ≥ 5 000).</td></tr>
+          <tr><td>P by N: N ≲ 100 about 8 ranks on one node; N ≈ 1 000 up to 48; N ≥ 5 000 48 ranks</td><td>From Amdahl and C3: beyond that, more ranks bring nothing or make it slower.</td></tr>
+          <tr><td>No further communication tuning</td><td>From N = 5 000 on it is at most 0.7 % of a step.</td></tr>
+          <tr><td>No memory optimisation</td><td>Memory suffices for millions of stars; time is the limit.</td></tr>
+          <tr><td>Optional: <span class="iso-code">del</span> in the tile loop</td><td>30 % less kernel memory; no effect on run time.</td></tr>
+          <tr><td>Numba: a team decision</td><td>Not measured, but the only large lever on absolute speed: about 70 µs of Python per kernel call set the floor at small N.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Expectations that did not hold</h2>
+    <p class="iso-p">Every detail page wrote its expectations down before measuring. These did not hold, and they are worth keeping in the report:</p>
+    <ul class="iso-list">
+      <li><b>C0's prediction for the ring at N = 50</b> was off by a factor of about 90. C0 timed only the messages, but the ring's cost is the P kernel calls per step.</li>
+      <li><b>Overlap across two nodes</b> was expected to gain; it measured 0 to −10 %.</li>
+      <li><b>"2D scales further"</b> (from the project description) does not hold for N ≤ 20 000 and P ≤ 48.</li>
+      <li><b>"Small messages are hidden, large ones are not"</b> was wrong: on one node nothing is hidden, across nodes about 40 % of the large ones. The rule for <span class="iso-code">Testall</span> measured the time in <span class="iso-code">Waitall</span> rather than the net time, so its "yes" is misleading; the overlap page adds the net saving.</li>
+      <li><b>Kernel memory</b> is 79 B per pair instead of 56. Explained: the previous tile's arrays stay alive.</li>
+      <li><b>LSF's "Max Memory"</b> was expected to match the sum over the ranks; it missed the short peaks.</li>
+    </ul>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Open</h2>
+    <ul class="iso-list">
+      <li><b>Why the kernel slows down with every core busy.</b> At N = 5 000 and P = 24 the summed kernel time of all ranks is 1.29 times that of one rank for v1, 1.37 for 2D and 1.63 for the ring. Most likely the tiles' temporaries compete for the shared cache. This would decide whether smaller tiles make the program faster. Not followed up.</li>
+      <li><b>P = 32:</b> which Allgatherv algorithm Open MPI picks there.</li>
+      <li><b>Overlap at 4 MB:</b> why the share hidden across nodes drops again (a UCX protocol detail, not needed for the conclusion).</li>
+      <li><b>Memory over many steps:</b> a leak would only show over thousands of steps. The <span class="iso-code">peak_memory_mb</span> of the 10 000-step isoefficiency runs could answer this without a new job.</li>
+    </ul>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Other pages in the repository</h2>
+    <ul class="iso-list">
+      <li><a href="isoeff/results.html">Isoefficiency</a>: how far a code version scales, and how much N has to grow to keep adding ranks worthwhile (the scale-up of lecture 8; isoefficiency and the marginal-efficiency criterion are our own additions, not from the lecture).</li>
+      <li><a href="gustafson/results.html">Gustafson scaling</a>: weak scaling of v1. The framework is ready, but nothing has been measured yet (the page is empty).</li>
+      <li><a href="data_types/README%20(2).md">MPI datatypes</a>: a derived datatype for (x, y, z) in the Allgatherv, as a microbenchmark (raw numbers in <a href="data_types/results/summary.csv">results/summary.csv</a>; no written result yet). No consistent gain, as lecture 8 leads one to expect: derived types mainly save a temporary buffer for non-contiguous data, and the (N, 3) positions are contiguous.</li>
+      <li><a href="experiments/README.md">Redistribution after merging</a>: whether handing merged stars to new owners at once pays off (5.7&nbsp;% faster in five repeats on four ranks).</li>
+    </ul>
+  </section>
+</div>
+</div>
+</body>
+</html>

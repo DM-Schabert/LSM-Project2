@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Memory per rank</title>
+<!-- Made by memory/make_page.py: only the data block below changes when it runs. Open this file in a browser. -->
+<style>
+  /* One reading column; charts span it. Same style as isoeff/, amdahl/ and gustafson/results.html. */
+  :root {
+    --color-bg: #fcfcfb; --color-fg: #1b1f27; --color-fg-muted: #5d6573; --color-panel: #f3f4f6; --color-border-line: #e2e5ea;
+    --cds-text-secondary: #5d6573; --cds-chart-grid: #eceef2; --cds-chart-axis: #9aa1ac; --cds-chart-reference: #8a919d;
+    --cds-surface-popover: #ffffff; --cds-border: #dde1e6; --cds-shadow-popover: 0 6px 20px rgba(20, 24, 32, .12);
+    --c0: #2a78d6; --c1: #eb6834; --c2: #1baf7a; --c3: #eda100; --c4: #e87ba4; --c5: #6250d6;
+    --q0: #86b6ef; --q1: #5598e7; --q2: #2a78d6; --q3: #1c5cab; --q4: #104281;
+    --p0: #2a78d6; --p1: #eb6834; --p2: #6250d6; --p3: #b4b9c2;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --cds-font-size-caption: 12.5px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 36px;
+    --cds-pad-sm: 6px; --cds-pad-md: 10px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+      --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+      --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+      --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+      --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+      --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #17191d; --color-fg: #eceef2; --color-fg-muted: #a3a9b4; --color-panel: #202329; --color-border-line: #32363e;
+    --cds-text-secondary: #a3a9b4; --cds-chart-grid: #2a2e35; --cds-chart-axis: #6b727d; --cds-chart-reference: #7f8691;
+    --cds-surface-popover: #252830; --cds-border: #3b4049; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .5);
+    --c0: #3987e5; --c1: #d95926; --c2: #199e70; --c3: #c98500; --c4: #d55181; --c5: #9085e9;
+    --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #6da7ec; --q4: #9ec5f4;
+    --p0: #4a93ea; --p1: #d9652f; --p2: #8b7ff0; --p3: #5a606b;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: var(--cds-font-size-body)/1.5 var(--font-sans); }
+  .iso-page { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .iso-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 3px 8px; }
+  .iso-select:focus-visible, .iso-details summary:focus-visible { outline: 2px solid var(--c0); outline-offset: 2px; }
+  .iso-offline { margin: 0; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+  .page-nav a { color: var(--c0); text-underline-offset: 2px; }
+</style>
+<style>
+  .iso { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 980px; color: var(--color-fg); font-family: var(--font-sans); }
+  .iso-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .iso-title { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.2; text-wrap: balance; }
+  .iso-lede { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 68ch; }
+  .iso-meta { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-num { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+
+  .iso-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); min-height: 120px; }
+  .iso-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .iso-tile-n { display: flex; align-items: center; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+  .iso-tile-big { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .iso-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+  .iso-sec { display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .iso-sec-h { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-p { margin: 0; line-height: 1.55; max-width: 72ch; }
+  .iso-note { margin: 0; line-height: 1.5; max-width: 72ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .iso-axis-label { margin: var(--cds-gap-xs) 0 0; color: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+
+  .iso-chart { position: relative; min-height: 260px; }
+  .iso-chart--short { min-height: 190px; }
+  .iso-svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .iso-svg text { font-family: var(--font-sans); }
+  .iso-axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-axis .domain, .iso-axis line { stroke: none; }
+  .iso-baseline { stroke: var(--cds-chart-axis) !important; }
+  .iso-grid line { stroke: var(--cds-chart-grid); stroke-width: 1; }
+  .iso-ref { fill: none; stroke: var(--cds-chart-reference); stroke-width: 1.25; stroke-dasharray: 4 4; }
+  .iso-zero { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .iso-fit { fill: none; stroke-width: 1.25; stroke-dasharray: 2 3; opacity: .9; }
+  .iso-bound { fill: none; stroke-width: 1.25; stroke-dasharray: 6 4; opacity: .75; }
+  .iso-dot { stroke: var(--color-bg); stroke-width: 2; }
+  .iso-whisker { stroke-width: 1.5; }
+  .iso-end { fill: var(--color-fg); font-size: var(--cds-font-size-caption); }
+  .iso-cross { stroke: var(--cds-chart-axis); stroke-width: 1; }
+  .iso-total { stroke: var(--color-fg); stroke-width: 2.5; }
+  .iso-ink { fill: var(--color-fg); }
+  .iso-ring { fill: var(--color-bg); stroke: var(--color-fg); stroke-width: 2; }
+  .iso-link { stroke: var(--cds-chart-reference); stroke-width: 2; }
+  .iso-vlabel { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-hit { fill: transparent; cursor: crosshair; }
+
+  .iso-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); margin-bottom: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .iso-key { display: inline-flex; align-items: center; gap: 6px; }
+  .iso-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .iso-swatch--ref { width: 16px; height: 0; border-top: 1.5px dashed var(--cds-chart-reference); border-radius: 0; }
+  .iso-swatch--fit { width: 16px; height: 0; border-top: 1.5px dotted var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--bound { width: 16px; height: 0; border-top: 1.5px dashed var(--color-fg-muted); border-radius: 0; }
+  .iso-swatch--total { width: 14px; height: 0; border-top: 2.5px solid var(--color-fg); border-radius: 0; }
+  .iso-swatch--ink { background: var(--color-fg); transform: rotate(45deg); width: 8px; height: 8px; border-radius: 1px; }
+  .iso-swatch--dot { background: var(--color-fg); border-radius: 50%; }
+  .iso-swatch--ring { background: var(--color-bg); border: 2px solid var(--color-fg); border-radius: 50%; width: 8px; height: 8px; }
+
+  .iso-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); line-height: 1.5; min-width: 150px; max-width: 260px; font-variant-numeric: tabular-nums; }
+  .iso-tip-h { font-weight: var(--cds-font-weight-medium); margin-bottom: 2px; }
+  .iso-tip-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .iso-tip-row span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--cds-text-secondary); }
+  .iso-empty { margin: 0; padding: var(--cds-pad-lg) 0; color: var(--color-fg-muted); }
+
+  .iso-controls { display: flex; align-items: center; gap: var(--cds-gap-sm); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+  .iso-table-wrap { overflow-x: auto; min-width: 0; }
+  .iso-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .iso-table th { text-align: right; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .iso-table th:first-child, .iso-table td:first-child { text-align: left; }
+  .iso-table .iso-left { text-align: left; }
+  .iso-now td { font-weight: var(--cds-font-weight-medium); }
+
+  .iso-details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+  .iso-details summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .iso-details ul { margin: var(--cds-gap-sm) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 76ch; }
+  .iso-details code { font-size: .95em; }
+  .iso-hidden { display: none !important; }
+  .iso-sec[hidden] { display: none; }
+  .iso-sec-h3 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+  .iso-fail { fill: none; stroke-width: 1.75; }
+  .iso-swatch--fail { background: transparent; border: 1.75px solid var(--color-fg-muted); border-radius: 50%; width: 9px; height: 9px; }
+  .iso-log { margin: var(--cds-gap-sm) 0 0; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line);
+             border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); line-height: 1.5; white-space: pre-wrap; overflow-x: auto; }
+  .iso-controls span { color: var(--color-fg-muted); }
+  .iso-table td.iso-wrap { white-space: normal; min-width: 14ch; max-width: 36ch; }
+  .iso-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
+<style>
+  .iso-yes { color: var(--c2); font-weight: var(--cds-font-weight-medium); }
+  .iso-no { color: var(--c1); font-weight: var(--cds-font-weight-medium); }
+  .iso-table td.iso-text { white-space: normal; text-align: left; min-width: 22ch; max-width: 46ch; line-height: 1.45; }
+  .iso-hyp { margin: 0; padding: var(--cds-pad-md) var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); line-height: 1.55; max-width: 76ch; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+<script id="memory-data" type="application/json">{"meta":{"made":"2026-11-23","job":"30267003","hosts":["n-62-21-47","n-62-21-77"],"reservation_mb":1024,"pair_s":1.1719840823113918e-07,"other_jobs":[],"node_ram_mb":257010,"lsf_max_mb":2539.0},"launches":[{"experiment":"M3","scheme":"allgather","N":1000,"P":1,"tile_rows":0,"kernel":{"r0_hwm":265.6,"r0_rss":257.6,"hwm":null,"hwm_max":null,"rss":null,"node_hwm":265.6,"all_hwm":265.6},"nodes":1,"kernel_rows":262,"kernel_cols":1000,"seconds":0.1,"start":{"r0_hwm":249.1,"r0_rss":249.1,"hwm":null,"hwm_max":null,"rss":null,"node_hwm":249.1,"all_hwm":249.1},"connected":{"r0_hwm":249.3,"r0_rss":249.3,"hwm":null,"hwm_max":null,"rss":null,"node_hwm":249.3,"all_hwm":249.3},"loaded":{"r0_hwm":251.7,"r0_rss":251.7,"hwm":null,"hwm_max":null,"rss":null,"node_hwm":251.7,"all_hwm":251.7},"state":{"r0_hwm":251.7,"r0_rss":251.7,"hwm":null,"hwm_max":null,"rss":null,"node_hwm":251.7,"all_hwm":251.7}},{"experiment":"M3","scheme":"allgather","N":1000,"P":2,"tile_rows":0,"kernel":{"r0_hwm":201.8,"r0_rss":193.7,"hwm":198.3,"hwm_max":198.3,"rss":190.4,"node_hwm":400.1,"all_hwm":400.1},"nodes":1,"kernel_rows":262,"kernel_cols":1000,"seconds":0.05,"start":{"r0_hwm":184.9,"r0_rss":184.9,"hwm":183.2,"hwm_max":183.2,"rss":183.2,"node_hwm":368.1,"all_hwm":368.1},"connected":{"r0_hwm":184.9,"r0_rss":184.9,"hwm":183.2,"hwm_max":183.2,"rss":183.2,"node_hwm":368.1,"all_hwm":368.1},"loaded":{"r0_hwm":186.9,"r0_rss":186.4,"hwm":184.1,"hwm_max":184.1,"rss":184.1,"node_hwm":371.0,"all_hwm":371.0},"state":{"r0_hwm":186.9,"r0_rss":186.4,"hwm":184.1,"hwm_max":184.1,"rss":184.1,"node_hwm":371.0,"all_hwm":371.0}},{"experiment":"M3","scheme":"allgather","N":1000,"P":4,"tile_rows":0,"kernel":{"r0_hwm":199.8,"r0_rss":192.2,"hwm":199.7,"hwm_max":199.9,"rss":192.2,"node_hwm":797.5,"all_hwm":797.5},"nodes":1,"kernel_rows":250,"kernel_cols":1000,"seconds":0.06,"start":{"r0_hwm":183.4,"r0_rss":183.4,"hwm":185.2,"hwm_max":185.3,"rss":185.2,"node_hwm":737.5,"all_hwm":737.5},"connected":{"r0_hwm":183.4,"r0_rss":183.4,"hwm":185.2,"hwm_max":185.3,"rss":185.2,"node_hwm":737.5,"all_hwm":737.5},"loaded":{"r0_hwm":185.4,"r0_rss":185.0,"hwm":186.3,"hwm_max":186.3,"rss":186.3,"node_hwm":742.5,"all_hwm":742.5},"state":{"r0_hwm":185.4,"r0_rss":185.0,"hwm":186.3,"hwm_max":186.3,"rss":186.3,"node_hwm":742.5,"all_hwm":742.5}},{"experiment":"M3","scheme":"allgather","N":1000,"P":8,"tile_rows":0,"kernel":{"r0_hwm":197.9,"r0_rss":194.0,"hwm":193.0,"hwm_max":196.1,"rss":189.4,"node_hwm":1550.7,"all_hwm":1550.7},"nodes":1,"kernel_rows":125,"kernel_cols":1000,"seconds":0.06,"start":{"r0_hwm":188.3,"r0_rss":188.3,"hwm":185.4,"hwm_max":188.4,"rss":185.4,"node_hwm":1488.0,"all_hwm":1488.0},"connected":{"r0_hwm":188.5,"r0_rss":188.5,"hwm":185.6,"hwm_max":188.6,"rss":185.6,"node_hwm":1489.8,"all_hwm":1489.8},"loaded":{"r0_hwm":191.2,"r0_rss":191.2,"hwm":186.2,"hwm_max":189.4,"rss":186.2,"node_hwm":1497.0,"all_hwm":1497.0},"state":{"r0_hwm":191.2,"r0_rss":191.2,"hwm":186.2,"hwm_max":189.4,"rss":186.2,"node_hwm":1497.0,"all_hwm":1497.0}},{"experiment":"M3","scheme":"allgather","N":1000,"P":12,"tile_rows":0,"kernel":{"r0_hwm":192.3,"r0_rss":189.7,"hwm":192.4,"hwm_max":194.6,"rss":190.0,"node_hwm":2306.7,"all_hwm":2306.7},"nodes":1,"kernel_rows":84,"kernel_cols":1000,"seconds":0.1,"start":{"r0_hwm":185.0,"r0_rss":185.0,"hwm":187.0,"hwm_max":189.0,"rss":187.0,"node_hwm":2239.1,"all_hwm":2239.1},"connected":{"r0_hwm":185.2,"r0_rss":185.2,"hwm":187.3,"hwm_max":189.2,"rss":187.3,"node_hwm":2242.0,"all_hwm":2242.0},"loaded":{"r0_hwm":187.9,"r0_rss":187.9,"hwm":187.9,"hwm_max":189.9,"rss":187.9,"node_hwm":2252.2,"all_hwm":2252.2},"state":{"r0_hwm":187.9,"r0_rss":187.9,"hwm":187.9,"hwm_max":189.9,"rss":187.9,"node_hwm":2252.2,"all_hwm":2252.2}},{"experiment":"M3","scheme":"allgather","N":1000,"P":16,"tile_rows":0,"kernel":{"r0_hwm":193.8,"r0_rss":191.9,"hwm":192.0,"hwm_max":193.4,"rss":190.2,"node_hwm":3067.7,"all_hwm":3067.7},"nodes":1,"kernel_rows":63,"kernel_cols":1000,"seconds":0.15,"start":{"r0_hwm":187.5,"r0_rss":187.5,"hwm":187.5,"hwm_max":188.9,"rss":187.5,"node_hwm":2994.2,"all_hwm":2994.2},"connected":{"r0_hwm":187.7,"r0_rss":187.7,"hwm":188.0,"hwm_max":189.3,"rss":188.0,"node_hwm":3000.5,"all_hwm":3000.5},"loaded":{"r0_hwm":190.5,"r0_rss":190.5,"hwm":188.5,"hwm_max":189.8,"rss":188.5,"node_hwm":3011.5,"all_hwm":3011.5},"state":{"r0_hwm":190.5,"r0_rss":190.5,"hwm":188.5,"hwm_max":189.8,"rss":188.5,"node_hwm":3011.6,"all_hwm":3011.6}},{"experiment":"M3","scheme":"allgather","N":1000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":193.6,"r0_rss":192.7,"hwm":192.0,"hwm_max":192.5,"rss":191.3,"node_hwm":4595.9,"all_hwm":4595.9},"nodes":1,"kernel_rows":42,"kernel_cols":1000,"seconds":0.21,"start":{"r0_hwm":188.2,"r0_rss":188.2,"hwm":188.8,"hwm_max":189.2,"rss":188.8,"node_hwm":4516.0,"all_hwm":4516.0},"connected":{"r0_hwm":188.6,"r0_rss":188.6,"hwm":189.1,"hwm_max":189.7,"rss":189.1,"node_hwm":4524.9,"all_hwm":4524.9},"loaded":{"r0_hwm":191.4,"r0_rss":191.4,"hwm":189.7,"hwm_max":190.2,"rss":189.7,"node_hwm":4541.2,"all_hwm":4541.2},"state":{"r0_hwm":191.4,"r0_rss":191.4,"hwm":189.7,"hwm_max":190.2,"rss":189.7,"node_hwm":4541.3,"all_hwm":4541.3}},{"experiment":"M3","scheme":"allgather","N":1000,"P":32,"tile_rows":0,"kernel":{"r0_hwm":269.3,"r0_rss":268.6,"hwm":265.7,"hwm_max":269.2,"rss":265.1,"node_hwm":6365.1,"all_hwm":8472.5},"nodes":2,"kernel_rows":32,"kernel_cols":1000,"seconds":1.36,"start":{"r0_hwm":189.3,"r0_rss":189.3,"hwm":189.0,"hwm_max":253.6,"rss":189.0,"node_hwm":4725.0,"all_hwm":6206.3},"connected":{"r0_hwm":265.2,"r0_rss":265.2,"hwm":263.4,"hwm_max":267.0,"rss":263.4,"node_hwm":6311.2,"all_hwm":8402.5},"loaded":{"r0_hwm":267.7,"r0_rss":267.7,"hwm":263.9,"hwm_max":267.6,"rss":263.9,"node_hwm":6327.1,"all_hwm":8422.2},"state":{"r0_hwm":267.7,"r0_rss":267.7,"hwm":263.9,"hwm_max":267.6,"rss":263.9,"node_hwm":6327.2,"all_hwm":8422.3}},{"experiment":"M3","scheme":"allgather","N":1000,"P":48,"tile_rows":0,"kernel":{"r0_hwm":267.6,"r0_rss":266.6,"hwm":266.3,"hwm_max":269.3,"rss":265.8,"node_hwm":6409.1,"all_hwm":12810.9},"nodes":2,"kernel_rows":21,"kernel_cols":1000,"seconds":0.85,"start":{"r0_hwm":186.8,"r0_rss":186.8,"hwm":188.8,"hwm_max":253.8,"rss":188.8,"node_hwm":4742.1,"all_hwm":9258.7},"connected":{"r0_hwm":264.1,"r0_rss":264.1,"hwm":264.6,"hwm_max":267.8,"rss":264.6,"node_hwm":6367.9,"all_hwm":12726.0},"loaded":{"r0_hwm":266.4,"r0_rss":266.4,"hwm":265.1,"hwm_max":268.3,"rss":265.1,"node_hwm":6383.0,"all_hwm":12756.5},"state":{"r0_hwm":266.4,"r0_rss":266.4,"hwm":265.1,"hwm_max":268.3,"rss":265.1,"node_hwm":6383.1,"all_hwm":12756.6}},{"experiment":"M1","scheme":"allgather","N":1000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":194.4,"r0_rss":193.5,"hwm":192.1,"hwm_max":194.5,"rss":191.4,"node_hwm":4607.1,"all_hwm":4607.1},"nodes":1,"kernel_rows":42,"kernel_cols":1000,"seconds":0.06,"start":{"r0_hwm":189.2,"r0_rss":189.2,"hwm":188.9,"hwm_max":191.2,"rss":188.9,"node_hwm":4527.5,"all_hwm":4527.5},"connected":{"r0_hwm":189.4,"r0_rss":189.4,"hwm":189.2,"hwm_max":191.6,"rss":189.2,"node_hwm":4536.5,"all_hwm":4536.5},"loaded":{"r0_hwm":192.3,"r0_rss":192.3,"hwm":189.8,"hwm_max":192.2,"rss":189.8,"node_hwm":4552.3,"all_hwm":4552.3},"state":{"r0_hwm":192.3,"r0_rss":192.3,"hwm":189.8,"hwm_max":192.2,"rss":189.8,"node_hwm":4552.3,"all_hwm":4552.3}},{"experiment":"M1","scheme":"ring","N":1000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":192.2,"r0_rss":192.2,"hwm":190.3,"hwm_max":192.4,"rss":190.3,"node_hwm":4560.4,"all_hwm":4560.4},"nodes":1,"kernel_rows":42,"kernel_cols":42,"seconds":1.01,"start":{"r0_hwm":189.1,"r0_rss":189.1,"hwm":189.0,"hwm_max":191.2,"rss":189.0,"node_hwm":4527.3,"all_hwm":4527.3},"connected":{"r0_hwm":189.5,"r0_rss":189.5,"hwm":189.3,"hwm_max":191.7,"rss":189.3,"node_hwm":4536.8,"all_hwm":4536.8},"loaded":{"r0_hwm":192.1,"r0_rss":192.1,"hwm":190.0,"hwm_max":192.2,"rss":190.0,"node_hwm":4553.9,"all_hwm":4553.9},"state":{"r0_hwm":192.1,"r0_rss":192.1,"hwm":190.1,"hwm_max":192.3,"rss":190.1,"node_hwm":4555.6,"all_hwm":4555.6}},{"experiment":"M1","scheme":"2d","N":1000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":194.3,"r0_rss":193.4,"hwm":192.2,"hwm_max":194.4,"rss":191.4,"node_hwm":4603.1,"all_hwm":4603.1},"nodes":1,"kernel_rows":167,"kernel_cols":250,"seconds":0.8,"start":{"r0_hwm":188.9,"r0_rss":188.9,"hwm":188.8,"hwm_max":191.1,"rss":188.8,"node_hwm":4519.4,"all_hwm":4519.4},"connected":{"r0_hwm":189.1,"r0_rss":189.1,"hwm":189.2,"hwm_max":191.5,"rss":189.2,"node_hwm":4528.3,"all_hwm":4528.3},"loaded":{"r0_hwm":192.3,"r0_rss":192.3,"hwm":189.9,"hwm_max":192.2,"rss":189.9,"node_hwm":4549.2,"all_hwm":4549.2},"state":{"r0_hwm":192.3,"r0_rss":192.3,"hwm":189.9,"hwm_max":192.2,"rss":189.9,"node_hwm":4549.2,"all_hwm":4549.2}},{"experiment":"M1","scheme":"allgather","N":5000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":204.5,"r0_rss":196.6,"hwm":204.0,"hwm_max":206.1,"rss":196.3,"node_hwm":4888.5,"all_hwm":4888.5},"nodes":1,"kernel_rows":52,"kernel_cols":5000,"seconds":0.42,"start":{"r0_hwm":186.9,"r0_rss":186.9,"hwm":188.9,"hwm_max":191.0,"rss":188.9,"node_hwm":4520.6,"all_hwm":4520.6},"connected":{"r0_hwm":187.1,"r0_rss":187.1,"hwm":189.2,"hwm_max":191.4,"rss":189.2,"node_hwm":4528.6,"all_hwm":4528.6},"loaded":{"r0_hwm":192.6,"r0_rss":190.6,"hwm":190.1,"hwm_max":192.2,"rss":190.1,"node_hwm":4556.0,"all_hwm":4556.0},"state":{"r0_hwm":192.6,"r0_rss":190.6,"hwm":190.1,"hwm_max":192.2,"rss":190.1,"node_hwm":4556.0,"all_hwm":4556.0}},{"experiment":"M1","scheme":"ring","N":5000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":194.1,"r0_rss":193.1,"hwm":192.7,"hwm_max":194.9,"rss":191.9,"node_hwm":4625.5,"all_hwm":4625.5},"nodes":1,"kernel_rows":209,"kernel_cols":209,"seconds":0.16,"start":{"r0_hwm":188.0,"r0_rss":188.0,"hwm":189.0,"hwm_max":191.2,"rss":189.0,"node_hwm":4533.3,"all_hwm":4533.3},"connected":{"r0_hwm":188.4,"r0_rss":188.4,"hwm":189.3,"hwm_max":191.6,"rss":189.3,"node_hwm":4542.3,"all_hwm":4542.3},"loaded":{"r0_hwm":192.4,"r0_rss":191.8,"hwm":190.3,"hwm_max":192.6,"rss":190.3,"node_hwm":4569.4,"all_hwm":4569.4},"state":{"r0_hwm":192.4,"r0_rss":191.8,"hwm":190.3,"hwm_max":192.6,"rss":190.3,"node_hwm":4569.6,"all_hwm":4569.6}},{"experiment":"M1","scheme":"2d","N":5000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":209.3,"r0_rss":201.0,"hwm":204.5,"hwm_max":207.0,"rss":196.7,"node_hwm":4908.7,"all_hwm":4908.7},"nodes":1,"kernel_rows":209,"kernel_cols":1250,"seconds":0.24,"start":{"r0_hwm":191.3,"r0_rss":191.3,"hwm":189.1,"hwm_max":191.3,"rss":189.1,"node_hwm":4531.5,"all_hwm":4531.5},"connected":{"r0_hwm":191.9,"r0_rss":191.9,"hwm":189.4,"hwm_max":191.6,"rss":189.4,"node_hwm":4540.1,"all_hwm":4540.1},"loaded":{"r0_hwm":195.8,"r0_rss":195.1,"hwm":190.5,"hwm_max":192.9,"rss":190.5,"node_hwm":4570.3,"all_hwm":4570.3},"state":{"r0_hwm":195.8,"r0_rss":195.1,"hwm":190.5,"hwm_max":192.9,"rss":190.5,"node_hwm":4570.3,"all_hwm":4570.3}},{"experiment":"M1","scheme":"allgather","N":20000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":208.6,"r0_rss":200.7,"hwm":205.1,"hwm_max":207.5,"rss":197.1,"node_hwm":4920.4,"all_hwm":4920.4},"nodes":1,"kernel_rows":13,"kernel_cols":20000,"seconds":0.53,"start":{"r0_hwm":188.8,"r0_rss":188.8,"hwm":188.8,"hwm_max":191.1,"rss":188.8,"node_hwm":4525.3,"all_hwm":4525.3},"connected":{"r0_hwm":189.2,"r0_rss":189.2,"hwm":189.2,"hwm_max":191.5,"rss":189.2,"node_hwm":4534.8,"all_hwm":4534.8},"loaded":{"r0_hwm":201.0,"r0_rss":194.6,"hwm":191.3,"hwm_max":193.7,"rss":190.8,"node_hwm":4596.5,"all_hwm":4596.5},"state":{"r0_hwm":201.0,"r0_rss":194.6,"hwm":191.3,"hwm_max":193.7,"rss":190.8,"node_hwm":4596.5,"all_hwm":4596.5}},{"experiment":"M1","scheme":"ring","N":20000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":211.1,"r0_rss":203.1,"hwm":204.4,"hwm_max":207.0,"rss":196.7,"node_hwm":4910.8,"all_hwm":4910.8},"nodes":1,"kernel_rows":314,"kernel_cols":834,"seconds":0.25,"start":{"r0_hwm":191.1,"r0_rss":191.1,"hwm":188.9,"hwm_max":191.2,"rss":188.9,"node_hwm":4529.7,"all_hwm":4529.7},"connected":{"r0_hwm":191.5,"r0_rss":191.5,"hwm":189.3,"hwm_max":191.6,"rss":189.3,"node_hwm":4538.6,"all_hwm":4538.6},"loaded":{"r0_hwm":201.6,"r0_rss":197.0,"hwm":191.4,"hwm_max":193.9,"rss":190.9,"node_hwm":4600.5,"all_hwm":4600.5},"state":{"r0_hwm":201.6,"r0_rss":197.0,"hwm":191.4,"hwm_max":193.9,"rss":190.5,"node_hwm":4600.5,"all_hwm":4600.5}},{"experiment":"M1","scheme":"2d","N":20000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":208.5,"r0_rss":200.6,"hwm":205.1,"hwm_max":207.1,"rss":197.2,"node_hwm":4918.7,"all_hwm":4918.7},"nodes":1,"kernel_rows":52,"kernel_cols":5000,"seconds":0.2,"start":{"r0_hwm":188.5,"r0_rss":188.5,"hwm":189.0,"hwm_max":191.1,"rss":189.0,"node_hwm":4532.0,"all_hwm":4532.0},"connected":{"r0_hwm":188.9,"r0_rss":188.9,"hwm":189.3,"hwm_max":191.4,"rss":189.3,"node_hwm":4540.5,"all_hwm":4540.5},"loaded":{"r0_hwm":198.8,"r0_rss":194.3,"hwm":191.7,"hwm_max":193.8,"rss":191.4,"node_hwm":4603.6,"all_hwm":4603.6},"state":{"r0_hwm":198.8,"r0_rss":194.6,"hwm":191.7,"hwm_max":193.8,"rss":191.1,"node_hwm":4603.6,"all_hwm":4603.6}},{"experiment":"M1","scheme":"allgather","N":50000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":211.2,"r0_rss":205.6,"hwm":207.6,"hwm_max":209.4,"rss":200.0,"node_hwm":4978.8,"all_hwm":4978.8},"nodes":1,"kernel_rows":5,"kernel_cols":50000,"seconds":0.65,"start":{"r0_hwm":186.6,"r0_rss":186.6,"hwm":188.5,"hwm_max":189.8,"rss":188.5,"node_hwm":4514.0,"all_hwm":4514.0},"connected":{"r0_hwm":187.0,"r0_rss":187.0,"hwm":188.8,"hwm_max":190.3,"rss":188.8,"node_hwm":4523.7,"all_hwm":4523.7},"loaded":{"r0_hwm":210.8,"r0_rss":198.0,"hwm":194.8,"hwm_max":196.9,"rss":193.7,"node_hwm":4684.3,"all_hwm":4684.3},"state":{"r0_hwm":210.8,"r0_rss":198.0,"hwm":194.8,"hwm_max":196.9,"rss":193.7,"node_hwm":4684.3,"all_hwm":4684.3}},{"experiment":"M1","scheme":"ring","N":50000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":212.9,"r0_rss":206.2,"hwm":206.9,"hwm_max":209.3,"rss":199.0,"node_hwm":4964.5,"all_hwm":4964.5},"nodes":1,"kernel_rows":125,"kernel_cols":2084,"seconds":0.38,"start":{"r0_hwm":187.0,"r0_rss":187.0,"hwm":188.7,"hwm_max":191.0,"rss":188.7,"node_hwm":4518.6,"all_hwm":4518.6},"connected":{"r0_hwm":187.6,"r0_rss":187.6,"hwm":189.0,"hwm_max":191.2,"rss":189.0,"node_hwm":4527.5,"all_hwm":4527.5},"loaded":{"r0_hwm":212.9,"r0_rss":198.5,"hwm":195.0,"hwm_max":197.4,"rss":194.0,"node_hwm":4692.7,"all_hwm":4692.7},"state":{"r0_hwm":212.9,"r0_rss":198.5,"hwm":195.0,"hwm_max":197.4,"rss":192.9,"node_hwm":4692.7,"all_hwm":4692.7}},{"experiment":"M1","scheme":"2d","N":50000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":212.7,"r0_rss":207.0,"hwm":207.0,"hwm_max":209.3,"rss":199.6,"node_hwm":4963.7,"all_hwm":4963.7},"nodes":1,"kernel_rows":20,"kernel_cols":12500,"seconds":0.38,"start":{"r0_hwm":187.3,"r0_rss":187.3,"hwm":188.8,"hwm_max":191.2,"rss":188.8,"node_hwm":4521.5,"all_hwm":4521.5},"connected":{"r0_hwm":187.7,"r0_rss":187.7,"hwm":189.1,"hwm_max":191.5,"rss":189.1,"node_hwm":4528.9,"all_hwm":4528.9},"loaded":{"r0_hwm":211.4,"r0_rss":199.1,"hwm":195.4,"hwm_max":197.7,"rss":194.4,"node_hwm":4697.1,"all_hwm":4697.1},"state":{"r0_hwm":211.4,"r0_rss":199.3,"hwm":195.4,"hwm_max":197.7,"rss":193.6,"node_hwm":4697.1,"all_hwm":4697.1}},{"experiment":"M1","scheme":"allgather","N":100000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":227.5,"r0_rss":219.2,"hwm":206.7,"hwm_max":210.0,"rss":202.3,"node_hwm":4987.6,"all_hwm":4987.6},"nodes":1,"kernel_rows":2,"kernel_cols":100000,"seconds":0.63,"start":{"r0_hwm":189.1,"r0_rss":189.1,"hwm":187.4,"hwm_max":190.9,"rss":187.4,"node_hwm":4509.9,"all_hwm":4509.9},"connected":{"r0_hwm":189.6,"r0_rss":189.6,"hwm":187.9,"hwm_max":191.1,"rss":187.9,"node_hwm":4518.6,"all_hwm":4518.6},"loaded":{"r0_hwm":227.5,"r0_rss":206.2,"hwm":197.7,"hwm_max":201.0,"rss":195.2,"node_hwm":4781.2,"all_hwm":4781.2},"state":{"r0_hwm":227.5,"r0_rss":206.2,"hwm":197.7,"hwm_max":201.0,"rss":195.2,"node_hwm":4781.2,"all_hwm":4781.2}},{"experiment":"M1","scheme":"ring","N":100000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":227.3,"r0_rss":217.6,"hwm":208.4,"hwm_max":210.9,"rss":202.7,"node_hwm":5012.0,"all_hwm":5012.0},"nodes":1,"kernel_rows":62,"kernel_cols":4167,"seconds":0.52,"start":{"r0_hwm":189.0,"r0_rss":189.0,"hwm":189.1,"hwm_max":191.3,"rss":189.1,"node_hwm":4528.7,"all_hwm":4528.7},"connected":{"r0_hwm":189.5,"r0_rss":189.5,"hwm":189.5,"hwm_max":191.6,"rss":189.5,"node_hwm":4537.3,"all_hwm":4537.3},"loaded":{"r0_hwm":227.3,"r0_rss":205.9,"hwm":199.2,"hwm_max":201.8,"rss":196.7,"node_hwm":4800.8,"all_hwm":4800.8},"state":{"r0_hwm":227.3,"r0_rss":205.9,"hwm":199.2,"hwm_max":201.8,"rss":194.6,"node_hwm":4800.8,"all_hwm":4800.8}},{"experiment":"M1","scheme":"2d","N":100000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":227.7,"r0_rss":218.7,"hwm":209.4,"hwm_max":211.9,"rss":203.6,"node_hwm":5041.7,"all_hwm":5041.7},"nodes":1,"kernel_rows":10,"kernel_cols":25000,"seconds":0.53,"start":{"r0_hwm":189.1,"r0_rss":189.1,"hwm":189.0,"hwm_max":191.4,"rss":189.0,"node_hwm":4534.4,"all_hwm":4534.4},"connected":{"r0_hwm":189.6,"r0_rss":189.6,"hwm":189.3,"hwm_max":191.8,"rss":189.3,"node_hwm":4542.7,"all_hwm":4542.7},"loaded":{"r0_hwm":227.7,"r0_rss":206.4,"hwm":199.6,"hwm_max":202.2,"rss":197.3,"node_hwm":4818.1,"all_hwm":4818.1},"state":{"r0_hwm":227.7,"r0_rss":207.2,"hwm":199.6,"hwm_max":202.2,"rss":195.6,"node_hwm":4818.1,"all_hwm":4818.1}},{"experiment":"M1","scheme":"allgather","N":200000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":262.5,"r0_rss":229.9,"hwm":219.8,"hwm_max":221.4,"rss":210.7,"node_hwm":5307.9,"all_hwm":5307.9},"nodes":1,"kernel_rows":1,"kernel_cols":200000,"seconds":1.1,"start":{"r0_hwm":186.9,"r0_rss":186.9,"hwm":189.0,"hwm_max":191.1,"rss":189.0,"node_hwm":4531.6,"all_hwm":4531.6},"connected":{"r0_hwm":187.4,"r0_rss":187.4,"hwm":189.4,"hwm_max":191.6,"rss":189.4,"node_hwm":4540.6,"all_hwm":4540.6},"loaded":{"r0_hwm":262.5,"r0_rss":217.7,"hwm":207.9,"hwm_max":209.7,"rss":202.9,"node_hwm":5039.1,"all_hwm":5039.1},"state":{"r0_hwm":262.5,"r0_rss":217.7,"hwm":207.9,"hwm_max":209.7,"rss":202.9,"node_hwm":5039.1,"all_hwm":5039.1}},{"experiment":"M1","scheme":"ring","N":200000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":265.0,"r0_rss":230.5,"hwm":212.1,"hwm_max":215.1,"rss":206.2,"node_hwm":5141.9,"all_hwm":5141.9},"nodes":1,"kernel_rows":31,"kernel_cols":8334,"seconds":0.85,"start":{"r0_hwm":189.4,"r0_rss":189.4,"hwm":189.0,"hwm_max":191.3,"rss":189.0,"node_hwm":4528.3,"all_hwm":4528.3},"connected":{"r0_hwm":189.8,"r0_rss":189.8,"hwm":189.4,"hwm_max":191.5,"rss":189.4,"node_hwm":4537.5,"all_hwm":4537.5},"loaded":{"r0_hwm":265.0,"r0_rss":220.3,"hwm":207.4,"hwm_max":210.6,"rss":202.5,"node_hwm":5036.9,"all_hwm":5036.9},"state":{"r0_hwm":265.0,"r0_rss":220.3,"hwm":207.4,"hwm_max":210.6,"rss":198.1,"node_hwm":5036.9,"all_hwm":5036.9}},{"experiment":"M1","scheme":"2d","N":200000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":264.4,"r0_rss":233.0,"hwm":214.5,"hwm_max":217.2,"rss":208.8,"node_hwm":5196.2,"all_hwm":5196.2},"nodes":1,"kernel_rows":5,"kernel_cols":50000,"seconds":0.82,"start":{"r0_hwm":188.6,"r0_rss":188.6,"hwm":188.9,"hwm_max":191.4,"rss":188.9,"node_hwm":4534.0,"all_hwm":4534.0},"connected":{"r0_hwm":188.9,"r0_rss":188.9,"hwm":189.3,"hwm_max":191.9,"rss":189.3,"node_hwm":4542.1,"all_hwm":4542.1},"loaded":{"r0_hwm":264.4,"r0_rss":220.4,"hwm":208.3,"hwm_max":211.0,"rss":204.0,"node_hwm":5055.1,"all_hwm":5055.1},"state":{"r0_hwm":264.4,"r0_rss":221.4,"hwm":208.3,"hwm_max":211.0,"rss":200.6,"node_hwm":5055.1,"all_hwm":5055.1}},{"experiment":"M1","scheme":"allgather","N":500000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":386.8,"r0_rss":292.8,"hwm":259.7,"hwm_max":262.6,"rss":237.1,"node_hwm":6359.7,"all_hwm":6359.7},"nodes":1,"kernel_rows":1,"kernel_cols":500000,"seconds":2.47,"start":{"r0_hwm":191.3,"r0_rss":191.3,"hwm":188.9,"hwm_max":191.2,"rss":188.9,"node_hwm":4530.9,"all_hwm":4530.9},"connected":{"r0_hwm":191.6,"r0_rss":191.6,"hwm":189.3,"hwm_max":191.6,"rss":189.3,"node_hwm":4539.8,"all_hwm":4539.8},"loaded":{"r0_hwm":386.8,"r0_rss":258.6,"hwm":230.7,"hwm_max":233.5,"rss":217.8,"node_hwm":5692.1,"all_hwm":5692.1},"state":{"r0_hwm":386.8,"r0_rss":258.6,"hwm":230.7,"hwm_max":233.5,"rss":217.8,"node_hwm":5692.1,"all_hwm":5692.1}},{"experiment":"M1","scheme":"ring","N":500000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":382.7,"r0_rss":254.4,"hwm":230.7,"hwm_max":233.3,"rss":222.3,"node_hwm":5687.5,"all_hwm":5687.5},"nodes":1,"kernel_rows":12,"kernel_cols":20834,"seconds":1.74,"start":{"r0_hwm":187.0,"r0_rss":187.0,"hwm":189.0,"hwm_max":191.0,"rss":189.0,"node_hwm":4526.8,"all_hwm":4526.8},"connected":{"r0_hwm":187.4,"r0_rss":187.4,"hwm":189.3,"hwm_max":191.5,"rss":189.3,"node_hwm":4536.4,"all_hwm":4536.4},"loaded":{"r0_hwm":382.7,"r0_rss":254.4,"hwm":230.7,"hwm_max":233.3,"rss":217.9,"node_hwm":5687.5,"all_hwm":5687.5},"state":{"r0_hwm":382.7,"r0_rss":254.4,"hwm":230.7,"hwm_max":233.3,"rss":207.0,"node_hwm":5687.5,"all_hwm":5687.5}},{"experiment":"M1","scheme":"2d","N":500000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":384.4,"r0_rss":260.9,"hwm":232.6,"hwm_max":235.0,"rss":228.9,"node_hwm":5733.3,"all_hwm":5733.3},"nodes":1,"kernel_rows":2,"kernel_cols":125000,"seconds":1.78,"start":{"r0_hwm":188.7,"r0_rss":188.7,"hwm":188.9,"hwm_max":191.5,"rss":188.9,"node_hwm":4535.9,"all_hwm":4535.9},"connected":{"r0_hwm":189.1,"r0_rss":189.1,"hwm":189.2,"hwm_max":191.8,"rss":189.2,"node_hwm":4543.7,"all_hwm":4543.7},"loaded":{"r0_hwm":384.4,"r0_rss":256.2,"hwm":232.6,"hwm_max":235.0,"rss":221.3,"node_hwm":5733.3,"all_hwm":5733.3},"state":{"r0_hwm":384.4,"r0_rss":258.9,"hwm":232.6,"hwm_max":235.0,"rss":212.8,"node_hwm":5733.3,"all_hwm":5733.3}},{"experiment":"M1","scheme":"allgather","N":589993,"P":24,"tile_rows":0,"kernel":{"r0_hwm":418.3,"r0_rss":306.0,"hwm":272.1,"hwm_max":275.1,"rss":245.5,"node_hwm":6676.8,"all_hwm":6676.8},"nodes":1,"kernel_rows":1,"kernel_cols":589993,"seconds":2.82,"start":{"r0_hwm":188.9,"r0_rss":188.9,"hwm":188.8,"hwm_max":191.1,"rss":188.8,"node_hwm":4525.3,"all_hwm":4525.3},"connected":{"r0_hwm":189.2,"r0_rss":189.2,"hwm":189.0,"hwm_max":191.6,"rss":189.0,"node_hwm":4533.9,"all_hwm":4533.9},"loaded":{"r0_hwm":418.3,"r0_rss":265.6,"hwm":237.9,"hwm_max":240.8,"rss":222.8,"node_hwm":5888.4,"all_hwm":5888.4},"state":{"r0_hwm":418.3,"r0_rss":265.6,"hwm":237.9,"hwm_max":240.8,"rss":222.8,"node_hwm":5888.4,"all_hwm":5888.4}},{"experiment":"M1","scheme":"ring","N":589993,"P":24,"tile_rows":0,"kernel":{"r0_hwm":418.3,"r0_rss":265.8,"hwm":237.9,"hwm_max":240.3,"rss":225.1,"node_hwm":5884.9,"all_hwm":5884.9},"nodes":1,"kernel_rows":10,"kernel_cols":24584,"seconds":1.98,"start":{"r0_hwm":189.0,"r0_rss":189.0,"hwm":187.9,"hwm_max":191.2,"rss":187.9,"node_hwm":4519.7,"all_hwm":4519.7},"connected":{"r0_hwm":189.3,"r0_rss":189.3,"hwm":188.5,"hwm_max":191.7,"rss":188.5,"node_hwm":4528.0,"all_hwm":4528.0},"loaded":{"r0_hwm":418.3,"r0_rss":265.8,"hwm":237.9,"hwm_max":240.3,"rss":222.6,"node_hwm":5884.9,"all_hwm":5884.9},"state":{"r0_hwm":418.3,"r0_rss":265.8,"hwm":237.9,"hwm_max":240.3,"rss":209.8,"node_hwm":5884.9,"all_hwm":5884.9}},{"experiment":"M1","scheme":"2d","N":589993,"P":24,"tile_rows":0,"kernel":{"r0_hwm":420.6,"r0_rss":272.1,"hwm":239.8,"hwm_max":242.7,"rss":228.6,"node_hwm":5940.8,"all_hwm":5940.8},"nodes":1,"kernel_rows":1,"kernel_cols":147499,"seconds":2.57,"start":{"r0_hwm":190.8,"r0_rss":190.8,"hwm":188.8,"hwm_max":191.4,"rss":188.8,"node_hwm":4528.5,"all_hwm":4528.5},"connected":{"r0_hwm":191.2,"r0_rss":191.2,"hwm":189.3,"hwm_max":191.8,"rss":189.3,"node_hwm":4538.8,"all_hwm":4538.8},"loaded":{"r0_hwm":420.6,"r0_rss":267.7,"hwm":239.8,"hwm_max":242.7,"rss":226.4,"node_hwm":5940.8,"all_hwm":5940.8},"state":{"r0_hwm":420.6,"r0_rss":272.0,"hwm":239.8,"hwm_max":242.7,"rss":216.3,"node_hwm":5940.8,"all_hwm":5940.8}},{"experiment":"M2","scheme":"allgather","N":20000,"P":24,"tile_rows":0,"kernel":{"r0_hwm":218.8,"r0_rss":193.2,"hwm":216.0,"hwm_max":218.3,"rss":190.4,"node_hwm":5193.9,"all_hwm":5193.9},"nodes":1,"kernel_rows":834,"kernel_cols":20000,"seconds":2.04,"start":{"r0_hwm":187.1,"r0_rss":187.1,"hwm":187.9,"hwm_max":190.1,"rss":187.9,"node_hwm":4514.6,"all_hwm":4514.6},"connected":{"r0_hwm":187.6,"r0_rss":187.6,"hwm":188.4,"hwm_max":190.5,"rss":188.4,"node_hwm":4524.2,"all_hwm":4524.2},"loaded":{"r0_hwm":198.0,"r0_rss":192.8,"hwm":190.5,"hwm_max":192.7,"rss":190.0,"node_hwm":4584.9,"all_hwm":4584.9},"state":{"r0_hwm":198.0,"r0_rss":192.8,"hwm":190.5,"hwm_max":192.7,"rss":190.0,"node_hwm":4584.9,"all_hwm":4584.9}},{"experiment":"M2","scheme":"allgather","N":20000,"P":24,"tile_rows":32,"kernel":{"r0_hwm":259.8,"r0_rss":196.6,"hwm":253.1,"hwm_max":256.8,"rss":190.0,"node_hwm":6096.4,"all_hwm":6096.4},"nodes":1,"kernel_rows":834,"kernel_cols":20000,"seconds":2.95,"start":{"r0_hwm":190.6,"r0_rss":190.6,"hwm":187.3,"hwm_max":191.0,"rss":187.3,"node_hwm":4515.5,"all_hwm":4515.5},"connected":{"r0_hwm":190.8,"r0_rss":190.8,"hwm":187.7,"hwm_max":191.4,"rss":187.7,"node_hwm":4525.0,"all_hwm":4525.0},"loaded":{"r0_hwm":202.7,"r0_rss":196.4,"hwm":189.9,"hwm_max":193.4,"rss":189.5,"node_hwm":4586.7,"all_hwm":4586.7},"state":{"r0_hwm":202.7,"r0_rss":196.4,"hwm":189.9,"hwm_max":193.4,"rss":189.5,"node_hwm":4586.7,"all_hwm":4586.7}},{"experiment":"M2","scheme":"allgather","N":20000,"P":24,"tile_rows":104,"kernel":{"r0_hwm":369.3,"r0_rss":213.0,"hwm":366.0,"hwm_max":368.0,"rss":208.5,"node_hwm":8777.7,"all_hwm":8777.7},"nodes":1,"kernel_rows":834,"kernel_cols":20000,"seconds":2.51,"start":{"r0_hwm":188.9,"r0_rss":188.9,"hwm":189.0,"hwm_max":191.1,"rss":189.0,"node_hwm":4527.1,"all_hwm":4527.1},"connected":{"r0_hwm":189.4,"r0_rss":189.4,"hwm":189.3,"hwm_max":191.6,"rss":189.3,"node_hwm":4536.8,"all_hwm":4536.8},"loaded":{"r0_hwm":199.1,"r0_rss":194.7,"hwm":191.6,"hwm_max":193.6,"rss":191.1,"node_hwm":4596.5,"all_hwm":4596.5},"state":{"r0_hwm":199.1,"r0_rss":194.7,"hwm":191.6,"hwm_max":193.6,"rss":191.1,"node_hwm":4596.5,"all_hwm":4596.5}},{"experiment":"M2","scheme":"allgather","N":20000,"P":24,"tile_rows":208,"kernel":{"r0_hwm":546.4,"r0_rss":199.8,"hwm":540.6,"hwm_max":542.9,"rss":193.2,"node_hwm":12980.3,"all_hwm":12980.3},"nodes":1,"kernel_rows":834,"kernel_cols":20000,"seconds":2.55,"start":{"r0_hwm":191.4,"r0_rss":191.4,"hwm":188.9,"hwm_max":191.4,"rss":188.9,"node_hwm":4539.7,"all_hwm":4539.7},"connected":{"r0_hwm":191.8,"r0_rss":191.8,"hwm":189.4,"hwm_max":191.8,"rss":189.4,"node_hwm":4548.9,"all_hwm":4548.9},"loaded":{"r0_hwm":201.8,"r0_rss":197.1,"hwm":191.6,"hwm_max":193.9,"rss":191.1,"node_hwm":4609.0,"all_hwm":4609.0},"state":{"r0_hwm":201.8,"r0_rss":197.1,"hwm":191.6,"hwm_max":193.9,"rss":191.1,"node_hwm":4609.0,"all_hwm":4609.0}},{"experiment":"M2","scheme":"allgather","N":20000,"P":24,"tile_rows":417,"kernel":{"r0_hwm":830.4,"r0_rss":194.2,"hwm":826.7,"hwm_max":829.6,"rss":191.3,"node_hwm":19841.0,"all_hwm":19841.0},"nodes":1,"kernel_rows":834,"kernel_cols":20000,"seconds":2.24,"start":{"r0_hwm":188.3,"r0_rss":188.3,"hwm":188.9,"hwm_max":190.9,"rss":188.9,"node_hwm":4525.4,"all_hwm":4525.4},"connected":{"r0_hwm":188.7,"r0_rss":188.7,"hwm":189.2,"hwm_max":191.2,"rss":189.2,"node_hwm":4534.3,"all_hwm":4534.3},"loaded":{"r0_hwm":199.4,"r0_rss":193.9,"hwm":191.4,"hwm_max":193.6,"rss":191.0,"node_hwm":4595.9,"all_hwm":4595.9},"state":{"r0_hwm":199.4,"r0_rss":193.9,"hwm":191.4,"hwm_max":193.6,"rss":191.0,"node_hwm":4595.9,"all_hwm":4595.9}}]}</script>
+<div class="iso-page">
+<div class="iso">
+  <header class="iso-head">
+    <p class="iso-meta page-nav">All results: <a href="../overview.html">Overview</a> · <a href="../presentation.html">Presentation</a> · <a href="../amdahl/results.html">Amdahl</a> · <a href="../communication/results.html">Communication</a> · <a href="../communication/2d_decomposition.html">2D explainer</a> · <a href="../communication/overlap/results.html">Overlap</a> · <b>Memory</b></p>
+    <h1 class="iso-title">Memory: what fills a rank, and which limit comes first</h1>
+    <p class="iso-lede">The real start-up of the program, up to and including the force kernel, with the memory of every rank read after each phase. From 1 000 stars up to the whole catalogue (589 993), for Allgather, ring and 2D, for different tile sizes and from 1 to 48 ranks. At the end the largest N that memory allows stands next to the largest N that time allows.</p>
+    <p class="iso-meta" id="meta">—</p>
+    <p class="iso-offline" id="offline" hidden>The charts need d3 from cdnjs.cloudflare.com. Open this page with an internet connection.</p>
+    <p class="iso-offline" id="empty" hidden>No measurements yet. Run <code class="iso-code">bsub &lt; memory/memory_batch.sh</code> on the cluster, copy <code class="iso-code">memory/out/memory_&lt;job&gt;.csv</code> and <code class="iso-code">memory/logs/memory_&lt;job&gt;.out</code> back and run <code class="iso-code">python3 memory/make_page.py</code>.</p>
+  </header>
+
+  <p class="iso-hyp"><b>Hypothesis.</b> Memory of a rank ≈ M<sub>0</sub> (Python, NumPy, pandas, MPI; more with a second node) + N · b (every rank gets the whole catalogue by <code class="iso-code">Bcast</code>, about 77 bytes per star, whatever the scheme) + the kernel's temporaries (56 bytes per pair of the current tile) + on rank 0 alone, pandas while reading the CSV. Then memory allows millions of stars per rank, while time allows far fewer: time is the limit, not memory. Memory would become the limit only for a kernel without tiles.</p>
+
+  <div class="iso-tiles" id="tiles"></div>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Memory against the number of stars</h2>
+    <p class="iso-p">P = 24 on one node. The peak (VmHWM) is what the job must have room for; what a rank still holds after the set-up (VmRSS) shows which scheme keeps less. Other ranks: the median of ranks 1–23. The x axis is logarithmic.</p>
+    <div class="iso-controls"><label for="pick-m">Show</label><select id="pick-m" class="iso-select"><option value="peak">peak per rank (VmHWM)</option><option value="held">held after the set-up (VmRSS)</option></select></div>
+    <div class="iso-legend" id="legend-a"></div>
+    <p class="iso-axis-label">MB per rank</p>
+    <div class="iso-chart" id="chart-a"></div>
+    <p class="iso-axis-label" style="text-align:right">Stars N</p>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Phase by phase</h2>
+    <div class="iso-controls"><label for="pick-s">Scheme</label><select id="pick-s" class="iso-select"></select> <label for="pick-n">Stars N</label><select id="pick-n" class="iso-select"></select></div>
+    <div class="iso-table-wrap"><table class="iso-table" id="phase-table"></table></div>
+    <p class="iso-note">Peak: the most the rank has held so far. Now: what it holds at the end of the phase. "Kernel" is one tile here (M1).</p>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">The kernel's temporaries against tile size</h2>
+    <p class="iso-p">v1, N = 20 000, P = 24, the whole share of one time step with <code class="iso-code">--tile-rows</code> 0 (13 rows, today's default) up to 417 (half the own block). Temporaries: peak after the kernel minus what the rank held before. The dotted line is 56 bytes per pair, what <code class="iso-code">tracemalloc</code> counts for one tile call alone. Both axes are logarithmic.</p>
+    <div class="iso-legend" id="legend-b"></div>
+    <p class="iso-axis-label">Temporaries per rank (MB)</p>
+    <div class="iso-chart iso-chart--short" id="chart-b"></div>
+    <p class="iso-axis-label" style="text-align:right">Star pairs per tile</p>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">MPI's share against the number of ranks</h2>
+    <p class="iso-p">v1, N = 1 000. Start: after the imports and <code class="iso-code">MPI_Init</code>. Connected: after every pair of ranks has exchanged one message.</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="mpi-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Which limit comes first</h2>
+    <p class="iso-p">Memory: the N at which a rank would reach its share, from the measured model (M<sub>0</sub> + N · b, rank 0 with its extra). Time: the N at which the steps no longer fit, with the time per star pair of v1 with the node full (from the C2/C3 runs). Naive kernel: one tile for the whole own block, as a fully vectorised kernel without tiles would do.</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="limit-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <h2 class="iso-sec-h">Expectation against measurement</h2>
+    <p class="iso-p">The expectations and the rule for each verdict were written into <code class="iso-code">memory/README.md</code> before the first measurement; the page applies the rules to the data.</p>
+    <div class="iso-table-wrap"><table class="iso-table" id="expect-table"></table></div>
+  </section>
+
+  <section class="iso-sec">
+    <details class="iso-details">
+      <summary>Every launch</summary>
+      <div class="iso-table-wrap"><table class="iso-table" id="all-table"></table></div>
+    </details>
+    <details class="iso-details">
+      <summary>How it is measured</summary>
+      <ul>
+        <li><code class="iso-code">memory/memory_probe.py</code> calls the program's own functions, unchanged: <code class="iso-code">parse_args</code>, <code class="iso-code">load_and_distribute</code>, the ring's buffers, the 2D grid, <code class="iso-code">block_accelerations</code>; and does what <code class="iso-code">main()</code> does in between (rank 0 copies the start positions, the ring and 2D drop the full positions). So the memory is that of a real run, without computing whole time steps at 589 993 stars.</li>
+        <li>Memory: VmHWM (peak so far) and VmRSS (now) from <code class="iso-code">/proc/self/status</code> of every rank after every phase. The program itself only reports the peak of the largest rank (<code class="iso-code">peak_memory_mb</code>).</li>
+        <li>One job on two full nodes, <code class="iso-code">--map-by core --bind-to core</code>: P ≤ 24 on the first node. The subsets up to the whole catalogue are made in the job with <code class="iso-code">isoeff/make_subset.py</code> (the same files as <code class="iso-code">GaiaSubsetSelection.py</code>).</li>
+        <li>Cross-check: LSF's "Max Memory" of the whole job, from the end of the job log, against the sum over the ranks of one launch.</li>
+      </ul>
+    </details>
+  </section>
+</div>
+</div>
+
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('memory-data').textContent || '{}');
+  const L = DATA.launches || [], META = DATA.meta || {};
+  if (!L.length) { document.getElementById('empty').hidden = false; return; }
+  const HAS_D3 = typeof d3 !== 'undefined';
+  if (!HAS_D3) document.getElementById('offline').hidden = false;
+
+  const MiB = 1048576, TILE = 262144;
+  const nf = (v, d = 0) => v == null || !isFinite(v) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const big = (n) => n == null || !isFinite(n) ? '—' : n >= 1e6 ? `${nf(n / 1e6, 1)} M` : n >= 1e4 ? `${nf(n / 1000, 0)}k` : nf(n);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const median = (xs) => { const v = xs.filter((x) => x != null && isFinite(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+  const fit = (pts) => { const p = pts.filter((q) => q.x != null && q.y != null && isFinite(q.y)); const n = p.length; if (n < 2) return null;
+    const mx = d3m(p.map((q) => q.x)), my = d3m(p.map((q) => q.y)); let sxy = 0, sxx = 0, syy = 0;
+    p.forEach((q) => { sxy += (q.x - mx) * (q.y - my); sxx += (q.x - mx) ** 2; syy += (q.y - my) ** 2; });
+    const b = sxy / sxx; return { b, a: my - b * mx, r2: syy ? (sxy * sxy) / (sxx * syy) : 1 }; };
+  const d3m = (v) => v.reduce((s, x) => s + x, 0) / v.length;
+  const table = (id, head, rows, left = 1) => {
+    document.getElementById(id).innerHTML = `<thead><tr>${head.map((h, i) => `<th${i < left ? ' class="iso-left"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${
+      rows.map((r) => `<tr>${r.map((c, i) => `<td${i < left ? ' class="iso-left"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody>`; };
+  const SCHEMES = [['allgather', 'v1 (Allgather)', 'var(--c0)'], ['ring', 'Ring', 'var(--c1)'], ['2d', '2D', 'var(--c2)']];
+  const NAME = Object.fromEntries(SCHEMES.map(([k, n]) => [k, n]));
+  const other = (l, ph, k = 'hwm') => (l[ph][k] != null ? l[ph][k] : l[ph][`r0_${k}`]);   // P = 1: only rank 0
+
+  // ---------- the model from the data
+  const M1 = L.filter((l) => l.experiment === 'M1'), M2 = L.filter((l) => l.experiment === 'M2'), M3 = L.filter((l) => l.experiment === 'M3').sort((a, b) => a.P - b.P);
+  const m3one = M3.filter((l) => l.nodes === 1);
+  const M0 = median(m3one.map((l) => other(l, 'start')));
+  const perPeer = median(m3one.filter((l) => l.P >= 2).map((l) => (other(l, 'connected') - other(l, 'start')) / (l.P - 1)));
+  const c24 = M3.find((l) => l.P === 24), c48 = M3.find((l) => l.P === 48);
+  const twoNode = c24 && c48 ? other(c48, 'connected') - other(c24, 'connected') : null;
+  const by = Object.fromEntries(SCHEMES.map(([k]) => [k, M1.filter((l) => l.scheme === k).sort((a, b) => a.N - b.N)]));
+  const cat = Object.fromEntries(SCHEMES.map(([k]) => [k, fit(by[k].map((l) => ({ x: l.N, y: other(l, 'loaded') - other(l, 'connected') })))]));
+  const held = Object.fromEntries(SCHEMES.map(([k]) => [k, fit(by[k].map((l) => ({ x: l.N, y: other(l, 'state', 'rss') - other(l, 'connected', 'rss') })))]));
+  const bOf = (f) => (f ? f.b * MiB : null);
+  const v1max = by.allgather.length ? by.allgather[by.allgather.length - 1] : null;
+  const r0extra = v1max ? (v1max.loaded.r0_hwm - other(v1max, 'loaded')) * MiB / v1max.N : null;
+  const tileRows = (l) => (l.tile_rows > 0 ? l.tile_rows : Math.max(1, Math.floor(TILE / l.N)));
+  const m2pts = M2.map((l) => ({ x: tileRows(l) * l.N, y: other(l, 'kernel') - other(l, 'state', 'rss'), l })).sort((a, b) => a.x - b.x);
+  const kfit = fit(m2pts.map((p) => ({ x: p.x, y: p.y })));
+  const bpp = kfit ? kfit.b * MiB : null;
+  const avail = META.reservation_mb || 1024, nodeShare = META.node_ram_mb ? META.node_ram_mb / 24 : null;
+  const bV1 = bOf(cat.allgather);
+  const nMem = (mb, extra) => (M0 != null && bV1 ? (mb - M0) * MiB / (bV1 + (extra || 0)) : null);
+  const nTime = (seconds, P, steps = 1) => (META.pair_s ? Math.sqrt(seconds * P / (steps * META.pair_s)) : null);
+  const nNaive = (mb) => (M0 != null && bpp ? Math.sqrt((mb - M0) * MiB * 24 / bpp) : null);
+  const lsfRatio = META.lsf_max_mb ? META.lsf_max_mb / Math.max(...L.map((l) => l.kernel.all_hwm)) : null;
+
+  // ---------- meta and tiles
+  document.getElementById('meta').innerHTML = [`Job ${esc(META.job)}`, `nodes ${(META.hosts || []).map(esc).join(', ')}`,
+    META.node_ram_mb ? `${nf(META.node_ram_mb / 1024, 0)} GB per node` : 'node memory not in the log', `reservation ${nf(avail)} MB per slot`,
+    META.lsf_max_mb ? `LSF max ${nf(META.lsf_max_mb / 1024, 1)} GB` : '', `page made ${esc(META.made)}`].filter(Boolean).join(' · ');
+  const n1 = nTime(1800, 24), nm0 = nMem(avail, r0extra);
+  const tiles = [
+    { n: 'Start, per rank', big: M0 != null ? `${nf(M0)} MB` : '—', sub: `before any star; ${twoNode != null ? `+${nf(twoNode)} MB with a second node` : ''}` },
+    { n: 'Catalogue, every rank', big: bV1 ? `${nf(bV1)} B` : '—', sub: 'per star, after the Bcast (v1; ring and 2D alike)' },
+    { n: 'Rank 0 while reading', big: r0extra ? `+${nf(r0extra)} B` : '—', sub: `per star on top, at N = ${v1max ? nf(v1max.N) : '—'} (pandas)` },
+    { n: 'Memory against time', big: nm0 && n1 ? `×${nf(nm0 / n1, 0)}` : '—', sub: `rank 0 fills ${nf(avail)} MB at N ≈ ${big(nm0)}; one step in 30 min at P = 24 allows N ≈ ${big(n1)}` },
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map((t) => `<div class="iso-tile"><div class="iso-tile-n">${esc(t.n)}</div><div class="iso-tile-big">${t.big}</div><div class="iso-tile-sub">${esc(t.sub)}</div></div>`).join('');
+
+  // ---------- tables
+  const pickS = document.getElementById('pick-s'), pickN = document.getElementById('pick-n');
+  pickS.innerHTML = SCHEMES.filter(([k]) => by[k].length).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  const fillN = () => { const keep = +pickN.value, ns = by[pickS.value].map((l) => l.N); pickN.innerHTML = ns.map((n) => `<option value="${n}">${nf(n)}</option>`).join(''); pickN.value = ns.includes(keep) ? keep : ns[ns.length - 1]; };
+  const drawPhases = () => { const l = by[pickS.value].find((q) => q.N === +pickN.value); if (!l) return;
+    table('phase-table', ['Phase', 'Rank 0: peak (MB)', 'Rank 0: now', 'Other ranks: peak', 'now', 'largest other', 'Sum over the node (peaks)'],
+      ['start', 'connected', 'loaded', 'state', 'kernel'].map((ph) => [ph, nf(l[ph].r0_hwm), nf(l[ph].r0_rss), nf(l[ph].hwm), nf(l[ph].rss), nf(l[ph].hwm_max), nf(l[ph].node_hwm)])); };
+  pickS.addEventListener('change', () => { fillN(); drawPhases(); }); pickN.addEventListener('change', drawPhases);
+  if (pickS.options.length) { fillN(); drawPhases(); }
+  table('mpi-table', ['P', 'Nodes', 'Start (MB)', 'Connected (MB)', 'Per peer (KB)', 'Rank 0 connected (MB)'],
+    M3.map((l) => [nf(l.P), nf(l.nodes), nf(other(l, 'start')), nf(other(l, 'connected')), l.P > 1 ? nf((other(l, 'connected') - other(l, 'start')) / (l.P - 1) * 1024) : '—', nf(l.connected.r0_hwm)]));
+  table('limit-table', ['Limit', 'Assumption', 'Largest N'], [
+    ['Memory, other ranks', `${nf(avail)} MB per rank (the LSF reservation)`, big(nMem(avail))],
+    ['Memory, rank 0', `${nf(avail)} MB per rank, with the extra for reading`, big(nMem(avail, r0extra))],
+    ...(nodeShare ? [['Memory, rank 0', `the node's memory / 24 = ${nf(nodeShare)} MB`, big(nMem(nodeShare, r0extra))]] : []),
+    ['Time', 'one time step in 30 minutes, P = 24', big(nTime(1800, 24))],
+    ['Time', 'one time step in 30 minutes, P = 48', big(nTime(1800, 48))],
+    ['Time', '10 000 steps in 300 s, P = 24 (the isoeff budget)', big(nTime(300, 24, 10000))],
+    ['Memory, naive kernel', `the whole own block as one tile, ${nf(avail)} MB per rank, P = 24`, big(nNaive(avail))],
+  ]);
+  table('all-table', ['Experiment', 'Scheme', 'N', 'P', 'Nodes', 'Tile rows', 'Kernel', 'Rank 0 peak (MB)', 'Others peak', 'Others held after set-up', 'Node sum (MB)', 'Seconds'],
+    L.map((l) => [l.experiment, NAME[l.scheme] || l.scheme, nf(l.N), nf(l.P), nf(l.nodes), nf(l.tile_rows), `${l.kernel} (${nf(l.kernel_rows)} × ${nf(l.kernel_cols)})`,
+      nf(l.kernel.r0_hwm), nf(other(l, 'kernel')), nf(other(l, 'state', 'rss')), nf(l.kernel.node_hwm), nf(l.seconds, 1)]), 3);
+
+  // ---------- expectations (rules in memory/README.md, written before measuring)
+  const yes = '<span class="iso-yes">yes</span>', no = '<span class="iso-no">no</span>', v = (ok) => (ok == null ? '—' : ok ? yes : no);
+  const within = (x, lo, hi) => (x == null || !isFinite(x) ? null : x >= lo && x <= hi);
+  const bs = SCHEMES.map(([k]) => bOf(cat[k])), r2s = SCHEMES.map(([k]) => cat[k] && cat[k].r2);
+  const hs = SCHEMES.map(([k]) => bOf(held[k])), hExp = [55, 33, 43];
+  const E = [
+    ['Before any star, a rank needs 150–250 MB (Python, NumPy, pandas, matplotlib, MPI).', 'Start on one node between 150 and 250 MB (median over P).', M0 != null ? `${nf(M0)} MB` : '—', within(M0, 150, 250)],
+    ['MPI needs little per peer on one node; a second node adds 50–100 MB per rank (the network transport; C3 showed 220 → 270–300 MB).', 'One node: at most 1 MB per peer (median); two nodes: P = 48 against 24 after connecting between +50 and +100 MB.',
+     `${perPeer != null ? nf(perPeer * 1024) + ' KB per peer' : '—'}; ${twoNode != null ? '+' + nf(twoNode) + ' MB' : '—'}`, perPeer == null || twoNode == null ? null : perPeer <= 1 && twoNode >= 50 && twoNode <= 100],
+    ['Every rank holds the whole catalogue after the Bcast, about 77 bytes per star (positions, velocities, masses, members, owner, class), whatever the scheme.', 'Slope of the peak after loading between 70 and 110 bytes per star for every scheme, R² ≥ 0.99, ring and 2D within ±10 % of v1.',
+     SCHEMES.map(([, n], i) => `${n}: ${nf(bs[i])} B (R² ${nf(r2s[i], 3)})`).join('; '),
+     bs.some((b) => b == null) ? null : bs.every((b) => b >= 70 && b <= 110) && r2s.every((r) => r >= 0.99) && bs.every((b) => Math.abs(b / bs[0] - 1) <= 0.1)],
+    ['After the set-up, v1 holds about 55 bytes per star, the ring about 33 and 2D about 43 (they drop the full positions; 2D keeps a column block).', 'Slope of what a rank holds after the set-up within ±20 % of 55 / 33 / 43 bytes per star.',
+     SCHEMES.map(([, n], i) => `${n}: ${nf(hs[i])} B`).join('; '), hs.some((h) => h == null) ? null : hs.every((h, i) => Math.abs(h / hExp[i] - 1) <= 0.2)],
+    ['Rank 0 needs 150–600 bytes per star more while pandas reads the CSV.', 'Rank 0 peak after loading minus the other ranks, per star, at the largest N, between 150 and 600 bytes.', r0extra ? `${nf(r0extra)} B per star` : '—', within(r0extra, 150, 600)],
+    ['The kernel\'s temporaries are 56 bytes per pair of the tile (as tracemalloc measured), linear in the tile size.', 'Slope between 42 and 70 bytes per pair, R² ≥ 0.99 (M2).', bpp ? `${nf(bpp)} B per pair (R² ${nf(kfit.r2, 3)})` : '—', bpp == null ? null : within(bpp, 42, 70) && kfit.r2 >= 0.99],
+    ['Time comes first: even rank 0 has room for at least 3 times as many stars as one time step in 30 minutes allows at P = 24.', `N at which rank 0 fills ${nf(avail)} MB at least 3 times the N of one step in 30 minutes at P = 24.`,
+     nm0 && n1 ? `${big(nm0)} against ${big(n1)} (×${nf(nm0 / n1, 1)})` : '—', nm0 && n1 ? nm0 / n1 >= 3 : null],
+    ['Without tiles, memory would come first: a kernel on the whole own block would fill 1 GB per rank at P = 24 from 10 000–30 000 stars, below our largest run.', `The naive-kernel N for ${nf(avail)} MB per rank between 10 000 and 30 000.`, big(nNaive(avail)), within(nNaive(avail), 10000, 30000)],
+    ['LSF\'s Max Memory of the job agrees with the sum over the ranks.', 'Max Memory between 0.6 and 1.1 times the largest sum of the ranks\' peaks in one launch.', lsfRatio ? `×${nf(lsfRatio, 2)}` : 'no Max Memory in the log', lsfRatio == null ? null : within(lsfRatio, 0.6, 1.1)],
+  ];
+  table('expect-table', ['Expectation (before measuring)', 'Rule for "yes"', 'Measured', 'Correct?'], E.map(([e, r, m, ok]) => [e, r, m, v(ok)]), 2);
+  document.querySelectorAll('#expect-table td:nth-child(-n+3)').forEach((td) => td.classList.add('iso-text'));
+
+  if (!HAS_D3) return;
+  // ---------- charts (log x)
+  const chart = (el, o) => {
+    el.innerHTML = '';
+    const W = Math.max(320, el.clientWidth || 640), H = o.height || 280, m = { top: 14, right: 110, bottom: 28, left: 56 };
+    const pts = o.series.flatMap((s) => s.points.map((p) => ({ ...p, s }))).filter((p) => p.y != null && isFinite(p.y) && (!o.yLog || p.y > 0));
+    if (!pts.length) { el.innerHTML = '<p class="iso-empty">No points.</p>'; return; }
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    const x = d3.scaleLog().domain([d3.min(xs) / 1.3, d3.max(xs) * 1.3]).range([m.left, W - m.right]);
+    const y = o.yLog ? d3.scaleLog().domain([d3.min(ys) / 1.5, d3.max(ys) * 1.5]).range([H - m.bottom, m.top]) : d3.scaleLinear().domain([0, d3.max(ys) * 1.08]).nice().range([H - m.bottom, m.top]);
+    const yt = o.yLog ? y.ticks(6).filter((t) => /^[1]/.test(t.toExponential())) : y.ticks(5);
+    const xt = x.ticks(8).filter((t) => /^[1]/.test(t.toExponential()) || /^5/.test(t.toExponential()));
+    const svg = d3.select(el).append('svg').attr('class', 'iso-svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', o.label);
+    svg.append('g').attr('class', 'iso-grid').selectAll('line').data(yt).join('line').attr('x1', m.left).attr('x2', W - m.right).attr('y1', (t) => y(t)).attr('y2', (t) => y(t));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(0,${H - m.bottom})`).call(d3.axisBottom(x).tickValues(xt).tickFormat(big).tickSize(0).tickPadding(8));
+    svg.append('g').attr('class', 'iso-axis').attr('transform', `translate(${m.left},0)`).call(d3.axisLeft(y).tickValues(yt).tickFormat((t) => nf(t)).tickSize(0).tickPadding(8));
+    svg.append('line').attr('class', 'iso-baseline').attr('x1', m.left).attr('x2', W - m.right).attr('y1', H - m.bottom).attr('y2', H - m.bottom);
+    const line = d3.line().x((p) => x(p.x)).y((p) => y(p.y));
+    o.series.forEach((s) => { const ps = s.points.filter((p) => p.y != null && isFinite(p.y) && (!o.yLog || p.y > 0));
+      svg.append('path').attr('class', s.dotted ? 'iso-fit' : 'iso-line').style('stroke', s.color).style('stroke-dasharray', s.dashed ? '5 4' : null).attr('d', line(ps));
+      if (!s.noDots) svg.append('g').selectAll('circle').data(ps).join('circle').attr('class', 'iso-dot').style('fill', s.color).attr('r', 3.5).attr('cx', (p) => x(p.x)).attr('cy', (p) => y(p.y)); });
+    const ends = o.series.map((s) => { const ps = s.points.filter((p) => p.y != null && isFinite(p.y)); const p = ps[ps.length - 1]; return p ? { s, x: x(p.x), y: y(p.y) } : null; }).filter(Boolean).sort((a, b) => a.y - b.y);
+    ends.forEach((e, i) => { if (i && e.y - ends[i - 1].y < 13) e.y = ends[i - 1].y + 13; });
+    ends.forEach((e) => svg.append('text').attr('class', 'iso-end').attr('x', e.x + 8).attr('y', e.y + 4).text(e.s.name));
+    const tip = d3.select(el).append('div').attr('class', 'iso-tip').attr('hidden', true);
+    const focus = svg.append('circle').attr('r', 6).style('fill', 'none').style('stroke', 'var(--color-fg)').style('stroke-width', 1.5).attr('visibility', 'hidden');
+    const hov = pts.filter((p) => !p.s.noTip);
+    svg.append('rect').attr('class', 'iso-hit').attr('x', m.left).attr('y', m.top).attr('width', W - m.left - m.right).attr('height', H - m.top - m.bottom)
+      .on('pointermove', (ev) => { const [px, py] = d3.pointer(ev), p = d3.least(hov, (q) => (x(q.x) - px) ** 2 + (y(q.y) - py) ** 2); if (!p) return;
+        focus.attr('cx', x(p.x)).attr('cy', y(p.y)).attr('visibility', 'visible'); tip.attr('hidden', null).html(o.tip(p));
+        const box = el.getBoundingClientRect(), sc = box.width / W; tip.style('left', `${Math.max(0, Math.min(x(p.x) * sc + 12, box.width - 270))}px`).style('top', `${Math.max(0, y(p.y) * sc - 20)}px`); })
+      .on('pointerleave', () => { tip.attr('hidden', true); focus.attr('visibility', 'hidden'); });
+  };
+  const row = (a, b) => `<div class="iso-tip-row"><span>${a}</span><span>${b}</span></div>`;
+  const legend = (id, items) => { document.getElementById(id).innerHTML = items.map((i) => `<span class="iso-key"><span class="iso-swatch${i.cls ? ' ' + i.cls : ''}"${i.color ? ` style="background:${i.color}"` : ''}></span>${i.name}</span>`).join(''); };
+  const pickM = document.getElementById('pick-m');
+  const draw = () => {
+    const peak = pickM.value === 'peak';
+    const val = (l) => (peak ? other(l, 'kernel') : other(l, 'state', 'rss'));
+    const series = SCHEMES.filter(([k]) => by[k].length).map(([k, name, color]) => ({ name, color, points: by[k].map((l) => ({ x: l.N, y: val(l), l })) }));
+    if (by.allgather.length) series.push({ name: 'rank 0 (v1)', color: 'var(--color-fg-muted)', dashed: true, points: by.allgather.map((l) => ({ x: l.N, y: peak ? l.kernel.r0_hwm : l.state.r0_rss, l, r0: true })) });
+    legend('legend-a', series.map((s) => ({ name: s.name, color: s.color })));
+    chart(document.getElementById('chart-a'), { series, label: 'Memory per rank against N', tip: (p) => `<div class="iso-tip-h">${esc(p.s.name)}, N = ${nf(p.l.N)}</div>`
+      + row(peak ? 'peak' : 'held after set-up', `${nf(p.y)} MB`) + row('rank 0 peak', `${nf(p.l.kernel.r0_hwm)} MB`) + row('node sum of peaks', `${nf(p.l.kernel.node_hwm)} MB`) });
+    const s2 = [{ name: 'measured', color: 'var(--c0)', points: m2pts.map((p) => ({ x: p.x, y: p.y, l: p.l })) },
+      { name: '56 B per pair', color: 'var(--color-fg-muted)', dotted: true, noDots: true, noTip: true, points: m2pts.map((p) => ({ x: p.x, y: p.x * 56 / MiB })) }];
+    legend('legend-b', [{ name: 'measured', color: 'var(--c0)' }, { name: '56 bytes per pair (one tile, tracemalloc)', cls: 'iso-swatch--fit' }]);
+    chart(document.getElementById('chart-b'), { series: s2, yLog: true, height: 240, label: 'Kernel temporaries against tile size',
+      tip: (p) => `<div class="iso-tip-h">--tile-rows ${p.l.tile_rows}</div>` + row('pairs per tile', nf(p.x)) + row('temporaries', `${nf(p.y)} MB`) + row('bytes per pair', nf(p.y * MiB / p.x, 1)) });
+  };
+  pickM.addEventListener('change', draw);
+  draw();
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 150); });
+})();
+</script>
+</body>
+</html>
