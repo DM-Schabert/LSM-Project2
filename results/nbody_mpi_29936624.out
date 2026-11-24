@@ -1,0 +1,162 @@
+=== job 29936624 (nbody_mpi) started Mon Nov  9 11:43:41 CET 2026
+slots: 8   hosts/slots: n-62-21-46 8 
+cpu:   Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+data:  gaia_subsets/gaia_nearest_5000.csv   steps: 100   dt: 0.01   softening: 0.01   merge radius: 0
+time limit: 780 s   NP: all slots   MAP_OPTS: none
+ 1) latex/TexLive24                                  
+ 2) openblas/0.3.30 <aL>                             
+ 3) sqlite3/3.50.1 <aL>                              
+ 4) gcc/14.3.0-binutils-2.44 <aL>                    
+ 5) python3/3.12.11 <aL>                             
+ 6) ninja/1.12.1 <aL>                                
+ 7) meson/1.8.2-python-3.12.11 <aL>                  
+ 8) numpy/2.3.1-python-3.12.11-openblas-0.3.30 <aL>  
+ 9) pandas/2.3.0-python-3.12.11                      
+10) scipy/1.15.3-python-3.12.11 <aL>                 
+11) freetype/2.13.3 <aL>                             
+12) matplotlib/3.10.3-numpy-2.3.1-python-3.12.11     
+13) mpi/5.0.8-gcc-14.3.0-binutils-2.44 <aL>          
+14) mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8        
+
+Key:
+<module-tag>  <aL>=auto-loaded  
+Mode: custom (time limit 780 s, at most 100 steps)
+Loaded 5.000 stars from gaia_subsets/gaia_nearest_5000.csv
+Total mass: 5758.5 M_sun
+Initial mean distance to centre of mass: 79.545 pc
+Final mean distance to centre of mass: 79.544 pc
+Stars: 5.000 at start, 5.000 at end (0 merged away)
+Total momentum at end: [-0. -0. -0.] M_sun·km/s (starts at 0)
+Simulated 100 steps (0.98 Myr) in 283.59 s (2835.86 ms/step)
+Saved final state to final_serial_29936624.csv
+
+Performance (custom, completed, 100 iterations)
+  total         283.756 s
+  load            0.062 s
+  simulation    283.586 s
+    forces      283.579 s
+    merge         0.000 s
+    integrate     0.005 s
+  plotting        0.000 s
+  output          0.105 s
+  8.814e+06 interactions/s · ~0.18 GFLOP/s · model bandwidth 0.28 GB/s · peak memory 106 MB
+Added run 'serial_custom_gaia_nearest_5000_1ranks' to results/nbody_mpi_29936624.csv
+MPI: 8 ranks on 1 host(s): n-62-21-46
+Mode: custom (time limit 780 s, at most 100 steps)
+Loaded 5.000 stars from gaia_subsets/gaia_nearest_5000.csv; 625-625 stars per rank
+Total mass: 5758.5 M_sun
+Initial mean distance to centre of mass: 79.545 pc
+Final mean distance to centre of mass: 79.544 pc
+Stars: 5.000 at start, 5.000 at end (0 merged away)
+Total momentum at end: [-0. -0. -0.] M_sun·km/s (starts at 0)
+Simulated 100 steps (0.98 Myr) in 36.43 s (364.27 ms/step, slowest rank)
+Saved final state to final_mpi_29936624.csv
+
+Performance (custom, completed, 100 iterations)
+  total          36.596 s
+  load            0.023 s
+  simulation     36.427 s
+    forces       36.396 s
+    merge         0.000 s
+    integrate     0.002 s
+  plotting        0.000 s
+  output          0.106 s
+  6.868e+07 interactions/s · ~1.37 GFLOP/s · model bandwidth 2.20 GB/s · peak memory 197 MB
+  communication    0.016 s (slowest rank) · sync 1.116 s · load imbalance (forces max/mean) 1.011
+Added run 'mpi_custom_gaia_nearest_5000_8ranks' to results/nbody_mpi_29936624.csv
+Validation: 5000 stars, identical=True, max abs difference=0.000e+00
+=== job 29936624 finished Mon Nov  9 11:49:07 CET 2026
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 29936624: <nbody_mpi> in cluster <dcc> Done
+
+Job <nbody_mpi> was submitted from host <n-62-27-20> by user <s123142> in cluster <dcc> at Mon Nov  9 11:43:38 2026
+Job was executed on host(s) <8*n-62-21-46>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Mon Nov  9 11:43:40 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Mon Nov  9 11:43:40 2026
+Terminated at Mon Nov  9 11:49:07 2026
+Results reported at Mon Nov  9 11:49:07 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  LSF job script for the MPI N-body simulation (ParallelImplementation.py)
+#
+#  Submit:   bsub < batch.sh
+#  Watch:    bstat   /   bjobs -w   /   bjobs -p <jobid>   (why is it pending?)
+#  Cancel:   bkill <jobid>
+#
+#  To change the number of ranks or the placement, edit the #BSUB lines
+#  below. LSF reads them before the script runs, so shell variables don't
+#  work in them. Options given on the command line override the ones in
+#  this file, e.g.   bsub -n 16 < batch.sh
+#
+#  Placement recipes (week 2):
+#    one node, P ranks          -n P      span[hosts=1]
+#    two nodes, P/2 per node    -n P      span[ptile=P/2]
+#    spread over sockets        reserve the full node (-n 24, span[hosts=1]),
+#                               then set NP and MAP_OPTS below, e.g.
+#                               NP=8  MAP_OPTS="--map-by ppr:4:package --bind-to core"
+# =============================================================================
+#BSUB -J nbody_mpi
+#BSUB -q hpcintro
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:15
+#BSUB -o nbody_mpi_%J.out
+#BSUB -e nbody_mpi_%J.err
+
+# ----------------------------------------------------------------- settings
+MODE=validate          # benchmark: one MPI run
+                        # validate:  serial + MPI on the same input, then compare final states
+
+DATA=gaia_subsets/gaia_nearest_5000.csv
+STEPS=100               # pick from the serial baseline: steps ≈ 200 s · (interactions/s) / N²
+DT=0.01
+SOFTENING=0.01
+MERGE_RADIUS=0          # 0 = merging off (use for benchmarks); the program's default is 0.01
+
+WALLTIME_MIN=15         # keep equal to #BSUB -W above
+# The program stops itself and saves its results before LSF kills the job.
+# This is the stop that is guaranteed to work: in testing, a SIGTERM sent to
+# mpirun (as bkill or the walltime limit may do) killed the ranks before
+# they could save.
+TIME_LIMIT=$(( WALLTIME_MIN * 60 - 120 ))
+
+NP=""                   # empty: one rank per reserved slot (#BSUB -n). Set it to start fewer ranks
+MAP_OPTS=""             # e.g. "--map-by ppr:4:package --bind-to core" (needs NP set)
+
+# One results file per job: several jobs appending to one shared results.csv at
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   589.83 sec.
+    Max Memory :                                 78 MB
+    Average Memory :                             77.50 MB
+    Total Requested Memory :                     16384.00 MB
+    Delta Memory :                               16306.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                5
+    Run time :                                   327 sec.
+    Turnaround time :                            329 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <nbody_mpi_29936624.err> for stderr output of this job.
+

@@ -1,0 +1,149 @@
+=== job 29976829 (nbody_mpi) started Tue Nov 10 13:28:22 CET 2026
+slots: 8   hosts/slots: n-62-21-77 8 
+cpu:   Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+data:  gaia_subsets/gaia_nearest_2828.csv   steps: 10000   dt: 0.01   softening: 0.01   merge radius: 0.001
+time limit: 780 s   NP: all slots   MAP_OPTS: none
+ 1) latex/TexLive24                                  
+ 2) openblas/0.3.30 <aL>                             
+ 3) sqlite3/3.50.1 <aL>                              
+ 4) gcc/14.3.0-binutils-2.44 <aL>                    
+ 5) python3/3.12.11 <aL>                             
+ 6) ninja/1.12.1 <aL>                                
+ 7) meson/1.8.2-python-3.12.11 <aL>                  
+ 8) numpy/2.3.1-python-3.12.11-openblas-0.3.30 <aL>  
+ 9) pandas/2.3.0-python-3.12.11                      
+10) scipy/1.15.3-python-3.12.11 <aL>                 
+11) freetype/2.13.3 <aL>                             
+12) matplotlib/3.10.3-numpy-2.3.1-python-3.12.11     
+13) mpi/5.0.8-gcc-14.3.0-binutils-2.44 <aL>          
+14) mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8        
+
+Key:
+<module-tag>  <aL>=auto-loaded  
+MPI: 8 ranks on 1 host(s): n-62-21-77
+Mode: custom (time limit 780 s, at most 10.000 steps)
+Loaded 2.828 stars from gaia_subsets/gaia_nearest_2828.csv; 353-354 stars per rank
+Total mass: 3212.5 M_sun
+Initial mean distance to centre of mass: 63.854 pc
+Merging stars closer than 0.001 pc
+Iteration 954: 1 star(s) merged, 2.827 left
+Iteration 1.811: 1 star(s) merged, 2.826 left
+Iteration 2.073: 1 star(s) merged, 2.825 left
+Iteration 2.117: 1 star(s) merged, 2.824 left
+Iteration 2.671: 1 star(s) merged, 2.823 left
+Iteration 2.694: 1 star(s) merged, 2.822 left
+Iteration 4.982: 1 star(s) merged, 2.821 left
+Iteration 5.182: 1 star(s) merged, 2.820 left
+Stopped early (time_limit) after 5.850 of 10.000 steps, 740.9 s into a 780 s limit. Saving what we have.
+Final mean distance to centre of mass: 61.370 pc
+Stars: 2.828 at start, 2.820 at end (8 merged away)
+Total momentum at end: [ 0. -0. -0.] M_sun·km/s (starts at 0)
+Simulated 5.850 steps (57.20 Myr) in 740.77 s (126.63 ms/step, slowest rank)
+
+Performance (custom, stopped early: time_limit, 5850 iterations)
+  total         740.919 s
+  load            0.020 s
+  simulation    740.771 s
+    forces      734.844 s
+    merge         0.021 s
+    integrate     0.100 s
+  plotting        0.000 s
+  output          0.000 s
+  6.355e+07 interactions/s · ~1.27 GFLOP/s · model bandwidth 2.03 GB/s · peak memory 200 MB
+  communication    0.350 s (slowest rank) · sync 24.674 s · load imbalance (forces max/mean) 1.010
+Added run 'mpi_custom_gaia_nearest_2828_8ranks' to results.csv
+=== job 29976829 finished Tue Nov 10 13:40:45 CET 2026
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 29976829: <nbody_mpi> in cluster <dcc> Done
+
+Job <nbody_mpi> was submitted from host <n-62-27-17> by user <s123142> in cluster <dcc> at Tue Nov 10 13:28:20 2026
+Job was executed on host(s) <8*n-62-21-77>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Tue Nov 10 13:28:21 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Tue Nov 10 13:28:21 2026
+Terminated at Tue Nov 10 13:40:45 2026
+Results reported at Tue Nov 10 13:40:45 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# =============================================================================
+#  LSF job script for the MPI N-body simulation (ParallelImplementation.py)
+#
+#  Submit:   bsub < batch.sh
+#  Watch:    bstat   /   bjobs -w   /   bjobs -p <jobid>   (why is it pending?)
+#  Cancel:   bkill <jobid>
+#
+#  Choosing the run from the command line: use submit.sh, which writes the
+#  settings into a copy of this script before submitting it. (Writing
+#  "N=2828 bsub < batch.sh" does NOT work on the DTU cluster: LSF does not
+#  pass your shell variables on to the job.)
+#      ./submit.sh 2828 STEPS=100                # uses gaia_subsets/gaia_nearest_2828.csv
+#      ./submit.sh 2828 SUBSET=random            # gaia_subsets/gaia_random_2828.csv
+#      ./submit.sh N=1000 MODE=validate STEPS=500
+#      ./submit.sh 2828 NP=2 -- -n 24 -J weak_2828   # bsub options after "--"
+#  The .out file prints the settings the job actually used, so check it there.
+#
+#  To change the number of ranks or the placement, edit the #BSUB lines
+#  below. LSF reads them before the script runs, so shell variables don't
+#  work in them. Options given on the command line override the ones in
+#  this file, e.g.   bsub -n 16 < batch.sh
+#
+#  Placement recipes (week 2):
+#    one node, P ranks          -n P      span[hosts=1]
+#    two nodes, P/2 per node    -n P      span[ptile=P/2]
+#    spread over sockets        reserve the full node (-n 24, span[hosts=1]),
+#                               then set NP and MAP_OPTS below, e.g.
+#                               NP=8  MAP_OPTS="--map-by ppr:4:package --bind-to core"
+# =============================================================================
+#BSUB -J nbody_mpi
+#BSUB -q hpcintro
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:15
+#BSUB -o nbody_mpi_%J.out
+#BSUB -e nbody_mpi_%J.err
+
+# settings from submit.sh
+export N=2828
+
+# ----------------------------------------------------------------- settings
+# ${NAME:-default}: use NAME if it is already set (submit.sh sets it), otherwise the default.
+MODE=${MODE:-benchmark}         # benchmark: one MPI run
+                                # validate:  serial + MPI on the same input, then compare final states
+
+N=${N:-300}                     # number of stars: picks the subset file below
+SUBSET=${SUBSET:-nearest}       # nearest or random (as made by GaiaSubsetSelection.py)
+DATA=${DATA:-gaia_subsets/gaia_${SUBSET}_${N}.csv}   # or give DATA=... directly
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   5938.80 sec.
+    Max Memory :                                 1128 MB
+    Average Memory :                             1119.86 MB
+    Total Requested Memory :                     16384.00 MB
+    Delta Memory :                               15256.00 MB
+    Max Swap :                                   -
+    Max Processes :                              12
+    Max Threads :                                31
+    Run time :                                   744 sec.
+    Turnaround time :                            745 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <nbody_mpi_29976829.err> for stderr output of this job.
+
