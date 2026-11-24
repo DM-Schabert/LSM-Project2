@@ -29,6 +29,7 @@ N=5000
 TILES=${TILES:-"1 2 4 8 16 0 blk"}
 P_LIST=${P_LIST:-"1 12 24"}
 K2_P=12
+K2=${K2:-1}                       # 0: leave K2 out (to repeat only K0 and some K1 runs)
 K0_CLOSE=${K0_CLOSE:-"1 2 4 6 8 12"}
 K0_SPREAD=${K0_SPREAD:-"2 4 8 12"}
 K0_MB=64
@@ -44,9 +45,9 @@ subset "$N"
 
 echo "--- K0: memory bandwidth ($(date +%H:%M:%S))"
 OUT=cache/out/bandwidth_${JOB}.csv
-for p in $K0_CLOSE;  do $MPIRUN $(place close)  -np "$p" python3 cache/bandwidth.py --placement close  --mb "$K0_MB" --out "$OUT"; done
-for p in $K0_SPREAD; do $MPIRUN $(place spread) -np "$p" python3 cache/bandwidth.py --placement spread --mb "$K0_MB" --out "$OUT"; done
-[ "$LOCAL" = 1 ] || $MPIRUN $(place full) -np 24 python3 cache/bandwidth.py --placement full --mb "$K0_MB" --out "$OUT"
+for p in $K0_CLOSE;  do $MPIRUN $(place close "$p")  -np "$p" python3 cache/bandwidth.py --placement close  --mb "$K0_MB" --out "$OUT"; done
+for p in $K0_SPREAD; do $MPIRUN $(place spread "$p") -np "$p" python3 cache/bandwidth.py --placement spread --mb "$K0_MB" --out "$OUT"; done
+[ "$LOCAL" = 1 ] || $MPIRUN $(place full 24) -np 24 python3 cache/bandwidth.py --placement full --mb "$K0_MB" --out "$OUT"
 
 echo "--- K1 and K2 at N = $N ($(date +%H:%M:%S))"
 for r in $(seq 1 "$REPS"); do                    # repeats outermost: a drift of the node hits every setting alike
@@ -54,7 +55,7 @@ for r in $(seq 1 "$REPS"); do                    # repeats outermost: a drift of
         pl=close; [ "$p" -gt 12 ] && pl=full
         for t in $TILES; do run K1 allgather "$N" "$p" "$t" "$pl" "$r"; done
     done
-    for t in $TILES; do run K2 allgather "$N" "$K2_P" "$t" spread "$r"; done
+    [ "$K2" = 1 ] && for t in $TILES; do run K2 allgather "$N" "$K2_P" "$t" spread "$r"; done
 done
 
 copy_rows

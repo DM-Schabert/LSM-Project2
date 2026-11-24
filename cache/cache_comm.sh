@@ -30,7 +30,7 @@ OUT=cache/out/comm_load_${JOB}.csv
 
 echo "=== cache_comm, job $JOB, $(date), hosts: $(echo $LSB_HOSTS | tr ' ' '\n' | sort -u | tr '\n' ' ')"
 echo "--- K4 intra: one node, shared memory ($(date +%H:%M:%S))"
-$MPIRUN $(place full) -np "$NP_INTRA" python3 cache/comm_load.py --out "$OUT" --placement intra --partner 1 $EXTRA
+$MPIRUN $(place full "$NP_INTRA") -np "$NP_INTRA" python3 cache/comm_load.py --out "$OUT" --placement intra --partner 1 $EXTRA
 echo "--- K4 inter: two nodes, InfiniBand ($(date +%H:%M:%S))"
-$MPIRUN $(place nodes2) -np "$NP_INTER" python3 cache/comm_load.py --out "$OUT" --placement inter --partner "$PARTNER_INTER" $EXTRA
+$MPIRUN $(place nodes2 "$NP_INTER") -np "$NP_INTER" python3 cache/comm_load.py --out "$OUT" --placement inter --partner "$PARTNER_INTER" $EXTRA
 echo "=== finished $(date). Copy cache/out and cache/logs off the cluster, then: python3 cache/analyze.py"

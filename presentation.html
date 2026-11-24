@@ -178,6 +178,26 @@
   .tm-facts { margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tm-facts b { color: var(--fg); font-weight: 600; }
   .sw--call { width: 0; height: 14px; border-left: 2.5px solid var(--fg); border-radius: 0; }
+
+  /* how the results connect */
+  .lk { overflow-x: auto; min-width: 0; }
+  .lk svg { width: 100%; min-width: 760px; height: auto; display: block; }
+  .lk-edge { fill: none; stroke: var(--axis); stroke-width: 1.4; opacity: .5; transition: opacity .2s; }
+  .lk-edge.on { stroke: var(--fg); stroke-width: 2.2; opacity: 1; }
+  .lk-edge.what { stroke-dasharray: 6 4; }
+  .lk-edge.dim { opacity: .08; }
+  .lk-label { font-size: 11px; fill: var(--fg); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; display: none; }
+  .lk-label.on { display: inline; }
+  .lk-what { color: var(--muted); font-weight: 400; font-size: 14.5px; }
+  .lk-node { cursor: pointer; transition: opacity .2s; }
+  .lk-node.dim { opacity: .25; }
+  .lk-node:focus { outline: none; }
+  .lk-node.on .lk-box, .lk-node:focus-visible .lk-box { stroke: var(--fg); stroke-width: 2.25; }
+  .lk-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; min-height: 140px; }
+  .lk-panel h3 { font-size: 16.5px; margin: 0 0 6px; }
+  .lk-panel p { margin: 0 0 6px; font-size: 14.5px; max-width: 90ch; }
+  .lk-panel ol, .lk-panel ul { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 5px; font-size: 14.5px; line-height: 1.45; max-width: 90ch; }
+  @media (prefers-reduced-motion: reduce) { .lk-edge, .lk-node { transition: none; } }
   .sw--lvl { position: relative; border: 1.5px solid var(--fg); box-sizing: border-box; background: transparent; overflow: hidden; }
   .sw--lvl::before { content: ""; position: absolute; inset: 0; background: var(--fg); opacity: var(--o); }
 
@@ -249,7 +269,7 @@
       <li><a href="#s-mem">In depth: memory<span>what fills a rank, which limit comes first</span></a></li>
       <li><a href="#s-merge">Load balance after merging<span>keep the stars, or hand them out again</span></a></li>
       <li><a href="#s-dt">MPI datatypes<span>a derived type for (x, y, z)</span></a></li>
-      <li><a href="#s-end">Conclusion<span>the final configuration and what is open</span></a></li>
+      <li><a href="#s-links">Conclusion<span>how the results connect, the final configuration, what is open</span></a></li>
     </ol>
     <p class="note" id="title-meta">Move through the sections with the arrow keys, the space bar or the buttons at the bottom right. Data from every results page in the repository, collected by <code>make_presentation.py</code>.</p>
   </div>
@@ -663,6 +683,24 @@
     <div class="legend" id="dt-legend"></div>
     <div class="chart" id="ch-dt"></div>
     <p class="note" id="dt-note">Rasmus' microbenchmark (<code>data_types/</code>), synthetic positions, communication only; no written result yet.</p>
+  </div>
+</section>
+
+<!-- ================================================================ 9 conclusion: how the results connect -->
+<section class="slide" id="s-links">
+  <div class="inner">
+    <p class="eyebrow">9 · Conclusion · how the results connect</p>
+    <h2>Most results go back to a few causes</h2>
+    <p class="p">Left: facts about the code and the hardware. Middle: what they do to a time step. Right: the results of the chapters before. Pick a chain to follow it from cause to result, or click a box to see what it depends on and what it explains.</p>
+    <div class="controls"><div class="seg" role="group" aria-label="Chain" id="lk-story"></div></div>
+    <div class="legend">
+      <span class="key"><span class="sw" style="background: var(--c3)"></span>cause</span>
+      <span class="key"><span class="sw" style="background: var(--c5)"></span>mechanism</span>
+      <span class="key"><span class="sw" style="background: var(--c0)"></span>result, with its slide</span>
+      <span class="key"><span class="sw sw--dash" style="border-color: var(--fg)"></span>not measured (what if)</span>
+    </div>
+    <div class="lk"><svg id="lk-svg" viewBox="0 0 1000 470" role="img" aria-label="Seven causes on the left, six mechanisms in the middle and nine results on the right, joined by arrows: the N squared work makes the kernel dominate the step, the Python cost per kernel call dominates small N and the ring, and the NumPy temporaries against the shared caches shape the tiles, the full node and the schemes at large N."></svg></div>
+    <div class="lk-panel" id="lk-panel" aria-live="polite"></div>
   </div>
 </section>
 
@@ -1951,6 +1989,182 @@
     });
     const within = R.filter((r) => Math.abs(r.xyz_faster_pct) <= 5).length, t = R.map((r) => r.double_us);
     setHTML('dt-note', `Rasmus' microbenchmark (<code>data_types/</code>): synthetic positions, communication only, ${nf(Math.min(...t))}–${nf(Math.max(...t))} µs per call. Within ±5 % in ${within} of ${R.length} cases. No written result yet.`);
+  })();
+
+  // ================================================================ 9 how the results connect
+  (() => {
+    const svg = document.getElementById('lk-svg'), panel = document.getElementById('lk-panel'), segEl = document.getElementById('lk-story');
+    if (!svg || !panel) return;
+    const COL = { c: { x: 10, gap: 65, h: 46, color: 'var(--c3)' }, m: { x: 392, gap: 78, h: 46, color: 'var(--c5)' }, r: { x: 775, gap: 51, h: 44, color: 'var(--c0)' } };
+    const W = 215;
+    const NODES = [
+      ['c', 'py', 'Python per kernel call', '≈ 70 µs, however small the call', 'Every call of the force kernel runs Python code before NumPy starts: about 70 µs, however few pairs the call holds (seen in the ring at N = 50).'],
+      ['c', 'n2', 'N² pairs, N positions', 'work grows faster than data', 'Direct summation: every step computes N² pairs but exchanges only N positions of 24 B.'],
+      ['c', 'net', 'A fast network', 'InfiniBand: 5.6 GB/s, 3 µs', 'Between the nodes, a message of a few KB takes microseconds (C0 ping-pong: 5.6 GB/s, 3.2 µs one way).'],
+      ['c', 'prog', 'MPI moves data in MPI calls', 'nothing happens during NumPy', 'Open MPI moves a large message only while a rank is inside an MPI call. On one node the CPU copies it itself; between nodes the network card does about 40 % on its own.'],
+      ['c', 'tmp', 'NumPy temporaries', '79 B per pair of a tile', 'NumPy builds arrays for every pair it computes at once: distances, squares, 1/r³, weights. Measured: 79 B per pair of a tile.'],
+      ['c', 'hw', 'Shared caches and bandwidth', '30 MB L3 for 12 cores', 'Xeon E5-2650 v4: 256 KB L2 per core; 30 MB L3 and one memory bandwidth per socket, shared by its 12 cores.'],
+      ['c', 'merge', 'Merging removes stars', 'unevenly over the ranks', 'Where stars merge decides which rank loses work; in Rasmus\' test the merges sit in one rank\'s block.'],
+      ['m', 'fixed', 'Fixed costs per step', 'large at small N', 'Costs per step that do not shrink with more ranks: kernel calls, collectives, waiting. At small N they are a large part of the step.'],
+      ['m', 'kernel', 'The kernel is the step', '84–98 % from N = 1 000 on', 'From N = 1 000 on, the force kernel takes 84–98 % of a step (chapter 4); communication, integration and the rest are a sliver.'],
+      ['m', 'tiles', 'Tiles: calls against memory', '2¹⁸ pairs = 20 MB per tile', '--tile-rows 0 computes about 2¹⁸ pairs at once: far fewer Python calls than one star per call, far less memory than the whole block, but about 20 MB per tile.'],
+      ['m', 'cont', 'A full node slows the kernel', 'tiled 74 %, untiled 97 %', 'With every core busy, the 20 MB tiles compete for the shared cache and memory bandwidth: at N = 5 000 the tiled v1 keeps 74 % of its one-rank speed per pair on 24 ranks, the untiled one 97 %. A hypothesis, tested in cache/.'],
+      ['m', 'time', 'Time runs out first', 'N² time, N memory', 'A step costs N²/P pairs of work per rank, while memory grows with N only. The time budget therefore sets N long before memory does.'],
+      ['m', 'wait', 'Waiting for others', 'the slowest rank, the neighbour', 'At every collective all ranks wait for the slowest one; in the ring every rank waits for its neighbour at every hop.'],
+      ['r', 'amdahl', 'Amdahl', '97 % at N = 5 000, 38 % at N = 50', 'Strong scaling of v1 on one node: large N scales almost perfectly, small N does not (serial fraction 5 % at N = 50).', '#s-amdahl'],
+      ['r', 'ring', 'Ring loses at small N', '×14–24 at N = 50', 'The ring calls the kernel P times per step and waits P − 1 times for its neighbour.', '#s-ringcost'],
+      ['r', 'overlap', 'Overlap does not help', 'at most 0.57 % to gain', 'Nothing moves in the background on one node, the transfers are tiny next to the kernel, and the extra calls cost 8–12 µs per hop.', '#s-ov'],
+      ['r', 'net', 'The network is not the limit', 'Allgatherv 0.12 % (N = 20 000)', 'Even across two nodes the Allgatherv of v1 is 0.12 % of a step at N = 20 000.', '#s-schemes3'],
+      ['r', 'dt', 'Datatypes: no gain', 'the positions are contiguous', 'A derived type for (x, y, z) has no buffer to save, and the exchange it would speed up is a sliver of the step.', '#s-dt'],
+      ['r', 'pieces', 'Schemes differ by their pieces', 'ring wins where pieces fit the cache', 'At large N the schemes differ through the kernel: the ring beats v1 where its pieces fit a core\'s cache share (N = 1 000 with 12–16 ranks, N = 5 000 with 48).', '#s-tilemix'],
+      ['r', 'isoeff', 'How many stars fit', '≈ 1 700 in 300 s at P = 24', '10 000 time steps in 300 s allow about 1 700 stars on one node of 24 ranks.', '#s-isoeff'],
+      ['r', 'memory', 'Memory is not the limit', '2.2 M stars per GB (rank 0)', 'With tiles, rank 0 fills 1 GB only at 2.2 million stars; one step in 30 min allows 607 000.', '#s-mem3'],
+      ['r', 'merge', 'Hand out again after merges', '5.7 % faster', 'Handing the surviving stars out evenly again is 5.7 % faster than keeping them, and free, since every rank holds the full state.', '#s-merge']
+    ].map(([col, id, t, s, d, slide]) => ({ col, id: `${col}_${id}`, t, s, d, slide }));
+    const counts = { c: 0, m: 0, r: 0 };
+    NODES.forEach((n) => { const c = COL[n.col]; n.x = c.x; n.y = 12 + counts[n.col]++ * c.gap; n.h = c.h; });
+    const at = (id) => NODES.find((n) => n.id === id);
+    const EDGES = [
+      ['c_py', 'm_fixed', 'a fixed cost per call'], ['c_py', 'm_tiles', 'fewer, bigger calls'],
+      ['c_n2', 'm_kernel', 'N² work, N data'], ['c_n2', 'm_time', 'time outgrows memory'],
+      ['c_net', 'r_net', 'µs per transfer'], ['c_prog', 'r_overlap', 'idle during NumPy'],
+      ['c_tmp', 'm_tiles', '79 B per pair'], ['c_hw', 'm_cont', '12 cores, one bandwidth'], ['c_merge', 'm_wait', 'uneven work'],
+      ['m_fixed', 'r_amdahl', '5 % serial at N = 50'], ['m_fixed', 'r_ring', 'P calls per step'], ['m_fixed', 'r_overlap', '8–12 µs per extra hop'],
+      ['m_kernel', 'r_amdahl', 'tiny serial part'], ['m_kernel', 'r_net', 'a sliver of the step'],
+      ['m_kernel', 'r_overlap', 'at most 0.57 % to hide'], ['m_kernel', 'r_dt', 'nothing to save'],
+      ['m_tiles', 'm_cont', '20 MB: more than the cache'], ['m_tiles', 'r_memory', 'caps it at 20 MB'],
+      ['m_cont', 'r_pieces', 'pieces fit the cache'],
+      ['m_time', 'r_isoeff', '10 000 steps in 300 s'], ['m_time', 'r_memory', 'memory allows millions'],
+      ['m_wait', 'r_merge', 'even the work out again'], ['m_wait', 'r_ring', 'P − 1 waits per step']
+    ].map(([a, b, label]) => ({ a, b, label }));
+    const link = (href, text) => `<a href="${href}">${text}</a>`;
+    const keep = (x) => x.replace(/(\d) (\d{3})/g, '$1&nbsp;$2').replace(/(\d) (%|µs|ms|MB|GB|KB|B|s)(?=[\s,.;:)]|$)/g, '$1&nbsp;$2').replace(/([NP]) = /g, '$1&nbsp;=&nbsp;');
+    const STORIES = [
+      { key: 'all', name: 'All', edges: [] },
+      { key: 'net', name: 'The network', title: 'Why the network does not matter', edges: ['c_n2>m_kernel', 'm_kernel>r_net', 'c_net>r_net', 'm_kernel>r_overlap', 'c_prog>r_overlap', 'm_kernel>r_dt'],
+        steps: ['A step computes N² pairs but exchanges only N positions of 24 B.',
+          `From N = 1 000 on, the force kernel takes 84–98 % of a step (${link('#s-schemes3', 'chapter 4')}).`,
+          `The Allgatherv is 0.12 % of a step at N = 20 000 on two nodes; InfiniBand moves a block in microseconds (${link('#s-schemes3', 'chapter 4')}).`,
+          `A perfect overlap could therefore save at most 0.57 %, and MPI does not move data while NumPy runs anyway (${link('#s-timeline', 'chapter 5')}).`,
+          `A derived datatype for (x, y, z) has nothing to save (${link('#s-dt', 'chapter 8')}).`] },
+      { key: 'small', name: 'Small N', title: 'Why small N does not scale', edges: ['c_py>m_fixed', 'm_fixed>r_amdahl', 'm_fixed>r_ring', 'm_fixed>r_overlap', 'm_wait>r_ring'],
+        steps: ['Every kernel call costs about 70 µs of Python, however few pairs it holds.',
+          `At N = 50 a step of v1 takes 0.19 ms on 24 ranks, so fixed costs weigh: serial fraction 5 %, efficiency 38 % (${link('#s-amdahl2', 'chapter 2')}).`,
+          `The ring calls the kernel P times and waits P − 1 times per step: ×14 to ×24 slower than v1 at N = 50 (${link('#s-ringcost', 'chapter 4')}).`,
+          `Overlap adds Irecv, Isend and Waitall to every hop: 8–12 µs lost per hop (${link('#s-matter', 'chapter 5')}).`] },
+      { key: 'time', name: 'Time, not memory', title: 'Why time runs out before memory', edges: ['c_n2>m_time', 'm_time>r_isoeff', 'm_time>r_memory', 'c_tmp>m_tiles', 'm_tiles>r_memory'],
+        steps: ['The work per step grows as N², the memory as N.',
+          `10 000 steps in 300 s allow about 1 700 stars on 24 ranks (${link('#s-isoeff', 'chapter 3')}).`,
+          `Memory would allow 2.2 million stars per GB on rank 0, because the tiles cap the kernel's temporaries at 20 MB; the whole block would need 1.3 GB at N = 20 000 (${link('#s-tiles', 'chapter 6')}).`,
+          `So the memory that the ring and 2D save buys nothing at our sizes, and v1 stays (${link('#s-end', 'conclusion')}).`] },
+      { key: 'tiles', name: 'Tiles and the cache', title: 'Why the schemes differ at large N', edges: ['c_py>m_tiles', 'c_tmp>m_tiles', 'm_tiles>m_cont', 'c_hw>m_cont', 'm_cont>r_pieces'],
+        steps: [`Tiles trade Python calls for memory: 2<sup>18</sup> pairs of 79 B, about 20 MB per tile (${link('#s-tiles', 'chapter 6')}).`,
+          'That is more than a core\'s share of the cache (2.5 MB of a 30 MB L3), so the temporaries stream through RAM, whose bandwidth the 12 cores of a socket share.',
+          'Alone, the tiled kernel is 30 % faster than the untiled one; on 24 ranks it keeps 74 % of its speed per pair, the untiled one 97 %.',
+          `The schemes hand the kernel pieces of different size: where the ring's pieces fit the cache it beats v1 (${link('#s-tilemix', 'chapter 4')}).`,
+          'Not proven yet: cache/ measures tile size, one socket against two, and N = 100 000.'] },
+      { key: 'bal', name: 'Load balance', title: 'Why the slowest rank matters', edges: ['c_merge>m_wait', 'm_wait>r_merge', 'm_wait>r_ring'],
+        steps: ['Merging removes stars, here concentrated in one rank\'s block.',
+          'The ranks with the most stars set the pace of every step; the others wait.',
+          `Handing the survivors out evenly again is 5.7 % faster, and free (${link('#s-merge', 'chapter 7')}).`,
+          `The same coupling hurts the ring: every rank waits for its neighbour P − 1 times per step (${link('#s-ringcost', 'chapter 4')}).`] },
+      { key: 'numba', name: 'What if: Numba', title: 'What a compiled kernel would change (not measured)', what: true,
+        edges: ['c_py>m_fixed', 'c_py>m_tiles', 'c_tmp>m_tiles', 'm_tiles>m_cont', 'm_tiles>r_memory', 'm_fixed>r_amdahl', 'm_fixed>r_ring', 'm_cont>r_pieces', 'm_kernel>r_net'],
+        steps: ['A compiled kernel (Numba) would remove the Python cost per call and the temporaries: two of the causes on the left.',
+          'Small N and the ring would lose most of their fixed costs; tiles, and their trouble with the cache, would no longer be needed; memory per rank would shrink to the catalogue.',
+          'The kernel would also get faster, so communication and the serial part would weigh more: the efficiency would drop, and the network could start to matter at small N (Amdahl).',
+          `Not measured: the one large lever on absolute speed (${link('#s-end', 'conclusion')}).`] }
+    ];
+    // drawing: edges, then their labels, then the boxes on top
+    const defs = svgEl('defs', {}, svg);
+    [['lk-a', 'var(--axis)'], ['lk-a-on', 'var(--fg)']].forEach(([id, c]) => {
+      const mk = svgEl('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, defs);
+      svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: c }, mk); });
+    const gE = svgEl('g', {}, svg), gL = svgEl('g', {}, svg), gN = svgEl('g', {}, svg);
+    const bez = (p0, p1, p2, p3, t) => (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
+    const fanOut = (id) => EDGES.filter((e) => e.a === id).length, fanIn = (id) => EDGES.filter((e) => e.b === id).length;
+    const MX0 = COL.m.x, MX1 = COL.m.x + W;                      // the middle column, which cause -> result edges pass
+    let lane = 0;
+    EDGES.forEach((e) => {
+      const A = at(e.a), B = at(e.b);
+      let d, lx, ly, anchor = 'middle';
+      const x1 = A.x + W, y1 = A.y + A.h / 2, x2 = B.x - 3, y2 = B.y + B.h / 2;
+      if (A.col === B.col) {                                  // inside the middle column: straight down
+        const x = A.x + W / 2; d = `M${x},${A.y + A.h} L${x},${B.y - 3}`; lx = x + 8; ly = (A.y + A.h + B.y) / 2 + 4; anchor = 'start';
+      } else if (A.col === 'c' && B.col === 'r') {            // through the gap between two middle boxes, not behind them
+        const yg = 146 + 12 * lane++;
+        d = `M${x1},${y1} C${x1 + 70},${y1} ${MX0 - 70},${yg} ${MX0},${yg} L${MX1},${yg} C${MX1 + 70},${yg} ${x2 - 70},${y2} ${x2},${y2}`;
+        lx = bez(x1, x1 + 70, MX0 - 70, MX0, 0.5); ly = bez(y1, y1, yg, yg, 0.5) + (y1 > yg ? 14 : -5);
+      } else {
+        const dx = (x2 - x1) / 2;
+        d = `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
+        // the label sits where the edges have spread apart (near the source if it fans out, else near the target),
+        // and is moved along the curve until it fits between the two boxes (11 px text, ~6.1 px per character)
+        const fo = fanOut(e.a), fi = fanIn(e.b), half = e.label.length * 3.05;
+        const want = bez(x1, x1 + dx, x2 - dx, x2, fo > fi ? 0.7 : fo < fi ? 0.3 : 0.5);
+        lx = Math.min(Math.max(want, x1 + 6 + half), x2 - 8 - half);
+        let t = 0.5, best = Infinity;
+        for (let s = 0; s <= 1; s += 0.01) { const q = Math.abs(bez(x1, x1 + dx, x2 - dx, x2, s) - lx); if (q < best) { best = q; t = s; } }
+        ly = bez(y1, y1, y2, y2, t) - 5;
+      }
+      e.el = svgEl('path', { d, class: 'lk-edge', 'marker-end': 'url(#lk-a)' }, gE);
+      e.lab = svgEl('text', { x: lx, y: ly, class: 'lk-label', 'text-anchor': anchor }, gL); e.lab.textContent = e.label;
+      const w = e.label.length * 6.1;
+      Object.assign(e, { ly, x0: anchor === 'start' ? lx : lx - w / 2, x1: anchor === 'start' ? lx + w : lx + w / 2 });
+    });
+    NODES.forEach((n) => {
+      const g = svgEl('g', { class: 'lk-node', tabindex: 0, role: 'button', 'aria-label': `${n.t}: ${n.s}` }, gN);
+      svgEl('rect', { class: 'lk-box', x: n.x, y: n.y, width: W, height: n.h, rx: 8, fill: 'var(--panel)', stroke: 'var(--line)', 'stroke-width': 1.25 }, g);
+      svgEl('rect', { x: n.x, y: n.y, width: 5, height: n.h, rx: 2.5, fill: COL[n.col].color }, g);
+      svgEl('text', { x: n.x + 14, y: n.y + 19, 'font-size': 13, 'font-weight': 600, fill: 'var(--fg)' }, g).textContent = n.t;
+      svgEl('text', { x: n.x + 14, y: n.y + 36, 'font-size': 11.5, fill: 'var(--muted)' }, g).textContent = n.s;
+      const pick = () => focusNode(n.id);
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); pick(); } });
+      n.el = g;
+    });
+    const show = (edgeOn, nodeOn, what) => {
+      const any = edgeOn.size > 0 || nodeOn.size > 0;
+      EDGES.forEach((e) => { const on = edgeOn.has(e); e.el.classList.toggle('on', on); e.el.classList.toggle('dim', any && !on); e.el.classList.toggle('what', on && !!what);
+        e.el.setAttribute('marker-end', on ? 'url(#lk-a-on)' : 'url(#lk-a)'); e.lab.classList.toggle('on', on); });
+      NODES.forEach((n) => { n.el.classList.toggle('dim', any && !nodeOn.has(n.id)); n.el.classList.toggle('on', false); });
+      // shown labels that would overlap: move the lower one down a line
+      const placed = [];
+      [...edgeOn].sort((p, q) => p.ly - q.ly).forEach((e) => {
+        let y = e.ly;
+        for (let moved = true; moved;) {
+          moved = false;
+          for (const o of placed) if (Math.abs(o.y - y) < 13 && e.x0 < o.x1 && o.x0 < e.x1) { y = o.y + 13; moved = true; }
+        }
+        e.lab.setAttribute('y', y); placed.push({ y, x0: e.x0, x1: e.x1 });
+      });
+    };
+    const press = (key) => segEl.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lk === key));
+    const story = (key) => {
+      const s = STORIES.find((x) => x.key === key); press(key);
+      if (key === 'all') {
+        show(new Set(), new Set());
+        panel.innerHTML = '<h3>Read from left to right</h3><p>Most arrows start at three causes: the N² work, which makes the kernel the whole step (so the network, overlap and datatypes cannot matter); the Python cost of every kernel call, which dominates small N and the ring; and the NumPy temporaries against the shared caches, which shape the tiles, the full node and the schemes at large N. Pick a chain above, or click a box.</p>';
+        return;
+      }
+      const es = new Set(s.edges.map((k) => EDGES.find((e) => `${e.a}>${e.b}` === k)).filter(Boolean));
+      const ns = new Set([...es].flatMap((e) => [e.a, e.b]));
+      show(es, ns, s.what);
+      panel.innerHTML = `<h3>${s.title}</h3><ol>${s.steps.map((x) => `<li>${keep(x)}</li>`).join('')}</ol>`;
+    };
+    const focusNode = (id) => {
+      press(null);
+      const n = at(id), ins = EDGES.filter((e) => e.b === id), outs = EDGES.filter((e) => e.a === id);
+      show(new Set([...ins, ...outs]), new Set([id, ...ins.map((e) => e.a), ...outs.map((e) => e.b)]));
+      n.el.classList.add('on');
+      const li = (es, key) => es.map((e) => `<li><b>${at(e[key]).t}</b>: ${e.label}</li>`).join('');
+      panel.innerHTML = `<h3>${n.t} <span class="lk-what">· ${keep(n.s)}</span></h3><p>${keep(n.d)}${n.slide ? ` ${link(n.slide, 'Go to the slide')}.` : ''}</p>`
+        + (ins.length ? `<p><b>Depends on</b></p><ul>${li(ins, 'a')}</ul>` : '')
+        + (outs.length ? `<p style="margin-top: 8px"><b>Explains</b></p><ul>${li(outs, 'b')}</ul>` : '');
+    };
+    segEl.innerHTML = STORIES.map((s) => `<button type="button" data-lk="${s.key}" aria-pressed="false">${s.name}</button>`).join('');
+    segEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => story(b.dataset.lk)));
+    story('all');
   })();
 })();
 </script>

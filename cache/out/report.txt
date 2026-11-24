@@ -1,0 +1,37 @@
+cache: 118 program runs, 6 bandwidth rows, 56 communication rows
+
+E0.1  n.a.  One core alone gets 3-15 GB/s (triad, STREAM counting).
+             no data
+E0.2  n.a.  One socket saturates: 12 cores on it give < 1.2x the bandwidth of 6.
+             no data
+E0.3  yes   12 ranks spread over both sockets get >= 1.5x the bandwidth of 12 on one.
+             close 30.6, spread 55.8 GB/s
+E1.1  n.a.  On one rank the tile size hardly matters: tiles of 2 rows to 2^18 pairs within 15 % (N = 5 000).
+             no data
+E1.2  yes   On a full node (P = 24) tiles that fit a core's L3 share are >= 13 % faster per pair than 2^18-pair tiles.
+             N=5000: 97 vs 124 ns
+E1.3  n.a.  With small tiles the kernel keeps >= 90 % of its one-rank speed per pair on 24 ranks (N = 5 000).
+             no data
+E1.4  yes   The whole block in one tile is the slowest per pair on a full node.
+             N=5000: block 134 vs 124 ns; N=20000: block 122 vs 103 ns
+E2.1  no    With 2^18-pair tiles, 12 ranks spread over both sockets are >= 10 % faster per pair than on one socket.
+             t0: close/spread 1.05, t0: close/spread 1.04
+E2.2  yes   With small tiles one socket and two are within 5 % of each other.
+             t2: 0.99, t4: 1.01, t1: 1.00
+E3.1  yes   At N = 100 000 communication stays < 2 % of a step (v1, 2D) and < 10 % (ring, mostly waiting).
+             2d P=24 t0: 1.2%; 2d P=48 t0: 1.4%; 2d P=48 t1: 1.6%; allgather P=24 t0: 0.0%; allgather P=48 t0: 0.0%; allgather P=48 t1: 0.0%; ring P=24 t0: 1.4%; ring P=24 t4: 1.9%; ring P=48 t0: 4.8%; ring P=48 t8: 2.7%
+E3.2  yes   v1's time per pair at N = 100 000 is within 15 % of N = 20 000 (P = 24): positions out of the cache cost little.
+             N=100 000: 103 ns, N=20 000: 103 ns
+E3.3  yes   At N = 100 000 the ring with cache-sized pieces is the fastest per pair.
+             P=24: ring small 94 vs best other 102 ns; P=48: ring small 98 vs best other 103 ns
+E4.1  no    On one node, messages >= 64 KB take >= 1.3x as long under the stream and big-tile loads.
+             stream x2.84, big x1.03
+E4.2  yes   On one node, the small-tile load slows messages >= 64 KB by at most 15 %.
+             small x1.02
+E4.3  yes   Across two nodes (RDMA) the stream load slows large messages less than on one node.
+             inter x1.25, intra x2.84
+E4.4  no    Messages <= 1 KB stay within 1.2x of idle under every load (latency, not bandwidth).
+             worst x1.50
+
+tables: out/k0_bandwidth.csv, out/k1_tiles.csv, out/k3_bign.csv, out/k4_comm.csv
+plots:  out/plots/k0_bandwidth.png, out/plots/k1_staircase.png, out/plots/k3_bign.png, out/plots/k4_comm.png

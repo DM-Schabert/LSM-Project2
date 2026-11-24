@@ -1,0 +1,7 @@
+placement,n_ranks,test,node_GBps_median,rank_GBps_median
+close,12,copy,60.077,5.029
+close,12,triad,30.598,2.561
+full,24,copy,119.421,5.005
+full,24,triad,61.119,2.561
+spread,12,copy,121.884,10.224
+spread,12,triad,55.842,4.69
