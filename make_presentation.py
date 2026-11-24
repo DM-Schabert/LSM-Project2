@@ -5,7 +5,7 @@ From the repository root, after the pages themselves are up to date (each folder
     python3 make_presentation.py
 
 It copies the data blocks of amdahl/, isoeff/, communication/, communication/overlap/ and memory/results.html,
-data_types/results/summary.csv, the CSVs of experiments/results/ and cache/out/ (run cache/analyze.py first) into the one data block of presentation.html (<script id="deck-data">), keeping only
+data_types/results/summary.csv, the CSVs of experiments/results/ and cache/out/ and bench5/out/steps5.csv (run cache/analyze.py and bench5/analyze.py first) into the one data block of presentation.html (<script id="deck-data">), keeping only
 what the presentation draws. Nothing is measured or fitted again here; the page computes the rest, the same way the
 results pages do.
 """
@@ -70,6 +70,13 @@ def cache() -> dict:
     return {"k0": read("k0_bandwidth.csv"), "k1": read("k1_tiles.csv"), "k3": read("k3_bign.csv"), "k4": read("k4_comm.csv")}
 
 
+def bench5() -> dict:
+    """bench5/analyze.py's table: time steps in 5 minutes for every configuration and group of stars (empty until run)."""
+    path = ROOT / "bench5" / "out" / "steps5.csv"
+    keep = ["N", "label", "ranks", "since", "what", "order", "step_s", "steps_5min", "steps_5min_job", "x_serial", "steps_in_job", "repeats"]
+    return {"rows": [{k: r.get(k) for k in keep} for r in csv_rows(path.read_text())] if path.exists() else []}
+
+
 def serial_steps() -> dict:
     """Median ms per step of the serial program for the N the presentation compares (all serial rows of results.csv)."""
     path = ROOT / "results.csv"
@@ -96,7 +103,7 @@ def main() -> None:
             "comm": {"meta": comm.get("meta", {}), "runs": comm.get("runs", [])},
             "overlap": block(ROOT / "communication" / "overlap" / "results.html", "overlap-data"),
             "memory": block(ROOT / "memory" / "results.html", "memory-data"),
-            "datatypes": datatypes(), "merge": merge(), "cache": cache(), "serial": serial_steps()}
+            "datatypes": datatypes(), "merge": merge(), "cache": cache(), "serial": serial_steps(), "bench5": bench5()}
     text = json.dumps(data, separators=(",", ":"), allow_nan=False).replace("</", "<\\/")
     page = args.page.read_text()
     page, found = DECK.subn(lambda m: m.group(1) + text + m.group(2), page)
@@ -107,7 +114,7 @@ def main() -> None:
           f"isoeff {len(data['isoeff'].get('capacity', []))}, communication {len(data['comm']['runs'])} runs, "
           f"overlap {len(data['overlap'].get('points', []))} points, memory {len(data['memory'].get('launches', []))} launches, "
           f"datatypes {len(data['datatypes'])} rows, merge {len(data['merge']['steps'])} steps, "
-          f"cache {len(data['cache']['k1'])} tile settings, serial {data['serial']}")
+          f"cache {len(data['cache']['k1'])} tile settings, serial {data['serial']}, bench5 {len(data['bench5']['rows'])} settings")
 
 
 if __name__ == "__main__":

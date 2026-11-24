@@ -15,6 +15,7 @@ python3 bench5/analyze.py          # table, plot, report; writes bench5/out/winn
 # phase 2, on the cluster with winners.txt in bench5/out: the winner of every group runs 5 real minutes (~25 min)
 bsub < bench5/bench5_final.sh
 python3 bench5/analyze.py          # now with the real 5-minute runs
+python3 make_presentation.py       # the progress slide of presentation.html then shows the same plot
 
 # check that the scripts run (laptop, tiny sizes, never a measurement)
 LOCAL=1 bash bench5/bench5_measure.sh && python3 bench5/analyze.py --local && LOCAL=1 bash bench5/bench5_final.sh
@@ -66,6 +67,6 @@ Tile rows for the "small" rules are computed per N and P in `common.sh` (at leas
 | `common.sh` | sourced by the jobs: modules, placement, tile rules, one run of a configuration, copying the job's rows |
 | `bench5_measure.sh` | phase 1, one group of stars per job (set `N=` with `sed`, as above) |
 | `bench5_final.sh` | phase 2, the winners from `out/winners.txt` for 5 minutes each (`ONLY="5000 20000"` for a subset) |
-| `analyze.py` | `out/steps5.csv`, `out/winners.txt`, `out/report.txt`, `out/plots/steps5.png` |
+| `analyze.py` | `out/steps5.csv`, `out/winners.txt`, `out/report.txt`, `out/plots/steps5.png` (one panel per group) and **`out/plots/progress.png`: all tests on one plot**, every configuration in the order we built it, one line per group of stars, the winners circled and the real 5-minute runs as stars |
 
 Every run also writes its usual row to `results.csv`, named `bench5_<config>_N<N>_r<repeat>_j<job>` (phase 1) or `bench5final_<config>_N<N>_j<job>` (phase 2); each job copies its rows to `out/runs_<job>.csv`. Files of `LOCAL=1` runs carry `local` in their name and are ignored by git.

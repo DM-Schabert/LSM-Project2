@@ -150,6 +150,49 @@ def plot(t: pd.DataFrame, where: Path) -> str:
     return "steps5.png"
 
 
+def plot_progress(t: pd.DataFrame, c: pd.DataFrame, where: Path) -> str:
+    """All tests on one plot: every configuration in the order the project built it, one line per group of stars."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    cfg = c.sort_values("order").reset_index(drop=True)
+    x_of = {lab: i for i, lab in enumerate(cfg.label)}
+    ns = sorted(t.N.unique())
+    blues = ["#86b6ef", "#4a8fe0", "#1c5cab", "#0c3366"][-len(ns):] if len(ns) <= 4 else plt.cm.Blues(np.linspace(0.4, 1, len(ns)))
+    fig, ax = plt.subplots(figsize=(13.5, 6))
+    for i, lab in enumerate(cfg.label):                                   # two-node configurations on a grey band
+        if int(cfg.loc[i, "ranks"]) > 24:
+            ax.axvspan(i - 0.5, i + 0.5, color="#eceef2", zorder=0)
+    for n, col in zip(ns, blues):
+        s = t[t.N == n].assign(x=lambda d: d.label.map(x_of)).sort_values("x")
+        ax.plot(s.x, s.steps_5min, "-o", color=col, lw=2, ms=5, zorder=3, label=f"N = {n:,}".replace(",", " "))
+        w = s.loc[s.steps_5min.idxmax()]
+        ax.plot(w.x, w.steps_5min, "o", ms=11, mfc="none", mec=col, mew=2, zorder=4)
+        if "steps_in_job" in s and pd.notna(w.get("steps_in_job", np.nan)):
+            ax.plot(w.x, w.steps_in_job, "*", ms=14, color=col, mec="#15181e", mew=0.6, zorder=5)
+        ser = s[s.label == "serial"]
+        gain = f"  ×{w.steps_5min / float(ser.steps_5min.iloc[0]):.0f} vs serial" if not ser.empty else ""
+        ax.annotate(f"{w.label}: {w.steps_5min:,.0f}{gain}".replace(",", " "), (w.x, w.steps_5min), xytext=(6, 8),
+                    textcoords="offset points", fontsize=8, color=col, zorder=6)
+    ax.set_yscale("log")
+    ax.set_xticks(range(len(cfg)), [f"{r.label}\n{r.since}" for r in cfg.itertuples()], rotation=40, ha="right", fontsize=8)
+    ax.set_xlim(-0.6, len(cfg) - 0.4)
+    ax.set_ylabel("time steps in 5 minutes (log), higher is better")
+    ax.set_title("Every configuration we built, in order: how many time steps of each group of stars fit into 5 minutes", fontsize=10, loc="left")
+    ax.grid(axis="y", alpha=.3, which="both")
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    extra = [Line2D([], [], marker="o", ls="", ms=10, mfc="none", mec="#5d6573", mew=2, label="best of the group"),
+             Line2D([], [], marker="*", ls="", ms=12, color="#5d6573", label="real 5-minute run (phase 2)"),
+             Patch(color="#eceef2", label="two nodes, 48 ranks")]
+    ax.legend(handles=ax.get_legend_handles_labels()[0] + extra, frameon=False, fontsize=8, loc="upper left", bbox_to_anchor=(1.01, 1))
+    fig.tight_layout()
+    where.mkdir(parents=True, exist_ok=True)
+    fig.savefig(where / "progress.png", dpi=150)
+    plt.close(fig)
+    return "progress.png"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--local", action="store_true", help="analyse the LOCAL=1 files only")
@@ -165,6 +208,7 @@ def main() -> None:
     (OUT / f"winners{tag}.txt").write_text("# N and the configuration with the most time steps in 5 minutes (phase 1)\n"
                                          + "".join(f"{r.N} {r.label}\n" for r in win.itertuples()))
     made = plot(t, OUT / f"plots{tag}")
+    made_all = plot_progress(t, configs(), OUT / f"plots{tag}")
     lines = [f"bench5: {len(g)} settings from phase 1, {len(fin)} runs of phase 2" + (" (LOCAL files)" if args.local else ""), ""]
     for n in sorted(t.N.unique()):
         s = t[t.N == n].sort_values("order")
@@ -176,7 +220,7 @@ def main() -> None:
                          f"  ({r.steps_5min_job:.0f} in a 5-min job){'   <- best' if r.rank_in_N == 1 else ''}{fin_txt}")
         lines.append("")
     lines += [f"{eid}  {v:4s}  {text}\n             {detail}" for eid, text, v, detail in verdicts(t)]
-    lines += ["", f"winners: out/winners{tag}.txt   table: out/steps5{tag}.csv   plot: out/plots{tag}/{made}"]
+    lines += ["", f"winners: out/winners{tag}.txt   table: out/steps5{tag}.csv   plots: out/plots{tag}/{made}, out/plots{tag}/{made_all} (all tests on one plot)"]
     (OUT / f"report{tag}.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

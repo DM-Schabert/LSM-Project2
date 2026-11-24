@@ -78,6 +78,26 @@ Tile sizes in MB, at 79 B per pair (one tile = rows × columns pairs):
 
 If E1.2, E1.3 and E2 hold, the 74 % efficiency of the tiled kernel is a memory-bandwidth effect, and the fix is a tile size of about 1 MB instead of 20 MB (a change of `TILE_TARGET_ELEMENTS`, to be agreed with the team). If E1.1 already fails, something else depends on the tile shape (the rows of 1 000 stars were slower per pair than rows of 5 000 even on one rank in C3); that is the first thing to look at then.
 
+## K5: where the bytes go (hardware counters)
+
+**Question.** K1-K4 infer from times that the 20 MB tiles stream through RAM and small tiles stay in the cache. K5 counts it: how many bytes per pair the kernel really takes from RAM (and from L3), for each tile size and shape, on 1, 12 and 24 ranks.
+
+**Model (written before measuring).** The NumPy steps of one tile read about 104 B and write about 80 B per pair (`dis`, `dis**2`, the sum, `+ eps²`, `**-1.5`, `* masses`, `einsum`; the 80 B written are the 79 B of temporaries measured in `memory/`). If all of it went to RAM that would be ~184 B per pair, ~264 B if every write first reads its cache line (write-allocate). At 124 ns per pair that is 1.5-2.1 GB/s per rank, against the 2.6 GB/s a rank gets on a full node (K0).
+
+```bash
+bsub < cache/counters.sh                 # one node, ~15 min; the log says which counters this node allows
+python3 cache/counters_analyze.py        # out/k5_counters.csv, out/report_k5.txt, out/plots/k5_bytes.png
+```
+
+`counters.sh` runs `kernel_bench.py` (the kernel alone, all ranks at once, for 12 s) under the best counters it finds: `likwid-perfctr` (groups MEM and L3), `perf stat -a` on the memory controllers, or `perf stat` per rank (last-level cache misses × 64 B, a lower bound). A start-up-only run is subtracted. Without counters it still measures the times of the shape sweep.
+
+| # | Expectation | Rule for "yes" |
+|---|---|---|
+| E5.1 | The automatic 20 MB tiles on 24 ranks stream through RAM. | ≥ 100 B per pair from RAM (5 000 columns, 52 rows) |
+| E5.2 | 2-row tiles (0.8 MB) stay in the cache. | ≤ 20 B per pair from RAM on 24 ranks |
+| E5.3 | Alone, a core has the whole 30 MB L3, so even the 20 MB tile stays in it. | ≤ 30 B per pair from RAM on 1 rank |
+| E5.4 | The shape effect (52 × 5 000 slower than 13 × 20 000, same size) is not RAM traffic. | At 20 MB per tile on 24 ranks: RAM bytes per pair within 20 % between shapes, time per pair not |
+
 ## Files
 
 | File | What it does |
@@ -90,6 +110,10 @@ If E1.2, E1.3 and E2 hold, the 74 % efficiency of the tiled kernel is a memory-b
 | `bandwidth.py` | K0: NumPy copy and triad on every rank at once; node and per-rank GB/s, socket of every rank |
 | `comm_load.py` | K4: ping-pong between rank 0 and a partner while the other ranks run a load |
 | `analyze.py` | tables, plots, verdicts; reads `out/`, writes `out/k*.csv`, `out/report.txt`, `out/plots/` |
+| `counters.sh` | K5 job: finds the counters the node allows and runs the kernel under them |
+| `kernel_bench.py` | K5: the kernel alone on every rank at once, for a fixed time; one row per run |
+| `perf_rank.sh` | K5: `perf stat` around one rank, when only per-process counters are allowed |
+| `counters_analyze.py` | K5: bytes per pair from RAM and L3, against the model; `out/k5_counters.csv`, `out/report_k5.txt`, `out/plots/k5_bytes.png` |
 
 ## Output (`cache/out/`)
 
