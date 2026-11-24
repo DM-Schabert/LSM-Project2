@@ -171,6 +171,16 @@
   .cg-card h4 { margin: 0 0 4px; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   .cg-card ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; line-height: 1.45; }
 
+  /* the schemes and the kernel's tiles */
+  .tm-rows { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .tm-row h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 5px; }
+  .tm-row svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .tm-facts { margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tm-facts b { color: var(--fg); font-weight: 600; }
+  .sw--call { width: 0; height: 14px; border-left: 2.5px solid var(--fg); border-radius: 0; }
+  .sw--lvl { position: relative; border: 1.5px solid var(--fg); box-sizing: border-box; background: transparent; overflow: hidden; }
+  .sw--lvl::before { content: ""; position: absolute; inset: 0; background: var(--fg); opacity: var(--o); }
+
   /* charts */
   .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; }
   @media (max-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr); } }
@@ -417,6 +427,36 @@
     <div class="tl"><div class="tl-rows" id="rc-rows"></div><div class="tl-axis" id="rc-axis"></div></div>
     <div class="tiles" id="rc-tiles"></div>
     <p class="note">Means per step from C2 (the blocking ring against v1, both with <code>--tile-rows 0</code>, P = 24), drawn as equal kernel calls and equal passes, with the waiting at the end. C0's expectation: v1 plus the difference between the two exchanges timed alone, without the kernel (C0, jobs 30045015/16).</p>
+  </div>
+</section>
+
+<!-- ================================================================ 4 schemes: the kernel's pieces -->
+<section class="slide" id="s-tilemix">
+  <div class="inner">
+    <p class="eyebrow">4 · Communication schemes · the kernel's pieces</p>
+    <h2>Each scheme cuts the same work into different pieces for the kernel</h2>
+    <p class="p">In all three schemes a rank computes the same N²/P pairs per step. The scheme decides how they reach the force kernel: how often it is called (every call costs a fixed amount of Python, about 70&nbsp;µs) and how large one tile is (79&nbsp;B of temporaries per pair, against the caches of a core).</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Number of stars" id="tm-n"></div>
+      <label for="tm-p">Ranks P</label><select id="tm-p"></select>
+    </div>
+    <div class="two">
+      <div class="chart chart--tall" id="ch-tm"></div>
+      <div class="tm-rows" id="tm-rows"></div>
+    </div>
+    <div class="legend">
+      <span class="key"><span class="sw sw--lvl" style="--o: 1"></span>a tile fits in L2 (256 KB per core)</span>
+      <span class="key"><span class="sw sw--lvl" style="--o: .55"></span>fits in a core's share of L3 (2.5 MB)</span>
+      <span class="key"><span class="sw sw--lvl" style="--o: .18"></span>larger: streams through RAM</span>
+      <span class="key"><span class="sw sw--call"></span>a new kernel call</span>
+    </div>
+    <ul class="facts">
+      <li><b>Calls:</b> the ring calls the kernel P times per step. At N = 50 a call holds a few pairs, and its fixed cost makes the ring 14 to 24 times slower than v1.</li>
+      <li><b>Tile size:</b> where the ring's pieces fit into a core's share of the cache and v1's tiles of 20 MB do not, the ring is faster: N = 1 000 with 12 and 16 ranks (110–120 ns per pair against 145–150), N = 5 000 with 48 (108 against 120).</li>
+      <li><b>Full node:</b> in every scheme a pair gets slower the more cores work, v1 at N = 5 000 from 90 ns on one rank to 116 ns on 24: the cores share the memory bandwidth.</li>
+      <li><b>Not all of it fits:</b> with tiles of the same size the ring is still slower at N = 5 000 and 8 ranks (126 against 105 ns), and rows of 1 000 stars cost more per pair than rows of 5 000 even on one rank (104 against 90 ns). A run of v1 with smaller tiles would separate the three effects.</li>
+    </ul>
+    <p class="note">Time per pair: the slowest rank's force time, corrected for node speed, divided by its pairs (C3, medians of 3 repeats). Calls and tiles from the code (<code>--tile-rows 0</code>: about 2<sup>18</sup> pairs per tile); the memory per tile uses 79 B per pair from the memory chapter, so which cache a tile fits is an estimate. The blocking ring hands the kernel the same pieces as the overlap ring and is left out.</p>
   </div>
 </section>
 
@@ -1274,6 +1314,78 @@
     render(); btn.textContent = 'Replay';
     let started = false;
     whenVisible(document.getElementById('s-ringcost'), () => { if (!REDUCED && !started) { started = true; now = 0; play(); } }, () => playing && pause());
+  })();
+
+  // ---------- how each scheme cuts the work into calls and tiles (C3)
+  (() => {
+    const host = document.getElementById('ch-tm'), rowsEl = document.getElementById('tm-rows'), nSeg = document.getElementById('tm-n'), pSel = document.getElementById('tm-p');
+    const C3 = RUNS.filter((r) => r.campaign === 'C3');
+    if (!host || !C3.length) return;
+    const TM = [SCH[0], SCH[1], SCH[3]], TILE_PAIRS = 1 << 18, BPP = 79, L2 = 256e3, L3 = 2.5e6;
+    const Ns = [...new Set(C3.map((r) => r.N))].sort((a, b) => a - b);
+    let N = Ns.includes(1000) ? 1000 : Ns[0], P = 12;
+    // the piece one rank hands to the kernel: rows (own stars), columns (stars the force comes from), calls per step, rows per tile
+    const shape = (key, r) => {
+      const own = Math.ceil(N / r.P);
+      let ni = own, nj = N, calls = 1;
+      if (key.startsWith('v2')) { nj = own; calls = r.P; }
+      if (key.startsWith('v3')) { const m = /(\d+)x(\d+)/.exec(r.decomposition || ''); const pr = m ? +m[1] : r.P, pc = m ? +m[2] : 1; ni = Math.ceil(N / pr); nj = Math.ceil(N / pc); }
+      const K = Math.min(ni, Math.max(1, Math.floor(TILE_PAIRS / nj))), perCall = Math.ceil(ni / K);
+      const pairs = key.startsWith('v2') ? ni * N : ni * nj, bytes = K * nj * BPP;   // the slowest rank's pairs; the ring's blocks add up to N
+      return { ni, nj, calls, K, perCall, tiles: calls * perCall, pairs, work: calls * ni * nj, bytes, ns: r.forces_max_us / (r.node_factor || 1) * 1000 / pairs,
+        level: bytes <= L2 ? 'fits in L2' : bytes <= L3 ? 'fits in a core\'s L3 share' : 'streams through RAM', op: bytes <= L2 ? 1 : bytes <= L3 ? 0.55 : 0.18 };
+    };
+    const run = (key, p) => C3.find((r) => r.scheme === key && r.N === N && r.P === p);
+    const mb = (b) => (b >= 1e6 ? `${nf(b / 1e6, 1)} MB` : `${nf(b / 1e3)} KB`);
+    nSeg.innerHTML = Ns.map((n) => `<button type="button" data-tm-n="${n}" aria-pressed="${n === N}">N = ${nf(n)}</button>`).join('');
+    const bar = (s, color, label) => {
+      const W = 600, H = 26, svg = svgEl('svg', { viewBox: `0 -4 ${W} ${H + 8}`, role: 'img', 'aria-label': label });
+      svgEl('rect', { x: 0, y: 0, width: W, height: H, rx: 4, fill: 'var(--panel)' }, svg);
+      const total = s.work, many = s.tiles > 160;
+      if (many) svgEl('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: color, 'fill-opacity': s.op, stroke: color }, svg);
+      let x = 0;
+      for (let c = 0; c < s.calls; c++) {
+        for (let t = 0; t < s.perCall; t++) {
+          const w = W * Math.min(s.K, s.ni - t * s.K) * s.nj / total;
+          if (!many) svgEl('rect', { x: x + (w > 4 ? 1 : 0), y: 0.5, width: Math.max(w - (w > 4 ? 2 : 0), 0.5), height: H - 1, rx: w > 8 ? 3 : 0, fill: color, 'fill-opacity': s.op, stroke: w > 4 ? color : 'none' }, svg);
+          x += w;
+        }
+        if (c > 0 && s.calls <= 160) { const cx = W * c / s.calls; svgEl('line', { x1: cx, x2: cx, y1: -4, y2: H + 4, stroke: 'var(--fg)', 'stroke-width': 2 }, svg); }
+      }
+      if (many) svgEl('text', { x: W / 2, y: H / 2 + 4.5, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: 'var(--fg)' }, svg).textContent = `${nf(s.tiles)} tiles, too many to draw`;
+      return svg;
+    };
+    const draw = () => {
+      const Ps = [...new Set(C3.filter((r) => r.N === N && r.scheme === 'v1-tile').map((r) => r.P))].sort((a, b) => a - b);
+      if (!Ps.includes(P)) P = Ps.reduce((a, b) => (Math.abs(b - P) < Math.abs(a - P) ? b : a), Ps[0]);
+      pSel.innerHTML = Ps.map((p) => `<option value="${p}"${p === P ? ' selected' : ''}>${p}</option>`).join('');
+      // left: time per pair against P, one line per scheme
+      const series = TM.map(([key, name, color]) => ({ name, color, end: name.replace(' (Allgather)', '').replace(', overlap', ''),
+        pts: Ps.map((p) => { const r = run(key, p); if (!r) return null; const s = shape(key, r);
+          return { x: p, y: s.ns, tip: `<b>${name}, N = ${nf(N)}, P = ${p}</b>${row('per pair', `${nf(s.ns)} ns`)}${row('kernel calls per step', nf(s.calls))}${row('one tile', `${nf(s.K)} × ${nf(s.nj)} pairs, ${mb(s.bytes)}`)}` }; }).filter(Boolean) }));
+      const ys = series.flatMap((s) => s.pts.map((p) => p.y)), lo = Math.min(...ys), hi = Math.max(...ys), log = hi / lo > 4;
+      const yT = log ? [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000].filter((v) => v >= lo / 1.6 && v <= hi * 1.6) : (() => { const top = Math.ceil(hi * 1.1 / 50) * 50, t = []; for (let v = 0; v <= top; v += 50) t.push(v); return t; })();
+      chart(host, { endRoom: 64, aria: `Kernel time per pair against the number of ranks at N = ${nf(N)}, for v1, the ring and 2D.`,
+        x: { log: true, min: Ps[0], max: Ps[Ps.length - 1], ticks: Ps.filter((p) => [1, 2, 4, 8, 12, 24, 48].includes(p)), fmt: (v) => nf(v), name: 'ranks', title: 'ranks P' },
+        y: { log, min: log ? yT[0] : 0, max: yT[yT.length - 1], ticks: yT, fmt: (v) => nf(v), name: 'ns per pair', title: 'kernel time per pair (ns), lower is faster' },
+        refs: [{ axis: 'x', v: P, label: `P = ${P}` }], series });
+      // right: how the same work reaches the kernel at the chosen P
+      rowsEl.innerHTML = `<p class="tm-facts">One time step of one rank at N = ${nf(N)}, P = ${P}: the same pairs in all three, cut into kernel calls and tiles.</p>`;
+      const base = run('v1-tile', P);
+      TM.forEach(([key, name, color]) => {
+        const r = run(key, P); if (!r) return;
+        const s = shape(key, r), el = document.createElement('div'); el.className = 'tm-row';
+        el.innerHTML = `<h3><span class="sw" style="background: ${color}"></span>${name}</h3>`;
+        el.appendChild(bar(s, color, `${name}: ${s.calls} kernel calls and ${s.tiles} tiles per step, ${mb(s.bytes)} per tile.`));
+        const p = document.createElement('p'); p.className = 'tm-facts';
+        p.innerHTML = `<b>${nf(s.calls)} call${s.calls > 1 ? 's' : ''}</b>, ${nf(s.tiles)} tile${s.tiles > 1 ? 's' : ''} of ${nf(s.K)} × ${nf(s.nj)} pairs = <b>${mb(s.bytes)}</b> (${s.level}) · measured <b>${nf(s.ns)} ns</b> per pair${base && key !== 'v1-tile' ? (() => { const q = r.step_corr_us / base.step_corr_us;
+          return q < 1 ? `; the step is <b>${nf((1 - q) * 100)} % faster</b> than v1` : q < 1.5 ? `; the step is ${nf((q - 1) * 100)} % slower than v1` : `; the step is ${nf(q, 1)}× as long as v1's`; })() : ''}`;
+        el.appendChild(p); rowsEl.appendChild(el);
+      });
+    };
+    seg(nSeg, 'data-tm-n', (v) => { N = +v; draw(); });
+    pSel.addEventListener('change', () => { P = +pSel.value; draw(); });
+    draw();
   })();
 
   // ================================================================ 5 overlap
