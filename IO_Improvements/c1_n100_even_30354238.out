@@ -1,0 +1,150 @@
+===== 24 ranks, merge check on
+MPI: 24 ranks = 1 cluster(s) × 24 ranks
+Mode: custom (time limit 60 s, at most 10.000 steps)
+Loaded 100 stars from gaia_subsets/gaia_clusters_C1_n100.csv; far field: monopole; kernel tile rows: auto
+  cluster 0: 100 stars, 116.9 M_sun, ranks 0-23, host(s) n-62-21-48
+Merging stars closer than 0.001 pc (decided per cluster)
+Stars: 100 at start, 100 at end (0 merged away); per cluster: 0: 100
+Final mean distance to centre of mass: 17.766 pc
+Total momentum at end: [ 0.  0. -0.] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Simulated 10.000 steps (97.78 Myr) in 2.93 s (0.29 ms/step, slowest rank)
+
+Performance (custom, completed, 10000 iterations)
+  total           3.035 s
+  load            0.041 s
+  simulation      2.930 s
+    forces        1.719 s
+    merge         0.000 s
+    integrate     0.094 s
+  plotting        0.000 s
+  output          0.001 s
+  5.758e+07 interactions/s · ~1.15 GFLOP/s · model bandwidth 1.84 GB/s · peak memory 202 MB
+  communication    0.570 s (slowest rank) · sync 0.612 s · load imbalance (forces max/mean) 1.120 · slowest force time per cluster 1.719 s · far field 0.000 s
+Added run 'clusters_custom_gaia_clusters_C1_n100_24ranks' to results.csv
+===== 24 ranks, merge check off
+MPI: 24 ranks = 1 cluster(s) × 24 ranks
+Mode: custom (time limit 60 s, at most 10.000 steps)
+Loaded 100 stars from gaia_subsets/gaia_clusters_C1_n100.csv; far field: monopole; kernel tile rows: auto
+  cluster 0: 100 stars, 116.9 M_sun, ranks 0-23, host(s) n-62-21-48
+Stars: 100 at start, 100 at end (0 merged away); per cluster: 0: 100
+Final mean distance to centre of mass: 17.766 pc
+Total momentum at end: [ 0.  0. -0.] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Simulated 10.000 steps (97.78 Myr) in 2.41 s (0.24 ms/step, slowest rank)
+
+Performance (custom, completed, 10000 iterations)
+  total           2.297 s
+  load            0.012 s
+  simulation      2.406 s
+    forces        1.380 s
+    merge         0.000 s
+    integrate     0.074 s
+  plotting        0.000 s
+  output          0.001 s
+  7.173e+07 interactions/s · ~1.43 GFLOP/s · model bandwidth 2.30 GB/s · peak memory 206 MB
+  communication    0.801 s (slowest rank) · sync 0.006 s · load imbalance (forces max/mean) 1.101 · slowest force time per cluster 1.380 s · far field 0.000 s
+Added run 'clusters_custom_gaia_clusters_C1_n100_24ranks' to results.csv
+===== 20 ranks, merge check on
+MPI: 20 ranks = 1 cluster(s) × 20 ranks
+Mode: custom (time limit 60 s, at most 10.000 steps)
+Loaded 100 stars from gaia_subsets/gaia_clusters_C1_n100.csv; far field: monopole; kernel tile rows: auto
+  cluster 0: 100 stars, 116.9 M_sun, ranks 0-19, host(s) n-62-21-48
+Merging stars closer than 0.001 pc (decided per cluster)
+Stars: 100 at start, 100 at end (0 merged away); per cluster: 0: 100
+Final mean distance to centre of mass: 17.766 pc
+Total momentum at end: [ 0.  0. -0.] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Simulated 10.000 steps (97.78 Myr) in 2.99 s (0.30 ms/step, slowest rank)
+
+Performance (custom, completed, 10000 iterations)
+  total           3.018 s
+  load            0.011 s
+  simulation      2.989 s
+    forces        1.813 s
+    merge         0.000 s
+    integrate     0.091 s
+  plotting        0.000 s
+  output          0.001 s
+  5.461e+07 interactions/s · ~1.09 GFLOP/s · model bandwidth 1.75 GB/s · peak memory 203 MB
+  communication    0.539 s (slowest rank) · sync 0.604 s · load imbalance (forces max/mean) 1.108 · slowest force time per cluster 1.813 s · far field 0.000 s
+Added run 'clusters_custom_gaia_clusters_C1_n100_20ranks' to results.csv
+===== 20 ranks, merge check off
+MPI: 20 ranks = 1 cluster(s) × 20 ranks
+Mode: custom (time limit 60 s, at most 10.000 steps)
+Loaded 100 stars from gaia_subsets/gaia_clusters_C1_n100.csv; far field: monopole; kernel tile rows: auto
+  cluster 0: 100 stars, 116.9 M_sun, ranks 0-19, host(s) n-62-21-48
+Stars: 100 at start, 100 at end (0 merged away); per cluster: 0: 100
+Final mean distance to centre of mass: 17.766 pc
+Total momentum at end: [ 0.  0. -0.] M_sun·km/s (starts at 0; the monopole far field does not conserve it exactly)
+Simulated 10.000 steps (97.78 Myr) in 2.42 s (0.24 ms/step, slowest rank)
+
+Performance (custom, completed, 10000 iterations)
+  total           2.357 s
+  load            0.011 s
+  simulation      2.417 s
+    forces        1.493 s
+    merge         0.000 s
+    integrate     0.080 s
+  plotting        0.000 s
+  output          0.001 s
+  6.632e+07 interactions/s · ~1.33 GFLOP/s · model bandwidth 2.12 GB/s · peak memory 203 MB
+  communication    0.782 s (slowest rank) · sync 0.009 s · load imbalance (forces max/mean) 1.111 · slowest force time per cluster 1.493 s · far field 0.000 s
+Added run 'clusters_custom_gaia_clusters_C1_n100_20ranks' to results.csv
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30354238: <c1_n100_even> in cluster <dcc> Done
+
+Job <c1_n100_even> was submitted from host <n-62-9-40> by user <s123142> in cluster <dcc> at Tue Nov 24 14:21:19 2026
+Job was executed on host(s) <24*n-62-21-48>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Tue Nov 24 14:21:20 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Tue Nov 24 14:21:20 2026
+Terminated at Tue Nov 24 14:21:42 2026
+Results reported at Tue Nov 24 14:21:42 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -J c1_n100_even
+#BSUB -q hpcintro
+#BSUB -n 24
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:10
+#BSUB -o c1_n100_even_%J.out
+#BSUB -e c1_n100_even_%J.err
+module load pandas/2.3.0-python-3.12.11
+module load matplotlib/3.10.3-numpy-2.3.1-python-3.12.11
+module load mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
+BASE="--data gaia_subsets/gaia_clusters_C1_n100.csv --steps 10000 --tile-rows 0 --time-limit 60 --stop-check-every 100"
+for P in 24 20; do
+  echo "===== $P ranks, merge check on";  mpirun -np $P python3 IO_Improvements/ClusterImplementation.py $BASE --merge-radius 0.001
+  echo "===== $P ranks, merge check off"; mpirun -np $P python3 IO_Improvements/ClusterImplementation.py $BASE --merge-radius 0
+done
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   367.33 sec.
+    Max Memory :                                 16 MB
+    Average Memory :                             16.00 MB
+    Total Requested Memory :                     49152.00 MB
+    Delta Memory :                               49136.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                5
+    Run time :                                   22 sec.
+    Turnaround time :                            23 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <c1_n100_even_30354238.err> for stderr output of this job.
+
