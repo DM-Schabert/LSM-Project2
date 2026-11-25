@@ -45,7 +45,8 @@ def perf_counts(paths: list) -> dict:
             if len(f) < 3 or line.startswith("#") or not re.fullmatch(r"[0-9.]+", f[0].strip()):
                 continue
             v = float(f[0]) * (2 ** 20 if f[1].strip() == "MiB" else 1)
-            ev = "cas_read" if "cas_count_read" in f[2] else "cas_write" if "cas_count_write" in f[2] else f[2].strip()
+            name = re.sub(r":[a-zA-Z]+$", "", f[2].strip())               # "LLC-load-misses:u" -> "LLC-load-misses"
+            ev = "cas_read" if "cas_count_read" in name else "cas_write" if "cas_count_write" in name else name
             tot[ev] = tot.get(ev, 0.0) + v
     return tot
 
@@ -60,8 +61,10 @@ def counts(d: Path, method: str, label: str, tag: str) -> dict:
     c = perf_counts(fs) if fs else {}
     if method == "perf-uncore" and "cas_read" in c:
         return {"ram": c["cas_read"] + c.get("cas_write", 0.0), "l3": None, "llc_miss": 64 * (c.get("LLC-load-misses", 0) + c.get("LLC-store-misses", 0))}
-    if c:
-        return {"ram": 64 * (c.get("LLC-load-misses", 0) + c.get("LLC-store-misses", 0)), "l3": None}
+    if c:   # per-process counters: demand misses of the last-level cache (prefetched lines are not in them)
+        return {"ram": 64 * (c.get("LLC-load-misses", 0) + c.get("LLC-store-misses", 0)),
+                "l3": 64 * (c.get("LLC-loads", 0) + c.get("LLC-stores", 0)),
+                "cycles": c.get("cycles"), "instructions": c.get("instructions")}
     return {"ram": None, "l3": None}
 
 
@@ -80,14 +83,16 @@ def analyse(local: bool) -> pd.DataFrame:
             per = lambda k: (c[k] - (c0.get(k) or 0.0)) / r.pairs_counted if c.get(k) is not None and r.pairs_counted else np.nan  # noqa: E731
             rows.append({"job": job, "method": method, "label": r.label, "tag": r.tag, "ranks": r.ranks, "cols": r.cols, "rows": r.rows,
                          "tile_rows": r.tile_rows, "tile_MB": r.tile_MB, "ns_per_pair": r.ns_per_pair_median,
-                         "ram_B_per_pair": per("ram"), "l3_B_per_pair": per("l3"), "llc_B_per_pair": per("llc_miss")})
+                         "ram_B_per_pair": per("ram"), "l3_B_per_pair": per("l3"), "llc_B_per_pair": per("llc_miss"),
+                         "cycles_per_pair": per("cycles"), "instr_per_pair": per("instructions")})
     t = pd.DataFrame(rows)
     if t.empty:
         return t
     t["sweep"] = np.where(t.label.str.startswith("tile_"), "tile", "shape")
     g = t.groupby(["sweep", "label", "ranks", "cols", "tile_rows", "tile_MB"], as_index=False).agg(
         method=("method", "first"), ns_per_pair=("ns_per_pair", "median"), ram_B_per_pair=("ram_B_per_pair", "median"),
-        l3_B_per_pair=("l3_B_per_pair", "median"), llc_B_per_pair=("llc_B_per_pair", "median"))
+        l3_B_per_pair=("l3_B_per_pair", "median"), llc_B_per_pair=("llc_B_per_pair", "median"),
+        cycles_per_pair=("cycles_per_pair", "median"), instr_per_pair=("instr_per_pair", "median"))
     return g.sort_values(["sweep", "ranks", "tile_MB", "cols"]).reset_index(drop=True)
 
 

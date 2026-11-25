@@ -1,0 +1,8 @@
+# started on Tue Nov 24 13:33:59 2026
+
+24865833855,,cycles:u,6887336319,50.00,,
+48616014003,,instructions:u,9177050119,66.00,1.96,insn per cycle
+60244149,,LLC-loads:u,9169330684,66.00,,
+36775920,,LLC-load-misses:u,9173111657,66.00,61.04,of all LL-cache accesses
+49801530,,LLC-stores:u,4596228029,33.00,,
+9175827,,LLC-store-misses:u,4592447056,33.00,,
