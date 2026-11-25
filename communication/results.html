@@ -237,7 +237,7 @@
         <li>One Amdahl sweep per scheme and N (<code class="iso-code">amdahl/run_all.sh</code>): the serial run and every P in one job, 3 repeats, every second one in reverse order; the median per P. Labels: <code class="iso-code">v1-tile</code>, <code class="iso-code">v2-ring-tile</code>, <code class="iso-code">v2-ringblk-tile</code>, <code class="iso-code">v3-2d-tile</code>, and the same with <code class="iso-code">-2n</code> for two nodes.</li>
         <li>Two nodes: <code class="iso-code">NODES=2</code>, <code class="iso-code">--map-by core --bind-to core</code>, so P ≤ 24 stays on the first node and P = 32 has 24 + 8 ranks.</li>
         <li>Steps per run: N = 50: 20 000 (C2) or 5 000 (C3); N = 1 000: 300; N = 5 000: 30; N = 20 000: 3. Merging off. Time per step: <code class="iso-code">simulation_time_s / iterations</code> of the slowest rank.</li>
-        <li>Every run of C2 and C3 passed C1 before (<code class="iso-code">results/validate_30082644.csv</code>); the 2D copies of each position agreed exactly in every run.</li>
+        <li>Every run of C2 and C3 passed C1 before (<code class="iso-code">out/validate_30082644.csv</code>); the 2D copies of each position agreed exactly in every run.</li>
       </ul>
     </details>
   </section>

@@ -1,0 +1,77 @@
+bench5: 55 settings from phase 1, 3 runs of phase 2
+
+N = 1000
+  serial         8 Nov     1 ranks       138.6 ms/step        2165 steps in 5 min  x1.0  (2056 in a 5-min job)
+  v1-24          9 Nov    24 ranks         7.0 ms/step       42703 steps in 5 min  x20  (40546 in a 5-min job)
+  v1-tiles-24    15 Nov   24 ranks         6.8 ms/step       43959 steps in 5 min  x20  (41732 in a 5-min job)
+  ring-24        15 Nov   24 ranks         7.7 ms/step       38899 steps in 5 min  x18  (36939 in a 5-min job)
+  2d-24          16 Nov   24 ranks         7.2 ms/step       41755 steps in 5 min  x19  (39649 in a 5-min job)
+  v1-tiles-48    17 Nov   48 ranks         3.9 ms/step       77438 steps in 5 min  x36  (73412 in a 5-min job)
+  ring-48        17 Nov   48 ranks         8.2 ms/step       36417 steps in 5 min  x17  (34536 in a 5-min job)
+  2d-48          17 Nov   48 ranks         3.7 ms/step       80622 steps in 5 min  x37  (76475 in a 5-min job)
+  v1-small-24    24 Nov   24 ranks         6.6 ms/step       45130 steps in 5 min  x21  (42851 in a 5-min job)
+  v1-small-48    24 Nov   48 ranks         3.8 ms/step       79869 steps in 5 min  x37  (75741 in a 5-min job)
+  ring-small-24  24 Nov   24 ranks         7.6 ms/step       39481 steps in 5 min  x18  (37486 in a 5-min job)
+  ring-small-48  24 Nov   48 ranks         8.2 ms/step       36795 steps in 5 min  x17  (34898 in a 5-min job)
+  2d-small-24    24 Nov   24 ranks         5.7 ms/step       52186 steps in 5 min  x24  (49556 in a 5-min job)
+  2d-small-48    24 Nov   48 ranks         3.1 ms/step       95368 steps in 5 min  x44  (90510 in a 5-min job)   <- best
+
+N = 5000
+  serial         8 Nov     1 ranks      2522.1 ms/step         119 steps in 5 min  x1.0  (113 in a 5-min job)
+  v1-24          9 Nov    24 ranks       118.0 ms/step        2542 steps in 5 min  x21  (2415 in a 5-min job)
+  v1-tiles-24    15 Nov   24 ranks       120.5 ms/step        2490 steps in 5 min  x21  (2365 in a 5-min job)
+  ring-24        15 Nov   24 ranks       149.3 ms/step        2010 steps in 5 min  x17  (1909 in a 5-min job)
+  2d-24          16 Nov   24 ranks       126.8 ms/step        2367 steps in 5 min  x20  (2248 in a 5-min job)
+  v1-tiles-48    17 Nov   48 ranks        71.1 ms/step        4221 steps in 5 min  x35  (4005 in a 5-min job)
+  ring-48        17 Nov   48 ranks        64.8 ms/step        4629 steps in 5 min  x39  (4393 in a 5-min job)
+  2d-48          17 Nov   48 ranks        74.3 ms/step        4037 steps in 5 min  x34  (3833 in a 5-min job)
+  v1-small-24    24 Nov   24 ranks       105.7 ms/step        2839 steps in 5 min  x24  (2697 in a 5-min job)
+  v1-small-48    24 Nov   48 ranks        57.2 ms/step        5247 steps in 5 min  x44  (4978 in a 5-min job)   <- best   5-min run: 5244 steps
+  ring-small-24  24 Nov   24 ranks       122.9 ms/step        2441 steps in 5 min  x21  (2319 in a 5-min job)
+  ring-small-48  24 Nov   48 ranks        68.6 ms/step        4375 steps in 5 min  x37  (4152 in a 5-min job)
+  2d-small-24    24 Nov   24 ranks       106.2 ms/step        2824 steps in 5 min  x24  (2682 in a 5-min job)
+  2d-small-48    24 Nov   48 ranks        61.1 ms/step        4911 steps in 5 min  x41  (4663 in a 5-min job)
+
+N = 20000
+  serial         8 Nov     1 ranks     43722.6 ms/step           7 steps in 5 min  x1.0  (7 in a 5-min job)
+  v1-24          9 Nov    24 ranks      1962.0 ms/step         153 steps in 5 min  x22  (145 in a 5-min job)
+  v1-tiles-24    15 Nov   24 ranks      1841.4 ms/step         163 steps in 5 min  x24  (155 in a 5-min job)
+  ring-24        15 Nov   24 ranks      2089.9 ms/step         144 steps in 5 min  x21  (136 in a 5-min job)
+  2d-24          16 Nov   24 ranks      1914.2 ms/step         157 steps in 5 min  x23  (149 in a 5-min job)
+  v1-tiles-48    17 Nov   48 ranks      1024.8 ms/step         293 steps in 5 min  x43  (278 in a 5-min job)
+  ring-48        17 Nov   48 ranks      1237.4 ms/step         242 steps in 5 min  x35  (230 in a 5-min job)
+  2d-48          17 Nov   48 ranks       928.7 ms/step         323 steps in 5 min  x47  (307 in a 5-min job)   <- best   5-min run: 322 steps
+  v1-small-24    24 Nov   24 ranks      1895.0 ms/step         158 steps in 5 min  x23  (150 in a 5-min job)
+  v1-small-48    24 Nov   48 ranks       950.9 ms/step         316 steps in 5 min  x46  (299 in a 5-min job)
+  ring-small-24  24 Nov   24 ranks      1844.5 ms/step         163 steps in 5 min  x24  (154 in a 5-min job)
+  ring-small-48  24 Nov   48 ranks       954.2 ms/step         314 steps in 5 min  x46  (298 in a 5-min job)
+  2d-small-24    24 Nov   24 ranks      1854.4 ms/step         162 steps in 5 min  x24  (154 in a 5-min job)
+  2d-small-48    24 Nov   48 ranks       958.8 ms/step         313 steps in 5 min  x46  (297 in a 5-min job)
+
+N = 100000
+  v1-24          9 Nov    24 ranks     51358.9 ms/step           6 steps in 5 min  (6 in a 5-min job)
+  v1-tiles-24    15 Nov   24 ranks     43877.9 ms/step           7 steps in 5 min  (6 in a 5-min job)
+  ring-24        15 Nov   24 ranks     42556.5 ms/step           7 steps in 5 min  (7 in a 5-min job)
+  2d-24          16 Nov   24 ranks     43143.0 ms/step           7 steps in 5 min  (7 in a 5-min job)
+  v1-tiles-48    17 Nov   48 ranks     22185.9 ms/step          14 steps in 5 min  (13 in a 5-min job)
+  ring-48        17 Nov   48 ranks     22291.2 ms/step          13 steps in 5 min  (13 in a 5-min job)
+  2d-48          17 Nov   48 ranks     22286.9 ms/step          13 steps in 5 min  (13 in a 5-min job)
+  v1-small-24    24 Nov   24 ranks     42859.0 ms/step           7 steps in 5 min  (7 in a 5-min job)
+  v1-small-48    24 Nov   48 ranks     24095.7 ms/step          12 steps in 5 min  (12 in a 5-min job)
+  ring-small-24  24 Nov   24 ranks     40787.2 ms/step           7 steps in 5 min  (7 in a 5-min job)
+  ring-small-48  24 Nov   48 ranks     20817.8 ms/step          14 steps in 5 min  (14 in a 5-min job)   <- best   5-min run: 14 steps
+  2d-small-24    24 Nov   24 ranks     61888.8 ms/step           5 steps in 5 min  (5 in a 5-min job)
+  2d-small-48    24 Nov   48 ranks     21530.1 ms/step          14 steps in 5 min  (13 in a 5-min job)
+
+B1  yes   From N = 5 000 on the best configuration uses two nodes.
+             N=5000: v1-small-48; N=20000: 2d-48; N=100000: ring-small-48
+B2  no    Up to N = 20 000, v1 with 2-row tiles beats the automatic tiles on one node.
+             N=1000: 45130 vs 43959 steps; N=5000: 2839 vs 2490 steps; N=20000: 158 vs 163 steps
+B3  yes   At N = 1 000 v1 beats every ring (the ring's P kernel calls per step).
+             best v1 79869, best ring 39481 steps
+B4  yes   At N = 100 000 the ring with ~1 MB pieces wins.
+             winner ring-small-48
+B5  no    A real 5-minute run reaches 90-105 % of the steps estimated from phase 1 (start-up included).
+             N=5000: 5244 of 4978 expected; N=20000: 322 of 307 expected; N=100000: 14 of 14 expected
+
+winners: out/winners.txt   table: out/steps5.csv   plots: out/plots/steps5.png, out/plots/progress.png (all tests on one plot)

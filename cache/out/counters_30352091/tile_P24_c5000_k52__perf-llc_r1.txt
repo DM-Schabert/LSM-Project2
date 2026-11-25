@@ -1,0 +1,8 @@
+# started on Tue Nov 24 13:34:44 2026
+
+26795682464,,cycles:u,6912906529,49.00,,
+50131777402,,instructions:u,9225910420,66.00,1.87,insn per cycle
+62236113,,LLC-loads:u,9223955585,66.00,,
+32798699,,LLC-load-misses:u,9216459769,66.00,52.70,of all LL-cache accesses
+57989301,,LLC-stores:u,4604659857,33.00,,
+30778625,,LLC-store-misses:u,4612155673,33.00,,

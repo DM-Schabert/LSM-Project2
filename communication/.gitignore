@@ -1,7 +1,7 @@
-# made again from results/ by the analysis
-out/
-# ... except the overlap experiment's raw data, which is its results/
-!overlap/out/
+# files of LOCAL=1 runs (only check that the scripts run; never results)
+out/*local*
+# made again by analyse_bench.py
+out/plots/
 # LSF logs of the cluster jobs
 logs/*
 !logs/.gitkeep

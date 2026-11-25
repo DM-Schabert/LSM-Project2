@@ -1,0 +1,38 @@
+K5: 23 settings, counter method: perf-llc
+
+model: one tile's NumPy steps read ~104 B and write ~80 B per pair: ~184 B per pair if all of it went to RAM, ~264 B with write-allocate
+
+  shape_P1_c50000_k5         1 ranks  tile    5 x  50000 =   19.75 MB      98.1 ns/pair   RAM     3.2 B/pair   L3    48.3 B/pair
+  shape_P1_c5000_k52         1 ranks  tile   52 x   5000 =   20.54 MB      97.9 ns/pair   RAM     2.8 B/pair   L3    49.2 B/pair
+  shape_P1_c20000_k13        1 ranks  tile   13 x  20000 =   20.54 MB      97.7 ns/pair   RAM     3.3 B/pair   L3    49.9 B/pair
+  shape_P1_c1000_k262        1 ranks  tile  262 x   1000 =   20.70 MB     105.0 ns/pair   RAM     2.5 B/pair   L3    44.6 B/pair
+  shape_P24_c5000_k2        24 ranks  tile    2 x   5000 =    0.79 MB     111.2 ns/pair   RAM     0.1 B/pair   L3    71.4 B/pair
+  shape_P24_c2000_k6        24 ranks  tile    6 x   2000 =    0.95 MB     107.0 ns/pair   RAM     0.1 B/pair   L3    77.2 B/pair
+  shape_P24_c1000_k13       24 ranks  tile   13 x   1000 =    1.03 MB     114.8 ns/pair   RAM     0.2 B/pair   L3    71.1 B/pair
+  shape_P24_c50000_k5       24 ranks  tile    5 x  50000 =   19.75 MB     110.5 ns/pair   RAM    35.9 B/pair   L3    64.6 B/pair
+  shape_P24_c5000_k52       24 ranks  tile   52 x   5000 =   20.54 MB     108.7 ns/pair   RAM    32.9 B/pair   L3    58.6 B/pair
+  shape_P24_c20000_k13      24 ranks  tile   13 x  20000 =   20.54 MB     108.9 ns/pair   RAM    34.5 B/pair   L3    61.9 B/pair
+  shape_P24_c1000_k262      24 ranks  tile  262 x   1000 =   20.70 MB     117.8 ns/pair   RAM    33.2 B/pair   L3    55.5 B/pair
+  tile_P1_c5000_k2           1 ranks  tile    2 x   5000 =    0.79 MB      97.1 ns/pair   RAM     0.0 B/pair   L3    69.7 B/pair
+  tile_P1_c5000_k8           1 ranks  tile    8 x   5000 =    3.16 MB      95.1 ns/pair   RAM     0.1 B/pair   L3    63.2 B/pair
+  tile_P1_c5000_k52          1 ranks  tile   52 x   5000 =   20.54 MB      98.9 ns/pair   RAM     2.5 B/pair   L3    43.7 B/pair
+  tile_P1_c5000_k209         1 ranks  tile  209 x   5000 =   82.56 MB     107.3 ns/pair   RAM    17.4 B/pair   L3    54.3 B/pair
+  tile_P12_c5000_k2         12 ranks  tile    2 x   5000 =    0.79 MB      97.2 ns/pair   RAM    -0.0 B/pair   L3    71.7 B/pair
+  tile_P12_c5000_k8         12 ranks  tile    8 x   5000 =    3.16 MB     102.1 ns/pair   RAM    20.9 B/pair   L3    50.9 B/pair
+  tile_P12_c5000_k52        12 ranks  tile   52 x   5000 =   20.54 MB     108.6 ns/pair   RAM    34.1 B/pair   L3    59.6 B/pair
+  tile_P12_c5000_k209       12 ranks  tile  209 x   5000 =   82.56 MB     111.4 ns/pair   RAM    25.5 B/pair   L3    59.6 B/pair
+  tile_P24_c5000_k2         24 ranks  tile    2 x   5000 =    0.79 MB      97.1 ns/pair   RAM    -0.1 B/pair   L3    73.9 B/pair
+  tile_P24_c5000_k8         24 ranks  tile    8 x   5000 =    3.16 MB     102.5 ns/pair   RAM    20.7 B/pair   L3    50.9 B/pair
+  tile_P24_c5000_k52        24 ranks  tile   52 x   5000 =   20.54 MB     108.6 ns/pair   RAM    33.3 B/pair   L3    58.7 B/pair
+  tile_P24_c5000_k209       24 ranks  tile  209 x   5000 =   82.56 MB     111.8 ns/pair   RAM    25.7 B/pair   L3    60.7 B/pair
+
+E5.1  no    With the automatic 20 MB tiles on 24 ranks at least 100 B per pair come from RAM.
+             33 B per pair
+E5.2  yes   With 2-row tiles (0.8 MB) on 24 ranks at most 20 B per pair come from RAM.
+             -0 B per pair
+E5.3  yes   On one rank the 20 MB tile fits the whole 30 MB L3: at most 30 B per pair from RAM.
+             2 B per pair
+E5.4  no    The shape effect is not RAM traffic: at 20 MB per tile the RAM bytes per pair differ by at most 20 % between shapes, the time by more.
+             time per pair ×1.08, RAM bytes per pair ×1.09 between the shapes
+
+table: out/k5_counters.csv   plot: out/plots/k5_bytes.png

@@ -1,0 +1,11 @@
+job,n_nodes,pair,mu_us,bandwidth_GBps,t_8B_us,hosts,mpi_library
+30040944,1,neighbouring core,1.1834127730959698,7.900203742737787,1.027,n-62-21-75,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30040944,1,other half of the node,1.7594752493329553,3.52870889776516,1.484,n-62-21-75,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30040946,2,neighbouring core,1.3790148664655166,7.3493129599279925,1.217,n-62-21-48 n-62-21-76,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30040946,2,other half of the node,2.023879569862225,3.432416472992423,1.772,n-62-21-48 n-62-21-76,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30040946,2,other node,3.3455198164766276,5.516231355320381,2.722,n-62-21-48 n-62-21-76,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30045015,1,neighbouring core,1.2710811946791267,7.421373415273438,1.081,n-62-21-47,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30045015,1,other half of the node,1.8255702675767107,3.5138053173925687,1.531,n-62-21-47,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30045016,2,neighbouring core,1.4076674051515636,7.370441225342303,1.232,n-62-21-48 n-62-21-75,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30045016,2,other half of the node,1.9520434416951418,3.4840591890511576,1.657,n-62-21-48 n-62-21-75,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
+30045016,2,other node,3.2276583553431,5.577558569681205,2.604,n-62-21-48 n-62-21-75,"Open MPI v5.0.8, package: Open MPI sebo@n-62-28-27 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025"
