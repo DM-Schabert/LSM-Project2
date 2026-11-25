@@ -1,7 +1,7 @@
 """Analyse C0: latency and bandwidth of the cluster, and what each scheme's exchange costs.
 
-Reads every communication/results/bench_*.csv (or the files given) and writes to
-communication/out/bench/:
+Reads every communication/out/bench_*.csv (or the files given) and writes to communication/out/
+(the plots to communication/out/plots/):
 
     pingpong.png/.pdf    one-way time against message size per pair of ranks, with the fit T = mu + s/B
     schemes_N.png/.pdf   time of one exchange against N at the largest P, per scheme, one panel per job
@@ -14,7 +14,7 @@ mu, B of the slowest link it uses (all links shift at once): the expectation
 the measurement is compared with.
 
 Usage (from the repository root, needs pandas and matplotlib):
-    python3 communication/bench/analyse_bench.py [files ...] [--out communication/out/bench]
+    python3 communication/analyse_bench.py [files ...] [--out communication/out]
 """
 import argparse
 from pathlib import Path
@@ -28,7 +28,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-COMM = HERE.parent
 SCHEMES = [("allgatherv", "Allgatherv (v1)", "#2a78d6"), ("ring", "ring, one turn", "#1baf7a"),
            ("2d", "2D, one step", "#6250d6")]
 PAIRS = {"neighbouring core": "#2a78d6", "other half of the node": "#1baf7a", "other node": "#6250d6"}
@@ -69,17 +68,18 @@ def hockney(s: np.ndarray, t: np.ndarray) -> tuple:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("files", nargs="*", type=Path)
-    ap.add_argument("--out", type=Path, default=COMM / "out" / "bench")
+    ap.add_argument("--out", type=Path, default=HERE / "out")
     args = ap.parse_args()
-    files: List[Path] = args.files or sorted((COMM / "results").glob("bench_*.csv"))
+    files: List[Path] = args.files or sorted(f for f in (HERE / "out").glob("bench_*.csv") if "local" not in f.name)
     if not files:
-        raise SystemExit("No bench_*.csv in communication/results/. Copy them from the cluster first.")
+        raise SystemExit("No bench_*.csv in communication/out/. Copy them from the cluster first.")
     df = pd.concat([pd.read_csv(f, dtype={"job": str}) for f in files], ignore_index=True)
     if "timing_mode" not in df:
         df["timing_mode"] = np.nan
     df["timing_mode"] = df["timing_mode"].fillna("batched")      # files from before 13 Nov 2026 only batched
     df["t"] = df["t_median_us"] * 1e-6
-    args.out.mkdir(parents=True, exist_ok=True)
+    plots: Path = args.out / "plots"
+    plots.mkdir(parents=True, exist_ok=True)
     lines: List[str] = []
     say = lambda s="": (print(s), lines.append(s))  # noqa: E731
 
@@ -130,7 +130,7 @@ def main() -> None:
             ax.set_title(job_title(g), color=INK, fontsize=10)
             ax.plot([], [], color=MUTED, lw=1, ls=(0, (2, 2)), label="fit μ + s/B")
             ax.legend(loc="upper left")
-        save(fig, args.out, "pingpong")
+        save(fig, plots, "pingpong")
 
     # ------------------------------------------------------------ the schemes' exchanges
     sch = df[df["pattern"].isin([s for s, _, _ in SCHEMES])].copy()
@@ -167,7 +167,7 @@ def main() -> None:
             style(ax, "stars N", f"time per exchange at P = {pmax} (µs)")
             ax.set_title(job_title(g), color=INK, fontsize=10)
             ax.legend(loc="upper left")
-        save(fig, args.out, "schemes_N")
+        save(fig, plots, "schemes_N")
 
         fig, axes = plt.subplots(len(jobs), 2, figsize=(12.4, 4.0 * len(jobs)), squeeze=False, layout="constrained")
         for row, job in zip(axes, jobs):
@@ -183,7 +183,7 @@ def main() -> None:
                 style(ax, "ranks P", "time per exchange (µs)")
                 ax.set_title(f"{job_title(g)}, N = {n:,}", color=INK, fontsize=10)
                 ax.legend(loc="upper left")
-        save(fig, args.out, "schemes_P")
+        save(fig, plots, "schemes_P")
 
     if len(both):
         say("\n=== How much the timing method matters: single call / back-to-back (batched), at the largest P")
@@ -205,7 +205,7 @@ def main() -> None:
             say(f"  {job_title(g)}: " + "   ".join(f"P = {int(r.n_ranks)}: {r.t_median_us:.1f}"
                                                  for r in g.sort_values("n_ranks").itertuples()))
     (args.out / "report.txt").write_text("\n".join(lines) + "\n")
-    print(f"\nWrote {args.out}/: pingpong, schemes_N, schemes_P (PNG + PDF), fits.csv, report.txt")
+    print(f"\nWrote {args.out}/: fits.csv, report.txt; {plots}/: pingpong, schemes_N, schemes_P (PNG + PDF)")
 
 
 if __name__ == "__main__":

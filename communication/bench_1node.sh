@@ -1,9 +1,9 @@
 #!/bin/bash
 # =============================================================================
-#  C0 on one node: what communication costs, without physics (communication/bench/comm_bench.py)
+#  C0 on one node: what communication costs, without physics (communication/comm_bench.py)
 #
-#  From the repository root on the login node:   bsub < communication/jobs/bench_1node.sh
-#  Result: communication/results/bench_<jobid>.csv  (copy it to your laptop, see communication/README.md)
+#  From the repository root on the login node:   bsub < communication/bench_1node.sh
+#  Result: communication/out/bench_<jobid>.csv  (copy it to your laptop, see communication/README.md)
 #  Log:    communication/logs/bench_<jobid>.out / .err (.err has the --report-bindings output)
 # =============================================================================
 #BSUB -J comm_bench_1node
@@ -23,5 +23,5 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONUNBUFFER
 echo "=== C0, job $LSB_JOBID, $(date), host $(hostname)"
 # the same placement as the Amdahl runs: fill socket 0 first, one core per rank
 mpirun --report-bindings --map-by core --bind-to core -np 24 \
-    python3 communication/bench/comm_bench.py --time-limit 780
+    python3 communication/comm_bench.py --time-limit 780
 echo "=== finished $(date)"

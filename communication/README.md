@@ -15,19 +15,18 @@ open communication/results.html         # the results; 2d_decomposition.html exp
 
 ## Layout
 
-| Folder | What goes in |
+| File or folder | What it is |
 |---|---|
 | `../ParallelImplementation.py` | **all three schemes**, chosen with `--decomposition allgather` (v1, default), `ring` (Pelle) or `2d`. One program, so every scheme shares loading, timers, the stop logic and the results row |
 | `results.html` | **the results**: C2 (one node), C3 (two nodes) and C4 (overlap) for all schemes, in the same style as `isoeff/`, `amdahl/` and `gustafson/results.html`; open it in a browser |
 | `make_page.py` | writes the C2/C3 numbers from `../results.csv` into the data block of `results.html`, with the node-speed correction (see below) |
 | `2d_decomposition.html` | interactive explanation of the 2D decomposition, with pseudo code |
 | `overlap/` | **the topic in depth**: why the ring's overlap does not help (eager/rendezvous, progress), with its own README, job, page |
-| `tests/` | C1: `validate.sh` runs every scheme and compares its final state with the serial run (`compare_states.py`) |
-| `bench/` | communication alone, no physics: time per call against message size and P, to fit `T = μ + s/B` |
-| `jobs/` | LSF job scripts (one node, two nodes) |
-| `results/` | raw CSV rows of every run (in git) |
+| `validate.sh`, `compare_states.py` | C1: the job runs every scheme and compares its final state with the serial run |
+| `comm_bench.py`, `analyse_bench.py` | C0: communication alone, no physics: time per call against message size and P, to fit `T = μ + s/B`, and its analysis |
+| `bench_1node.sh`, `bench_2nodes.sh` | the LSF jobs of C0 (one node, two nodes) |
+| `out/` | results: the raw CSV of every job (`bench_<job>.csv`, `validate_<job>.csv`) and the analysis' `fits.csv` and `report.txt` (in git); `out/plots/` is made again by the analysis (not in git) |
 | `logs/` | LSF `.out`/`.err` of the cluster jobs (not in git) |
-| `out/` | plots and tables, made again from `results/` (not in git) |
 
 ## Rules
 
@@ -36,7 +35,7 @@ open communication/results.html         # the results; 2d_decomposition.html exp
 3. **One change per iteration.** Each scheme, and each improvement of a scheme (e.g. overlap), is its own iteration with its own label, measured against the previous one on the same experiments.
 4. **Everything else fixed.** Same force kernel, same N, steps, `dt`, softening, merging off, one thread per rank, same rank placement (`--report-bindings` in the `.err` file), 3 repeats, median and spread. Serial baseline and all P of one sweep on the same node.
 5. **Traceable.** Label in the results = git tag of the code (`v1-numpy`, `v2-ring`, …). Every results row also carries the code fingerprint.
-6. **Raw data in git, plots not.** `results/` is committed; `out/` is made again by the analysis.
+6. **Raw data in git, plots not.** The CSVs in `out/` are committed; `out/plots/` is made again by the analysis.
 
 ## Schemes and what we expect
 
@@ -75,7 +74,7 @@ Expectations to check:
 | # | What | N | P | Nodes |
 |---|---|---|---|---|
 | C0 | Communication alone: `Allgatherv`, ring of `Sendrecv`, `Bcast` + `Allreduce`. Fit latency μ and bandwidth B | message sizes of 50 to 100 000 stars | 2 to 24 (48) | 1 and 2 |
-| C1 | Correctness of every scheme against the serial run (`tests/validate.sh`) | 5, 100, 1 000 (5 < P: empty blocks) | 1, 2, 3, 4, 6, 7, 8, 12, 16, 24 | 1 |
+| C1 | Correctness of every scheme against the serial run (`validate.sh`) | 5, 100, 1 000 (5 < P: empty blocks) | 1, 2, 3, 4, 6, 7, 8, 12, 16, 24 | 1 |
 | C2 | Strong scaling per scheme (with the Amdahl framework, one label per scheme) | 50, 100, 1 000, 5 000 | 1 … 24 | 1 |
 | C3 | The same across two nodes | 50, 1 000, 5 000, 20 000 | 1 … 48 | 2 |
 | C4 | Overlap on and off (ring) | as C2 and C3 (the two ring labels) | 1 … 48 | 1 and 2 |
@@ -90,42 +89,42 @@ On the cluster, from the repository root:
 
 ```bash
 git pull
-bsub < communication/jobs/bench_1node.sh     # 24 ranks on one node, about 2 min
-bsub < communication/jobs/bench_2nodes.sh    # 2 x 24 ranks on two nodes, about 3 min
+bsub < communication/bench_1node.sh     # 24 ranks on one node, about 2 min
+bsub < communication/bench_2nodes.sh    # 2 x 24 ranks on two nodes, about 3 min
 bjobs                                        # PEND = waiting, RUN = running
-ls communication/results/                    # bench_<jobid>.csv, one per job
+ls communication/out/                    # bench_<jobid>.csv, one per job
 ```
 
 On the laptop, from the repository root (user name and repository path on the cluster as yours):
 
 ```bash
-scp <user>@<login node>:<repo on the cluster>/communication/results/bench_*.csv communication/results/
-python3 communication/bench/analyse_bench.py   # needs pandas and matplotlib
-git add communication/results/bench_*.csv && git commit -m "C0 results"
+scp <user>@<login node>:<repo on the cluster>/communication/out/bench_*.csv communication/out/
+python3 communication/analyse_bench.py   # needs pandas and matplotlib
+git add communication/out/bench_*.csv && git commit -m "C0 results"
 ```
 
-The analysis writes `communication/out/bench/`: `pingpong` (latency and bandwidth with the fit T = μ + s/B), `schemes_N` and `schemes_P` (time of one exchange of each scheme against N and against P), `fits.csv` and `report.txt`. The report also predicts the ring from the pingpong fit, (P − 1)(μ + b/B), next to the measured times: expectation against measurement.
+The analysis writes the plots to `communication/out/plots/`: `pingpong` (latency and bandwidth with the fit T = μ + s/B), `schemes_N` and `schemes_P` (time of one exchange of each scheme against N and against P). `fits.csv` and `report.txt` go to `communication/out/`. The report also predicts the ring from the pingpong fit, (P − 1)(μ + b/B), next to the measured times: expectation against measurement.
 
-What the benchmark does and how it times is described at the top of `bench/comm_bench.py`. In short: warm-up calls first; every repeat starts after a `Barrier` and counts with the slowest rank's time (`time.perf_counter`); median and quartiles over the repeats. Collectives are timed one call per repeat (`timing_mode = single`, the main measure, as OSU times collectives) and, for comparison, back to back (`batched`). Back-to-back collectives overlap and look faster than in a time step, where computing separates two exchanges. Pingpong is only timed back to back, as usual. The job's `.err` file shows where the ranks were bound (`--report-bindings`).
+What the benchmark does and how it times is described at the top of `comm_bench.py`. In short: warm-up calls first; every repeat starts after a `Barrier` and counts with the slowest rank's time (`time.perf_counter`); median and quartiles over the repeats. Collectives are timed one call per repeat (`timing_mode = single`, the main measure, as OSU times collectives) and, for comparison, back to back (`batched`). Back-to-back collectives overlap and look faster than in a time step, where computing separates two exchanges. Pingpong is only timed back to back, as usual. The job's `.err` file shows where the ranks were bound (`--report-bindings`).
 
 The first C0 runs (jobs 30040944 and 30040946, 13 Nov 2026) timed the collectives only back to back. Their pingpong numbers are fine; their collective numbers are optimistic for small messages.
 
 Laptop test, no cluster needed (pretends there are two nodes):
 
 ```bash
-mpirun -np 4 python3 communication/bench/comm_bench.py --fake-nodes 2 --sizes "50 1000" --target-s 0.02 --out /tmp/bench_test.csv
-python3 communication/bench/analyse_bench.py /tmp/bench_test.csv --out /tmp/bench_out
+mpirun -np 4 python3 communication/comm_bench.py --fake-nodes 2 --sizes "50 1000" --target-s 0.02 --out /tmp/bench_test.csv
+python3 communication/analyse_bench.py /tmp/bench_test.csv --out /tmp/bench_out
 ```
 
 ## Running C1, C2 and C3 on the cluster
 
-**C1, correctness first** (one job, about 10 min; result `communication/results/validate_<jobid>.csv`):
+**C1, correctness first** (one job, about 10 min; result `communication/out/validate_<jobid>.csv`):
 
 ```bash
-bsub < communication/tests/validate.sh
+bsub < communication/validate.sh
 ```
 
-It runs the serial program and every scheme (allgather, allgather tiled, ring overlap/blocking/tiled, 2d, 2d tiled, 2d with the other grid shape) for N = 5, 100, 1 000 at P = 1 … 24, and compares the final states. v1 must be bit-identical, the others within 1e-9 relative. On a laptop: `LOCAL=1 P_LIST="1 2 3 4 6" bash communication/tests/validate.sh`.
+It runs the serial program and every scheme (allgather, allgather tiled, ring overlap/blocking/tiled, 2d, 2d tiled, 2d with the other grid shape) for N = 5, 100, 1 000 at P = 1 … 24, and compares the final states. v1 must be bit-identical, the others within 1e-9 relative. On a laptop: `LOCAL=1 P_LIST="1 2 3 4 6" bash communication/validate.sh`.
 
 **C2 and C3, strong scaling with the Amdahl framework.** One campaign per scheme, all with the same kernel (`--tile-rows 0`); `PROGRAM_ARGS` goes to the MPI runs only, the serial baseline stays the same. For a quicker comparison, three sweeps are enough (`SWEEPS` below: N = 50, 1 000, 5 000):
 
@@ -147,11 +146,11 @@ For the page, `python3 communication/make_page.py` takes the latest job per labe
 
 ## Status
 
-C1 on the cluster (job 30082644, `results/validate_30082644.csv`): 228 runs, N = 5, 100, 1 000, P = 1 … 24, 20 steps, all passed. The positions agree exactly after 20 steps (they move too little to show a difference); the velocities carry the difference. At N = 1 000 every scheme that sums in a different order ends at the same 1.3e-13: rounding differences of about 1e-16 grow over the 20 steps, most likely through a close pair of stars, and the growth is the same whatever the summation order. That is four orders of magnitude below the tolerance.
+C1 on the cluster (job 30082644, `out/validate_30082644.csv`): 228 runs, N = 5, 100, 1 000, P = 1 … 24, 20 steps, all passed. The positions agree exactly after 20 steps (they move too little to show a difference); the velocities carry the difference. At N = 1 000 every scheme that sums in a different order ends at the same 1.3e-13: rounding differences of about 1e-16 grow over the 20 steps, most likely through a close pair of stars, and the growth is the same whatever the summation order. That is four orders of magnitude below the tolerance.
 
 | Scheme | Expectation written | Implemented | Correct (C1) | Measured, 1 node | Measured, 2 nodes |
 |---|---|---|---|---|---|
-| Allgather (v1) | yes (`docs/Parallel_Plan_v1(1).md`, §3; C0) | yes | **cluster: bit-identical** to serial, 30/30 runs (job 30082644) | yes (`amdahl/`, `--tile-rows 1`) | C3 (jobs 30099619–22): T(24)/T(48) = 1.76 (N = 1 000) to 1.98 (N = 20 000); Allgatherv 0.12 % of the step at N = 20 000 |
+| Allgather (v1) | yes (`docs/Parallel_Plan_v1.md`, §3; C0) | yes | **cluster: bit-identical** to serial, 30/30 runs (job 30082644) | yes (`amdahl/`, `--tile-rows 1`) | C3 (jobs 30099619–22): T(24)/T(48) = 1.76 (N = 1 000) to 1.98 (N = 20 000); Allgatherv 0.12 % of the step at N = 20 000 |
 | Ring, blocking and overlap | yes (above, from C0) | yes (Pelle, 15 Nov) | **cluster: 90/90 passed**, ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083334–40): N = 50 collapses, about 70 µs per kernel call × P calls per step; N ≥ 1 000 12–21 % below v1 | C3 (jobs 30099624–32): N ≤ 1 000 slower on two nodes than on one; N = 5 000 9 % faster than v1 (kernel on 104 × 104 blocks), N = 20 000 34 % slower. C4: overlap 0 to −10 % |
 | 2D force decomposition | yes (above, from C0) | yes (16 Nov) | **cluster: 78/78 passed**, bit-identical for p_c = 1, else ≤ 1.3e-13 relative (job 30082644) | C2 (jobs 30083342–44): N = 50 14 % better than v1, N ≥ 1 000 5–8 % below | C3 (jobs 30099634–37): N = 50 6 % faster than v1 at P = 48; N ≥ 1 000 2–10 % slower than v1 |
 

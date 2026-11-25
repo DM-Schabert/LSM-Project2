@@ -5,8 +5,8 @@ divided by the largest value of the reference (a relative error over the whole
 state), and whether the file is bit-identical. Prints one line per file and
 appends the same to a CSV, so the result can be copied off the cluster.
 
-    python3 communication/tests/compare_states.py REFERENCE.csv RUN1.csv RUN2.csv ... \
-        [--tol 1e-9] [--out communication/results/validate_<job>.csv] [--job JOBID]
+    python3 communication/compare_states.py REFERENCE.csv RUN1.csv RUN2.csv ... \
+        [--tol 1e-9] [--out communication/out/validate_<job>.csv] [--job JOBID]
 
 Exit code 1 if any file is off by more than --tol or has a different number of stars.
 """

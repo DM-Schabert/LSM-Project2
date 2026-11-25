@@ -30,10 +30,10 @@ With P ranks out of a larger job, the others wait without spinning.
 On several nodes, P ranks are spread evenly over the nodes.
 
 Output: one CSV (rank 0 appends a row per point, so a run cut short keeps what it has), by
-default communication/results/bench_<LSF job id>.csv. Analyse with communication/bench/analyse_bench.py.
+default communication/out/bench_<LSF job id>.csv. Analyse with communication/analyse_bench.py.
 
 Laptop test (pretends there are two nodes):
-    mpirun -np 4 python3 communication/bench/comm_bench.py --fake-nodes 2 --sizes "50 1000" \
+    mpirun -np 4 python3 communication/comm_bench.py --fake-nodes 2 --sizes "50 1000" \
         --target-s 0.02 --out /tmp/bench_test.csv
 """
 import argparse
@@ -52,7 +52,7 @@ from mpi4py import MPI
 
 STAR_BYTES = 24                     # one position: 3 doubles
 BATCH_S = 1e-4                      # a timed repeat lasts at least this long (see time_calls)
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[1]
 COLUMNS = ["job", "started", "n_nodes", "hosts", "pattern", "pair", "n_ranks", "ranks_per_node",
            "n_stars", "message_bytes", "received_bytes_per_rank", "timed", "timing_mode", "reps", "calls_per_rep",
            "t_median_us", "t_p25_us", "t_p75_us", "t_min_us", "t_mean_us",
@@ -195,7 +195,7 @@ def main() -> None:
     by_node: Dict[str, List[int]] = {h: [r for r, x in enumerate(hosts) if x == h] for h in nodes}
 
     job = os.environ.get("LSB_JOBID") or "local" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    out = args.out or REPO / "communication" / "results" / f"bench_{job}.csv"
+    out = args.out or REPO / "communication" / "out" / f"bench_{job}.csv"
     meta = {"job": job, "started": datetime.datetime.now().isoformat(timespec="seconds"),
             "n_nodes": len(nodes), "hosts": " ".join(nodes),
             "mpi_library": MPI.Get_library_version().replace("\x00", "").splitlines()[0].strip(),  # Open MPI ends it with a NUL

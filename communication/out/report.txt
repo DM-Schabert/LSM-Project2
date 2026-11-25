@@ -1,0 +1,113 @@
+=== Latency and bandwidth (pingpong, one way; fit T = mu + s/B)
+  job 30040944             neighbouring core        mu =   1.18 us   B =   7.90 GB/s   (8 B message: 1.03 us)
+  job 30040944             other half of the node   mu =   1.76 us   B =   3.53 GB/s   (8 B message: 1.48 us)
+  job 30040946             neighbouring core        mu =   1.38 us   B =   7.35 GB/s   (8 B message: 1.22 us)
+  job 30040946             other half of the node   mu =   2.02 us   B =   3.43 GB/s   (8 B message: 1.77 us)
+  job 30040946             other node               mu =   3.35 us   B =   5.52 GB/s   (8 B message: 2.72 us)
+  job 30045015             neighbouring core        mu =   1.27 us   B =   7.42 GB/s   (8 B message: 1.08 us)
+  job 30045015             other half of the node   mu =   1.83 us   B =   3.51 GB/s   (8 B message: 1.53 us)
+  job 30045016             neighbouring core        mu =   1.41 us   B =   7.37 GB/s   (8 B message: 1.23 us)
+  job 30045016             other half of the node   mu =   1.95 us   B =   3.48 GB/s   (8 B message: 1.66 us)
+  job 30045016             other node               mu =   3.23 us   B =   5.58 GB/s   (8 B message: 2.60 us)
+
+=== Exchange per time step at P = 24, job 30040944, 1 node (median, µs)
+         N  Allgatherv        ring          2D  ring model
+        50        13.4        39.1         8.7        40.9
+       100        16.9        43.8         8.8        41.3
+       300        25.0        46.8        10.7        42.5
+     1,000        36.3        51.9        20.6        47.0
+     3,000        71.0        84.8        22.3        60.0
+    10,000       190.7       152.8        46.1       105.7
+    30,000       579.0       363.0       117.2       236.0
+   100,000      2574.4      1177.6       683.4       692.3
+
+=== Exchange per time step at P = 48, job 30040946, 2 nodes (median, µs)
+         N  Allgatherv        ring          2D  ring model
+        50        23.9        92.2        13.0       157.6
+       100        25.9        91.9        12.4       157.9
+       300        41.2       106.9        14.9       158.7
+     1,000        80.1       111.9        26.1       161.5
+     3,000       188.6       129.7        43.6       170.1
+    10,000       579.9       221.4       113.8       200.0
+    30,000       363.0       430.7       261.8       300.5
+   100,000      2227.6      1238.1       854.7       780.0
+
+=== Exchange per time step at P = 24, job 30045015, 1 node (median, µs)
+         N  Allgatherv        ring          2D  ring model
+        50        17.3        43.4        12.3        42.5
+       100        21.4        48.6        12.7        42.8
+       300        29.6        51.9        14.9        44.0
+     1,000        40.5        57.2        26.6        48.6
+     3,000        74.0        92.6        29.7        61.6
+    10,000       190.1       168.2        51.9       107.5
+    30,000       565.8       388.6       124.1       238.4
+   100,000      2567.9      1244.8       685.0       696.6
+
+=== Exchange per time step at P = 48, job 30045016, 2 nodes (median, µs)
+         N  Allgatherv        ring          2D  ring model
+        50        26.3        91.6        16.3       152.1
+       100        28.6        92.5        16.1       152.3
+       300        46.4       105.8        18.2       153.1
+     1,000        83.4       110.6        30.4       155.9
+     3,000       191.4       127.5        49.8       164.4
+    10,000       579.0       217.2       109.2       194.0
+    30,000       352.8       430.4       251.8       294.1
+   100,000      2207.7      1205.1       821.0       766.5
+
+=== How much the timing method matters: single call / back-to-back (batched), at the largest P
+  job 30045015, 1 node, P = 24:
+    2d         N = 50       single      12.3 us   batched       9.4 us   ratio  1.31
+    2d         N = 100      single      12.7 us   batched       9.7 us   ratio  1.31
+    2d         N = 300      single      14.9 us   batched      11.7 us   ratio  1.28
+    2d         N = 1,000    single      26.6 us   batched      22.9 us   ratio  1.16
+    2d         N = 3,000    single      29.7 us   batched      25.3 us   ratio  1.18
+    2d         N = 10,000   single      51.9 us   batched      50.2 us   ratio  1.03
+    2d         N = 30,000   single     124.1 us   batched     124.0 us   ratio  1.00
+    2d         N = 100,000  single     685.0 us   batched     684.0 us   ratio  1.00
+    allgatherv N = 50       single      17.3 us   batched      14.5 us   ratio  1.19
+    allgatherv N = 100      single      21.4 us   batched      17.5 us   ratio  1.23
+    allgatherv N = 300      single      29.6 us   batched      27.9 us   ratio  1.06
+    allgatherv N = 1,000    single      40.5 us   batched      38.7 us   ratio  1.05
+    allgatherv N = 3,000    single      74.0 us   batched      73.5 us   ratio  1.01
+    allgatherv N = 10,000   single     190.1 us   batched     190.8 us   ratio  1.00
+    allgatherv N = 30,000   single     565.8 us   batched     566.1 us   ratio  1.00
+    allgatherv N = 100,000  single    2567.9 us   batched    2566.5 us   ratio  1.00
+    ring       N = 50       single      43.4 us   batched      42.1 us   ratio  1.03
+    ring       N = 100      single      48.6 us   batched      46.3 us   ratio  1.05
+    ring       N = 300      single      51.9 us   batched      50.2 us   ratio  1.03
+    ring       N = 1,000    single      57.2 us   batched      55.6 us   ratio  1.03
+    ring       N = 3,000    single      92.6 us   batched      89.6 us   ratio  1.03
+    ring       N = 10,000   single     168.2 us   batched     168.1 us   ratio  1.00
+    ring       N = 30,000   single     388.6 us   batched     390.0 us   ratio  1.00
+    ring       N = 100,000  single    1244.8 us   batched    1243.1 us   ratio  1.00
+  job 30045016, 2 nodes, P = 48:
+    2d         N = 50       single      16.3 us   batched      12.0 us   ratio  1.36
+    2d         N = 100      single      16.1 us   batched      11.8 us   ratio  1.36
+    2d         N = 300      single      18.2 us   batched      13.5 us   ratio  1.36
+    2d         N = 1,000    single      30.4 us   batched      24.6 us   ratio  1.24
+    2d         N = 3,000    single      49.8 us   batched      41.0 us   ratio  1.21
+    2d         N = 10,000   single     109.2 us   batched     108.9 us   ratio  1.00
+    2d         N = 30,000   single     251.8 us   batched     252.0 us   ratio  1.00
+    2d         N = 100,000  single     821.0 us   batched     819.5 us   ratio  1.00
+    allgatherv N = 50       single      26.3 us   batched      22.1 us   ratio  1.19
+    allgatherv N = 100      single      28.6 us   batched      23.7 us   ratio  1.21
+    allgatherv N = 300      single      46.4 us   batched      38.5 us   ratio  1.21
+    allgatherv N = 1,000    single      83.4 us   batched      78.5 us   ratio  1.06
+    allgatherv N = 3,000    single     191.4 us   batched     192.0 us   ratio  1.00
+    allgatherv N = 10,000   single     579.0 us   batched     579.4 us   ratio  1.00
+    allgatherv N = 30,000   single     352.8 us   batched     352.0 us   ratio  1.00
+    allgatherv N = 100,000  single    2207.7 us   batched    2207.7 us   ratio  1.00
+    ring       N = 50       single      91.6 us   batched      87.6 us   ratio  1.05
+    ring       N = 100      single      92.5 us   batched      88.4 us   ratio  1.05
+    ring       N = 300      single     105.8 us   batched     105.3 us   ratio  1.00
+    ring       N = 1,000    single     110.6 us   batched     110.5 us   ratio  1.00
+    ring       N = 3,000    single     127.5 us   batched     127.5 us   ratio  1.00
+    ring       N = 10,000   single     217.2 us   batched     217.5 us   ratio  1.00
+    ring       N = 30,000   single     430.4 us   batched     431.7 us   ratio  1.00
+    ring       N = 100,000  single    1205.1 us   batched    1199.1 us   ratio  1.01
+
+=== Allreduce of one integer (a collective without data), median µs
+  job 30040944, 1 node: P = 2: 1.8   P = 4: 2.6   P = 8: 3.1   P = 12: 3.7   P = 16: 4.5   P = 24: 5.2
+  job 30040946, 2 nodes: P = 2: 3.7   P = 4: 9.1   P = 8: 10.3   P = 12: 11.0   P = 16: 11.9   P = 24: 13.0   P = 32: 13.1   P = 48: 14.4
+  job 30045015, 1 node: P = 2: 2.5   P = 4: 3.5   P = 8: 4.0   P = 12: 5.5   P = 16: 6.1   P = 24: 7.8
+  job 30045016, 2 nodes: P = 2: 5.1   P = 4: 9.6   P = 8: 10.4   P = 12: 11.1   P = 16: 12.2   P = 24: 13.7   P = 32: 13.7   P = 48: 15.2

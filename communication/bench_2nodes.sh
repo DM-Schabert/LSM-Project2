@@ -1,10 +1,10 @@
 #!/bin/bash
 # =============================================================================
-#  C0 on two nodes: what communication costs across the network (communication/bench/comm_bench.py)
+#  C0 on two nodes: what communication costs across the network (communication/comm_bench.py)
 #
-#  From the repository root on the login node:   bsub < communication/jobs/bench_2nodes.sh
+#  From the repository root on the login node:   bsub < communication/bench_2nodes.sh
 #  Two full nodes, 24 ranks each. Every P is split evenly over the two nodes, and pingpong
-#  adds the pair "other node". Result: communication/results/bench_<jobid>.csv
+#  adds the pair "other node". Result: communication/out/bench_<jobid>.csv
 #  Log: communication/logs/bench_<jobid>.out / .err (.err has the --report-bindings output)
 # =============================================================================
 #BSUB -J comm_bench_2nodes
@@ -23,5 +23,5 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONUNBUFFER
 
 echo "=== C0, job $LSB_JOBID, $(date), hosts $LSB_HOSTS" | cut -c1-400
 mpirun --report-bindings --map-by core --bind-to core -np 48 \
-    python3 communication/bench/comm_bench.py --time-limit 780
+    python3 communication/comm_bench.py --time-limit 780
 echo "=== finished $(date)"

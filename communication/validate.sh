@@ -4,9 +4,9 @@
 #  digit, ring and 2d to a small relative tolerance). Runs the serial program
 #  once per N, then each decomposition at each P, and compares the final states.
 #
-#  Cluster (from the repository root):  bsub < communication/tests/validate.sh
-#      result: communication/results/validate_<jobid>.csv (copy it to your laptop)
-#  Laptop:   LOCAL=1 P_LIST="1 2 3 4 6" bash communication/tests/validate.sh
+#  Cluster (from the repository root):  bsub < communication/validate.sh
+#      result: communication/out/validate_<jobid>.csv (copy it to your laptop)
+#  Laptop:   LOCAL=1 P_LIST="1 2 3 4 6" bash communication/validate.sh
 #
 #  Settings (an export line above this block, or VAR=value locally):
 #      N_LIST    subsets gaia_subsets/gaia_nearest_<N>.csv (default "5 100 1000")
@@ -44,7 +44,7 @@ else
 fi
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/c1_XXXXXX")
-OUT=communication/results/validate_${JOB}.csv
+OUT=communication/out/validate_${JOB}.csv
 COMMON="--steps $STEPS --merge-radius 0 --time-limit 600 --no-results"
 VARIANTS=(
     "allgather|--decomposition allgather"
@@ -82,7 +82,7 @@ for n in $N_LIST; do
                 --grid-rows 2 --save-final "$f" > "$TMP/2d-rows2_N${n}_P${p}.log" 2>&1 && runs+=("$f")
         fi
     done
-    $PYTHON communication/tests/compare_states.py "$ref" "${runs[@]}" --tol "$TOL" --out "$OUT" --job "$JOB" || status=1
+    $PYTHON communication/compare_states.py "$ref" "${runs[@]}" --tol "$TOL" --out "$OUT" --job "$JOB" || status=1
 done
 grep -h "differ by up to" "$TMP"/*.log 2>/dev/null && status=1   # 2d row copies that drifted apart
 echo "=== finished $(date): $([ $status = 0 ] && echo 'all PASSED' || echo 'something FAILED'); results in $OUT; logs in $TMP"
