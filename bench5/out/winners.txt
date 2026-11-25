@@ -1,0 +1,5 @@
+# N and the configuration with the most time steps in 5 minutes (phase 1)
+1000 2d-small-48
+5000 v1-small-48
+20000 2d-48
+100000 ring-small-48
