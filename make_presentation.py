@@ -67,7 +67,8 @@ def cache() -> dict:
     """The tables cache/analyze.py made from the cache jobs (K0 bandwidth, K1/K2 tiles, K3 N = 100 000, K4 communication)."""
     out = ROOT / "cache" / "out"
     read = lambda name: csv_rows((out / name).read_text()) if (out / name).exists() else []  # noqa: E731
-    return {"k0": read("k0_bandwidth.csv"), "k1": read("k1_tiles.csv"), "k3": read("k3_bign.csv"), "k4": read("k4_comm.csv")}
+    return {"k0": read("k0_bandwidth.csv"), "k1": read("k1_tiles.csv"), "k3": read("k3_bign.csv"), "k4": read("k4_comm.csv"),
+            "k5": read("k5_counters.csv")}
 
 
 def bench5() -> dict:
