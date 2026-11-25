@@ -312,7 +312,7 @@
     <p class="eyebrow">1 · Setup</p>
     <h2>One time step, and how we measure it</h2>
     <div class="two">
-      <div class="chart"><svg id="step-svg" viewBox="0 0 560 300" role="img" aria-label="One time step: forces from every pair, kick-drift-kick, then the positions are exchanged so that every rank knows them for the next step."></svg>
+      <div class="chart"><svg id="step-svg" viewBox="0 0 560 300" role="img" aria-label="One time step: forces from every pair, kick and drift, then the positions are exchanged so that every rank knows them for the next step."></svg>
         <p class="note" id="step-note">Share of a step for v1 at N = 5 000, P = 24 (C2).</p></div>
       <ul class="facts">
         <li><b>Hardware:</b> Xeon E5-2650 v4, 2 × 12 cores per node, no hyperthreading, up to two full nodes; Open MPI over InfiniBand (UCX). <b>P</b> is the number of ranks (the lecture's NP), one rank per core.</li>
@@ -344,7 +344,7 @@
     </div>
     <div class="cg"><svg id="cg-svg" viewBox="0 0 1000 328" role="img" aria-label="The changes since the serial code: v1 with Allgatherv and the tiled kernel make up the final configuration; the ring and the 2D grid are options of the same program; re-distribution after merges, a derived datatype and Testall for the overlap were tested on their own; IO, a del in the tile loop and Numba are not built yet."></svg></div>
     <div class="cg-card" id="cg-card" aria-live="polite"></div>
-    <p class="note">Dates and authors from the git history, <code>docs/</code> and <code>Ring_v2_summary.md</code>. C1 is <code>communication/tests/validate.sh</code> on the cluster (job 30082644): N = 5, 100, 1 000, P = 1 to 24, 20 steps, without merging.</p>
+    <p class="note">Dates and authors from the git history, <code>docs/</code> and <code>Ring_v2_summary.md</code>. C1 is <code>communication/validate.sh</code> on the cluster (job 30082644): N = 5, 100, 1 000, P = 1 to 24, 20 steps, without merging.</p>
   </div>
 </section>
 
@@ -399,7 +399,7 @@
       <span class="key"><span class="sw" style="background: var(--tile)"></span>force kernel</span>
       <span class="key"><span class="sw" style="background: var(--mpi)"></span>Allgatherv</span>
       <span class="key"><span class="sw" style="background: var(--c5)"></span>waiting for the slowest rank</span>
-      <span class="key"><span class="sw" style="background: var(--c3)"></span>kick–drift–kick and the rest</span>
+      <span class="key"><span class="sw" style="background: var(--c3)"></span>kick and drift, and the rest</span>
     </div>
     <div class="chart" id="ch-split"></div>
     <div class="tiles" id="sc-tiles"></div>
@@ -1049,7 +1049,7 @@
     const share = (k) => (r ? r[k] / r.step_us : null);
     const boxes = [
       { x: 10, y: 40, w: 230, h: 96, t: 'Forces', s: ['every pair i, j: N²/P per rank', 'tiled NumPy kernel'], v: share('forces_us'), fill: 'var(--tile)' },
-      { x: 320, y: 40, w: 230, h: 96, t: 'Kick–drift–kick', s: ['new velocities, positions', 'own stars only'], v: share('integrate_us'), fill: 'var(--c3)' },
+      { x: 320, y: 40, w: 230, h: 96, t: 'Kick, then drift', s: ['new velocities, positions', 'own stars only'], v: share('integrate_us'), fill: 'var(--c3)' },
       { x: 165, y: 190, w: 230, h: 96, t: 'Exchange positions', s: ['Allgatherv (v1), ring or 2D', 'every rank needs all N'], v: r ? (r.comm_us + r.sync_us) / r.step_us : null, fill: 'var(--mpi)' }];
     const defs = svgEl('defs', {}, svg), mk = svgEl('marker', { id: 'st-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
     svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: 'var(--muted)' }, mk);
@@ -1065,7 +1065,7 @@
     arrow('M242,88 L316,88', 'accelerations', 280, 80);
     arrow('M440,138 C440,190 432,238 399,238', 'own positions', 450, 186, 'start');
     arrow('M161,238 C120,238 120,190 120,140', 'all N positions', 112, 186, 'end');
-    if (r) setHTML('step-note', `Share of a step for v1 at N = ${nf(r.N)}, P = ${r.P} on one node (C2): forces ${pct(r.forces_us / r.step_us, 1)}, exchange ${pct((r.comm_us + r.sync_us) / r.step_us, 1)} (of which waiting for the slowest rank ${pct(r.sync_us / r.step_us, 1)}), kick–drift–kick ${pct(r.integrate_us / r.step_us, 2)}.`);
+    if (r) setHTML('step-note', `Share of a step for v1 at N = ${nf(r.N)}, P = ${r.P} on one node (C2): forces ${pct(r.forces_us / r.step_us, 1)}, exchange ${pct((r.comm_us + r.sync_us) / r.step_us, 1)} (of which waiting for the slowest rank ${pct(r.sync_us / r.step_us, 1)}), kick and drift ${pct(r.integrate_us / r.step_us, 2)}.`);
     const nf0 = median(RUNS.map((x) => x.node_factor)), fast = RUNS.reduce((a, x) => (x.node_factor != null && (!a || x.node_factor < a.node_factor) ? x : a), null);
     if (fast && nf0) setText('fast-node', `${fast.hosts.split(';')[0]} is ${nf((1 - fast.node_factor / nf0) * 100)} %`);
   })();
@@ -1097,7 +1097,7 @@
     const NODES = [
       { id: 'serial', x: 8, y: 92, st: 'ref', title: 'Serial code', lines: ['8 Nov · Pelle', 'the reference'],
         where: '<code>SerialImplementation.py</code>',
-        what: ['Direct summation: the force on every star from every other star, a Python loop over the stars with NumPy over all partners.', 'Kick–drift–kick; stars closer than the merge radius are merged.'],
+        what: ['Direct summation: the force on every star from every other star, a Python loop over the stars with NumPy over all partners.', 'Kick, then drift; stars closer than the merge radius are merged.'],
         test: ['The reference that every other version is compared with.'],
         res: [ser5 ? `N = 5 000: ${nf(ser5.serial_ms_per_step / 1000, 1)} s per step on one core.` : 'The serial baseline of every speed-up.'] },
       { id: 'v1', x: 202, y: 92, st: 'use', title: 'v1: Allgatherv', lines: ['9–10 Nov · group', '✓ bit-identical'],
@@ -1500,7 +1500,7 @@
       const v = crun('C2', 'v1-tile', N, P), r = crun('C2', 'v2-ringblk-tile', N, P);
       if (!v || !r) return null;
       const mk = (title, total, body) => { const segs = []; let t = 0; const add = (d, kind, label, what) => { if (d > 0) segs.push({ a: t, b: t + d, kind, label, what }); t += Math.max(0, d); };
-        body(add); add(total - t, 'rest', '', 'kick–drift–kick and the rest'); return { title, segs, total }; };
+        body(add); add(total - t, 'rest', '', 'kick and drift, and the rest'); return { title, segs, total }; };
       const rows = [
         mk('v1: one Allgatherv, one kernel call', v.step_us, (add) => { add(v.forces_us, 'kern', 'kernel', 'one kernel call over all N stars'); add(v.comm_us, 'mpi', 'Allgatherv', 'Allgatherv: every position at once'); add(v.sync_us, 'wait', '', 'waiting for the slowest rank'); }),
         mk(`Ring: ${P - 1} passes, ${P} kernel calls`, r.step_us, (add) => { const k = r.forces_us / P, c = r.comm_us / (P - 1);
