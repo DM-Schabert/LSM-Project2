@@ -20,6 +20,12 @@
 #      ./time.sh 100 --program parallel -- --decomposition ring
 #      ./time.sh 500 "24" -- --merge-radius 0 --stop-check-every 100
 #                                   # options after -- go to the program
+#      ./time.sh 1250 "96 72 48 24" --clusters per-node
+#                                   # one cluster of 1250 stars per node (4, 3, 2, 1 clusters)
+#      ./time.sh 5000 "96 48 24" --clusters per-node --total
+#                                   # 5000 stars in all, split over one cluster per node
+#                                   # (N must divide by every C: 72 ranks = 3 clusters)
+#      ./time.sh 1000 "96" --clusters 8              # 8 clusters of 1000 on 4 nodes
 #      ./time.sh --summary 500      # table of the finished runs for N = 500, all variants
 #      ./time.sh 500 --dry-run      # print the job scripts instead of submitting
 #
@@ -36,8 +42,23 @@
 #      Both read the same file and use the same kernel options, so the
 #      summary compares them directly.
 #
-#  The input is gaia_subsets/gaia_clusters_C1_n<N>.csv; it is made with
-#  IO_Improvements/MakeClusters.py if it isn't there yet.
+#  --clusters 1 (default) / K / per-node
+#      How many clusters the stars are split into. 1: one cluster, so every
+#      rank needs every star each step (direct summation, as v1). per-node:
+#      one cluster per node, C = P / 24 (1 for P <= 24), so each cluster's
+#      Allgatherv stays inside its node and only the far-field Allreduce
+#      crosses between nodes (Whiteboard C2/C3). K: always K clusters; P must
+#      be a multiple of K. Needs --program cluster.
+#  --total
+#      With --clusters: N is the total number of stars, split evenly over the
+#      C clusters (N must divide by C). Without it N is the stars PER CLUSTER,
+#      so the total grows with C. Use --total to compare with the
+#      one-cluster runs at the same N.
+#
+#  The input is gaia_subsets/gaia_clusters_C<C>_n<n per cluster>.csv; it is
+#  made with IO_Improvements/MakeClusters.py if it isn't there yet (all files
+#  before any job is submitted). Options for MakeClusters go in MAKE_ARGS, e.g.
+#  MAKE_ARGS="--min-gap 1.5" when C large clusters don't fit at theta <= 0.5.
 #  Every job reserves whole nodes, so no other job shares its cores: rank
 #  counts up to 24 get one node (-n 24), above 24 they must be whole nodes
 #  (48, 72, ...) and get -n P with span[ptile=24], 24 ranks per node. The one
@@ -46,7 +67,8 @@
 #  warns that the cluster runs on more than one host. That is expected here.
 #  Defaults: tiled kernel (--tile-rows 0) and merge radius 0.001 pc, as in the
 #  C1 runs. TIME_LIMIT=60 ./time.sh ... gives shorter runs, e.g. for a test.
-#  Run names: steps<limit>_<program>[_io-<method><every>]_n<N>_p<ranks>.
+#  Run names: steps<limit>_<program>[-C<C>x<n>][_io-<method><every>]_n<total>_p<ranks>,
+#  so --summary <total> shows the one-cluster and the split runs side by side.
 # =============================================================================
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
@@ -63,6 +85,9 @@ DRY_RUN=false
 SUMMARY=false
 WITH_IO=false
 PROGRAM=cluster
+CLUSTERS=1
+TOTAL=false
+MAKE_ARGS=${MAKE_ARGS:-}
 TIME_LIMIT=${TIME_LIMIT:-300}
 IO_EVERY=${IO_EVERY:-10000}
 IO_METHOD=${IO_METHOD:-mpiio}
@@ -77,7 +102,9 @@ while [ $# -gt 0 ]; do
         --io)       WITH_IO=true; shift ;;
         --no-io)    WITH_IO=false; shift ;;
         --program)  PROGRAM=${2:-}; shift 2 || { echo "--program needs cluster or parallel" >&2; exit 1; } ;;
-        -h|--help)  sed -n '2,49p' "$0"; exit 0 ;;
+        --clusters) CLUSTERS=${2:-}; shift 2 || { echo "--clusters needs a number or per-node" >&2; exit 1; } ;;
+        --total)    TOTAL=true; shift ;;
+        -h|--help)  sed -n '2,/^# ====/p' "$0"; exit 0 ;;
         -*)         echo "Unknown option '$1' (program options go after --)" >&2; exit 1 ;;
         *)          positional+=("$1"); shift ;;
     esac
@@ -105,11 +132,37 @@ if $WITH_IO; then
     [[ "$IO_METHOD" == mpiio || "$IO_METHOD" == gather ]] || { echo "IO_METHOD must be mpiio or gather, got '$IO_METHOD'" >&2; exit 1; }
 fi
 
-DATA="gaia_subsets/gaia_clusters_C1_n${N}.csv"
-VARIANT="${PROGRAM}"
+if ! [[ "$CLUSTERS" == per-node || ( "$CLUSTERS" =~ ^[0-9]+$ && "$CLUSTERS" -ge 1 ) ]]; then
+    echo "--clusters must be a whole number or per-node, got '$CLUSTERS'" >&2; exit 1
+fi
+if [ "$CLUSTERS" != 1 ] && [ "$PROGRAM" != cluster ]; then
+    echo "--clusters needs --program cluster: ParallelImplementation.py has no clusters" >&2; exit 1
+fi
+
+clusters_for() {   # C for P ranks
+    if [ "$CLUSTERS" = per-node ]; then
+        if [ "$1" -le $CORES_PER_NODE ]; then echo 1; else echo $(( $1 / CORES_PER_NODE )); fi
+    else
+        echo "$CLUSTERS"
+    fi
+}
+per_cluster_for() {   # stars per cluster for C clusters
+    if $TOTAL; then echo $(( N / $1 )); else echo "$N"; fi
+}
+for P in $RANKS; do
+    C=$(clusters_for "$P")
+    if [ $(( P % C )) -ne 0 ]; then
+        echo "$P ranks can't be split over $C clusters (must be a multiple)" >&2; exit 1
+    fi
+    if $TOTAL && [ $(( N % C )) -ne 0 ]; then
+        echo "--total: $N stars don't split evenly over $C clusters" >&2; exit 1
+    fi
+done
+
 IO_OPTIONS=""
+IO_TAG=""
 if $WITH_IO; then
-    VARIANT="${PROGRAM}_io-${IO_METHOD}${IO_EVERY}"
+    IO_TAG="_io-${IO_METHOD}${IO_EVERY}"
     IO_OPTIONS="--snapshot-every ${IO_EVERY} --snapshot-method ${IO_METHOD}"
 fi
 
@@ -156,20 +209,35 @@ EOF
     exit 0
 fi
 
-if [ ! -f "$DATA" ]; then
-    echo "Making $DATA (1 cluster of $N stars)"
+# Make every data file first, so a cluster layout that doesn't fit stops the
+# script before any job is submitted
+for P in $RANKS; do
+    C=$(clusters_for "$P"); n=$(per_cluster_for "$C")
+    DATA="gaia_subsets/gaia_clusters_C${C}_n${n}.csv"
+    [ -f "$DATA" ] && continue
+    echo "Making $DATA ($C cluster(s) of $n stars)"
     if $DRY_RUN; then
-        echo "  (dry run: would run python3 IO_Improvements/MakeClusters.py --clusters 1 --n $N)"
+        echo "  (dry run: would run python3 IO_Improvements/MakeClusters.py --clusters $C --n $n $MAKE_ARGS)"
     else
-        python3 IO_Improvements/MakeClusters.py --clusters 1 --n "$N"
+        python3 IO_Improvements/MakeClusters.py --clusters "$C" --n "$n" $MAKE_ARGS || {
+            echo "MakeClusters couldn't place $C clusters of $n stars; nothing was submitted." >&2
+            echo "Try fewer stars per cluster, or e.g. MAKE_ARGS=\"--min-gap 1.5\" (larger theta)." >&2
+            exit 1; }
     fi
-fi
+done
 
 WALLTIME_MIN=$(( (TIME_LIMIT + 120 + 59) / 60 ))   # the run, plus 2 minutes for start-up and saving
 EXTRA_TEXT="${EXTRA[*]:-}"
 
 for P in $RANKS; do
-    NAME="steps${TIME_LIMIT}_${VARIANT}_n${N}_p${P}"
+    C=$(clusters_for "$P"); n=$(per_cluster_for "$C")
+    DATA="gaia_subsets/gaia_clusters_C${C}_n${n}.csv"
+    if [ "$C" = 1 ]; then   # the same run as without --clusters, so the same name
+        VARIANT="${PROGRAM}${IO_TAG}"; CLUSTER_OPTION=""
+    else
+        VARIANT="${PROGRAM}-C${C}x${n}${IO_TAG}"; CLUSTER_OPTION="--clusters ${C}"
+    fi
+    NAME="steps${TIME_LIMIT}_${VARIANT}_n$(( C * n ))_p${P}"
     if [ "$P" -le $CORES_PER_NODE ]; then
         SLOTS=$CORES_PER_NODE; SPAN="span[hosts=1]"           # one whole node
     else
@@ -187,10 +255,10 @@ for P in $RANKS; do
 #BSUB -e ${NAME}_%J.err
 module load ${MODULES}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
-echo "=== ${NAME}: ${N} stars, ${P} ranks on \${LSB_MCPU_HOSTS}, ${SCRIPT}, as many steps as fit in ${TIME_LIMIT} s"
+echo "=== ${NAME}: ${C} cluster(s) of ${n} stars, ${P} ranks on \${LSB_MCPU_HOSTS}, ${SCRIPT}, as many steps as fit in ${TIME_LIMIT} s"
 mpirun --report-bindings -np ${P} python3 ${SCRIPT} \\
     --data ${DATA} --steps 1000000000 --time-limit ${TIME_LIMIT} \\
-    --tile-rows 0 --merge-radius 0.001 --run-name ${NAME} ${IO_OPTIONS} ${EXTRA_TEXT}
+    --tile-rows 0 --merge-radius 0.001 --run-name ${NAME} ${CLUSTER_OPTION} ${IO_OPTIONS} ${EXTRA_TEXT}
 EOF
 )
     if $DRY_RUN; then
@@ -202,5 +270,10 @@ EOF
 done
 
 if ! $DRY_RUN; then
-    echo "Submitted $(echo $RANKS | wc -w) job(s) (${VARIANT}). When they are done:  ./time.sh --summary ${N}"
+    if $TOTAL || [ "$CLUSTERS" = 1 ]; then
+        echo "Submitted $(echo $RANKS | wc -w) job(s). When they are done:  ./time.sh --summary ${N}"
+    else
+        echo "Submitted $(echo $RANKS | wc -w) job(s). The total grows with C, so the summary is per total:"
+        for P in $RANKS; do C=$(clusters_for "$P"); echo "  ./time.sh --summary $(( C * N ))   (P = $P, $C cluster(s))"; done
+    fi
 fi
