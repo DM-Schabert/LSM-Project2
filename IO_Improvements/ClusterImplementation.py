@@ -43,8 +43,14 @@ How it works
       (v1 leaves its stop check out of the step time).
     * Output (--save-final, --plot, --plot-iter): each cluster is gathered on
       its first rank, then world rank 0 collects the clusters with one
-      lower-case gather. This happens once per run (or per live-plot frame);
-      step 5 replaces it with MPI-IO.
+      lower-case gather. This happens once per run (or per live-plot frame).
+    * Snapshots (--snapshot-every K, IO3 on the Whiteboard, week 9): every
+      star's position and velocity before the first step and every K steps,
+      one binary file per snapshot, written with MPI-IO (every rank writes its
+      own rows with Write_at_all at an offset from Scan) or by gathering to
+      rank 0 (--snapshot-method gather). Both give byte-identical files; their
+      time is the "io" section, and it counts in the step it follows. Off by
+      default: IO doesn't buy steps, it only costs them (IO1).
 
 ParallelImplementation.py is not changed. From it, this file uses only v1's
 building blocks (listed in USED_FROM_PARALLEL and checked at import), so the
@@ -113,7 +119,7 @@ if _missing:
 
 # Every timed section, in a fixed order, so all ranks reduce the same vector (as in v1)
 SECTIONS: Tuple[str, ...] = ("load", "distribute", "communication", "forces", "merge",
-                             "integrate", "sync", "far_field", "plotting", "output")
+                             "integrate", "sync", "far_field", "io", "plotting", "output")
 BYTES_PER_ROW: int = 3 * 8  # one star's x, y, z as float64
 SUMMARY_COLUMNS: int = 6    # count, Σm, Σm·x, Σm·y, Σm·z, Σm·|r|²
 PAIRS_COLUMN: int = 6       # close pairs found, in the same table
@@ -524,6 +530,104 @@ def save_final_state(stars: Stars, cluster_of: IntArray, path: Path) -> None:
     }).to_csv(path, index=False)
 
 
+# ---------------------------------------------------------------- snapshots during the run (IO3, week 9)
+#
+# One binary file per snapshot, all float64:
+#     header (8): magic, format version, number of stars N, columns per star (8),
+#                 step, simulated time, number of clusters, 0
+#     N rows (8): x, y, z [pc], vx, vy, vz [km/s], mass [M_sun], cluster
+# Rows are in cluster order, and within a cluster in the order its ranks own
+# them: world rank order. Read one with read_snapshot().
+#
+# Two ways to write it, giving byte-identical files:
+#     mpiio   every rank writes its own rows into the one shared file with
+#             Write_at_all, at an offset from Scan (lecture 9). Nothing is
+#             gathered: rank 0 writes only the header.
+#     gather  the whole state is gathered to world rank 0 (as the final save
+#             does), which writes the file alone: the "send it all to rank 0"
+#             way the lecture warns about at large scale.
+
+SNAPSHOT_MAGIC: float = 20261126.0
+SNAPSHOT_VERSION: float = 1.0
+SNAPSHOT_HEADER: int = 8   # doubles
+SNAPSHOT_COLUMNS: int = 8  # doubles per star
+
+
+def snapshot_header(n_stars: int, step: int, sim_time: float, n_clusters: int) -> FloatArray:
+    return np.array([SNAPSHOT_MAGIC, SNAPSHOT_VERSION, n_stars, SNAPSHOT_COLUMNS, step, sim_time,
+                     n_clusters, 0.0], dtype=np.float64)
+
+
+def snapshot_rows(positions: FloatArray, velocities: FloatArray, masses: FloatArray,
+                  cluster: IntArray | int) -> FloatArray:
+    """(n, 8) rows: x, y, z, vx, vy, vz, mass, cluster."""
+    rows: FloatArray = np.empty((len(masses), SNAPSHOT_COLUMNS), dtype=np.float64)
+    rows[:, 0:3] = positions
+    rows[:, 3:6] = velocities
+    rows[:, 6] = masses
+    rows[:, 7] = cluster
+    return rows
+
+
+def read_snapshot(path: Path) -> Tuple[Dict[str, float], FloatArray]:
+    """(header fields, (N, 8) rows) of one snapshot file."""
+    raw: FloatArray = np.fromfile(path, dtype=np.float64)
+    if raw.size < SNAPSHOT_HEADER or raw[0] != SNAPSHOT_MAGIC:
+        raise ValueError(f"{path} is not a snapshot file")
+    keys: Tuple[str, ...] = ("magic", "version", "n_stars", "columns", "step", "sim_time", "n_clusters", "unused")
+    header: Dict[str, float] = dict(zip(keys, raw[:SNAPSHOT_HEADER].tolist()))
+    n, columns = int(header["n_stars"]), int(header["columns"])
+    return header, raw[SNAPSHOT_HEADER:SNAPSHOT_HEADER + n * columns].reshape(n, columns)
+
+
+def snapshot_path(folder: Path, step: int) -> Path:
+    return folder / f"step_{step:010d}.bin"
+
+
+def write_snapshot_mpiio(path: Path, state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm,
+                         step: int, sim_time: float) -> int:
+    """Collective (world): every rank writes its own rows into one shared file. Returns the file's bytes."""
+    rank: int = world.Get_rank()
+    if rank == 0 and path.exists():
+        path.unlink()  # lecture 9: delete the file first, or a shorter snapshot leaves old bytes behind
+    world.Barrier()
+    start, stop = state.my_range
+    rows: FloatArray = snapshot_rows(state.my_positions, state.my_velocities, state.masses[start:stop],
+                                     layout.cluster_id)
+    mine: IntArray = np.array([state.my_count], dtype=np.int64)
+    up_to_me: IntArray = np.empty(1, dtype=np.int64)
+    world.Scan(mine, up_to_me, op=MPI.SUM)            # stars on ranks 0 .. me
+    total: IntArray = np.empty(1, dtype=np.int64)
+    world.Allreduce(mine, total, op=MPI.SUM)
+    first: int = int(up_to_me[0]) - state.my_count    # stars on ranks before me = where my rows start
+
+    handle = MPI.File.Open(world, str(path), MPI.MODE_CREATE | MPI.MODE_WRONLY | MPI.MODE_UNIQUE_OPEN)
+    handle.Set_view(0, MPI.DOUBLE)                     # offsets count doubles, not bytes
+    if rank == 0:
+        handle.Write_at(0, snapshot_header(int(total[0]), step, sim_time, layout.n_clusters))
+    handle.Write_at_all(SNAPSHOT_HEADER + first * SNAPSHOT_COLUMNS, rows)  # a rank without stars writes 0
+    handle.Close()
+    return (SNAPSHOT_HEADER + int(total[0]) * SNAPSHOT_COLUMNS) * 8
+
+
+def write_snapshot_gather(path: Path, state: "pi.ParallelState", layout: ClusterLayout, world: MPI.Comm,
+                          rows_by_cluster: List[IntArray], n_original: int, step: int, sim_time: float,
+                          perf: Perf) -> int:
+    """Collective (world): gather everything to world rank 0, which writes the file alone."""
+    full, labels = gather_world_state(state, layout, world, rows_by_cluster, n_original, perf)
+    written: int = 0
+    if world.Get_rank() == 0:
+        assert full is not None and labels is not None
+        if path.exists():
+            path.unlink()
+        with open(path, "wb") as handle:
+            snapshot_header(full.count, step, sim_time, layout.n_clusters).tofile(handle)
+            snapshot_rows(full.positions, full.velocities, full.masses, labels).tofile(handle)
+        written = (SNAPSHOT_HEADER + full.count * SNAPSHOT_COLUMNS) * 8
+    world.Barrier()  # the step ends when the file is written, as with MPI-IO's collective Close
+    return written
+
+
 # ---------------------------------------------------------------- results
 
 def code_fingerprint() -> str:
@@ -635,6 +739,7 @@ def reduce_cluster_perf(world: MPI.Comm, perf: Perf, layout: ClusterLayout, args
         extra[f"{s}_time_mean_s"] = float(mean)
     extra["sync_time_s"] = float(t_max[SECTIONS.index("sync")])
     extra["distribute_time_s"] = float(t_max[SECTIONS.index("distribute")])
+    extra["io_time_s"] = float(t_max[SECTIONS.index("io")])  # snapshots (slowest rank)
     return combined, extra
 
 
@@ -701,6 +806,15 @@ def parse_args() -> argparse.Namespace:
                         help="Pull between clusters. monopole: every other cluster as a point mass at its "
                              "centre of mass (one Allreduce per step). off: none, every cluster evolves alone "
                              "(bit-identical to running each cluster on its own). Default: monopole")
+    parser.add_argument("--snapshot-every", type=non_negative_int, default=0, metavar="K",
+                        help="Save every star's position and velocity every K steps, and before the "
+                             "first step, one binary file per snapshot (0 = never; default: 0)")
+    parser.add_argument("--snapshot-method", choices=("mpiio", "gather"), default="mpiio",
+                        help="mpiio: every rank writes its own rows into the shared file (MPI-IO). "
+                             "gather: rank 0 gathers everything and writes alone. Same files. "
+                             "Default: mpiio")
+    parser.add_argument("--snapshot-dir", type=Path, default=None,
+                        help="Folder for the snapshot files (default: snapshots/<run name>)")
     parser.add_argument("--theta-max", type=serial.non_negative_float, default=DEFAULT_THETA_MAX,
                         help="Warn when (r_A + r_B) / distance between two clusters goes above this; "
                              f"the run carries on (default: {DEFAULT_THETA_MAX:g})")
@@ -797,6 +911,32 @@ def main() -> None:
     exchanger: StepExchanger = StepExchanger(layout, world, with_summaries=use_far_field)
     gather: PositionGather = PositionGather()
 
+    # Snapshots (IO3): one file before the first step and one every K steps. A
+    # snapshot's time goes into the "io" section and into the time of its step.
+    snapshot_dir: Path = args.snapshot_dir or Path("snapshots") / args.run_name
+    snapshots_written: int = 0
+    snapshot_bytes: int = 0
+
+    def take_snapshot(step: int) -> None:
+        nonlocal snapshots_written, snapshot_bytes
+        start_time: float = time.perf_counter()
+        path: Path = snapshot_path(snapshot_dir, step)
+        if args.snapshot_method == "mpiio":
+            snapshot_bytes += write_snapshot_mpiio(path, state, layout, world, step, step * args.dt)
+        else:
+            snapshot_bytes += write_snapshot_gather(path, state, layout, world, rows_by_cluster, n_original,
+                                                    step, step * args.dt, perf)
+        snapshots_written += 1
+        record(perf, "io", start_time)
+
+    if args.snapshot_every > 0:
+        if is_root:
+            snapshot_dir.mkdir(parents=True, exist_ok=True)
+            print(f"Snapshots every {format_thousands(args.snapshot_every)} steps ({args.snapshot_method}) "
+                  f"in {snapshot_dir}/")
+        world.Barrier()  # the folder exists before anyone opens a file in it
+        take_snapshot(0)
+
     world.Barrier()  # start the step clock together
     try:
         for i in range(1, args.steps + 1):
@@ -809,6 +949,8 @@ def main() -> None:
             if code != pi.STOP_NONE:
                 stop_reason = pi.STOP_REASONS[code]
                 break
+            if args.snapshot_every > 0 and i % args.snapshot_every == 0:
+                take_snapshot(i)  # collective (world); every rank has the same i
             perf.step_times.append(time.perf_counter() - step_start)
             if theta_log is not None and summaries is not None:
                 theta_log.add(summaries.theta(), i)
@@ -857,6 +999,12 @@ def main() -> None:
     print(f"Simulated {format_thousands(steps_done)} steps "
           f"({steps_done * args.dt * serial.MYR_PER_TIME_UNIT:.2f} Myr) in {simulation_time:.2f} s "
           f"({simulation_time / max(steps_done, 1) * 1000:.2f} ms/step, slowest rank)")
+    if args.snapshot_every > 0:
+        io_s: float = float(combined.totals["io"])
+        print(f"Snapshots: {snapshots_written} written to {snapshot_dir}/ ({args.snapshot_method}), "
+              f"{snapshot_bytes / 1e6:.2f} MB, {io_s:.3f} s in all "
+              f"({io_s / max(snapshots_written, 1) * 1000:.2f} ms each, "
+              f"{io_s / max(simulation_time, 1e-12) * 100:.2f} % of the step time; slowest rank)")
 
     if args.save_final is not None:
         with perf.time("output"):
@@ -890,6 +1038,10 @@ def main() -> None:
         n_threads=int(os.environ.get("OMP_NUM_THREADS", "1") or 1),
         load_imbalance=float(extra["load_imbalance"]))
     row.update(extra)
+    row.update({"snapshot_every": args.snapshot_every,
+                "snapshot_method": args.snapshot_method if args.snapshot_every > 0 else "",
+                "snapshots_written": snapshots_written,
+                "snapshot_bytes": snapshot_bytes})
     serial.print_performance_summary(row)
     print(f"  communication {float(row['communication_time_s']):8.3f} s (slowest rank) · "
           f"sync {float(row['sync_time_s']):.3f} s · "
