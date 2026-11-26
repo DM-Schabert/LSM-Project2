@@ -5,9 +5,15 @@
 #  One LSF job per rank count, largest first. Each job runs one cluster of N
 #  stars with no step limit (--steps 1e9) and --time-limit 300: the program
 #  stops itself at the limit and results.csv records how many steps it
-#  finished (iterations). With no merges every step costs the same, so one run
-#  per rank count gives the answer; growing the step count run by run would
-#  only repeat it.
+#  finished (iterations). The job's walltime is the limit plus
+#  STARTUP_MARGIN (120 s), rounded up to whole minutes: -W 0:07. The program's
+#  clock starts after mpirun, module load and the imports, and it stops
+#  stepping at 95 % of the limit to leave time for saving, so a job ends
+#  around 5 to 5.5 minutes in, well inside the 7.
+#      TIME_LIMIT=60 ./time.sh ...   a short test (a 3-minute job)
+#  If a job is ever killed at the walltime (TERM_RUNLIMIT in its .out),
+#  raise STARTUP_MARGIN. --summary projects "steps in 300 s" from ms/step, so
+#  runs with other limits compare directly.
 #
 #  Usage (from the project root):
 #      ./time.sh                    # N = 100, ranks 24 16 8 4 2 1, no IO
@@ -17,9 +23,11 @@
 #      ./time.sh 100 --io           # with IO: a snapshot of every star every IO_EVERY steps
 #      IO_EVERY=1000 IO_METHOD=gather ./time.sh 100 --io
 #      ./time.sh 100 --program parallel             # ParallelImplementation.py (v1) instead
-#      ./time.sh 100 --program parallel -- --decomposition ring
+#      TAG=ring ./time.sh 100 --program parallel -- --decomposition ring
 #      ./time.sh 500 "24" -- --merge-radius 0 --stop-check-every 100
-#                                   # options after -- go to the program
+#                                   # options after -- go to the program; without
+#                                   # TAG they become the tag (see "Names and tags")
+#      MERGE_RADIUS=0.01 ./time.sh 100 "24 8"       # more merges (name gets _mr0.01)
 #      ./time.sh 1250 "96 72 48 24" --clusters per-node
 #                                   # one cluster of 1250 stars per node (4, 3, 2, 1 clusters)
 #      ./time.sh 5000 "96 48 24" --clusters per-node --total
@@ -45,30 +53,59 @@
 #  --clusters 1 (default) / K / per-node
 #      How many clusters the stars are split into. 1: one cluster, so every
 #      rank needs every star each step (direct summation, as v1). per-node:
-#      one cluster per node, C = P / 24 (1 for P <= 24), so each cluster's
-#      Allgatherv stays inside its node and only the far-field Allreduce
-#      crosses between nodes (Whiteboard C2/C3). K: always K clusters; P must
-#      be a multiple of K. Needs --program cluster.
+#      one cluster per node, C = P / CORES_PER_NODE (1 for P <= CORES_PER_NODE),
+#      so each cluster's Allgatherv stays inside its node and only the
+#      far-field Allreduce crosses between nodes (Whiteboard C2/C3). K: always
+#      K clusters; P must be a multiple of K. Needs --program cluster.
 #  --total
 #      With --clusters: N is the total number of stars, split evenly over the
 #      C clusters (N must divide by C). Without it N is the stars PER CLUSTER,
 #      so the total grows with C. Use --total to compare with the
 #      one-cluster runs at the same N.
 #
+#  Names and tags
+#      TAG=<name> adds _<name> to the run name (letters, digits, '.' and '-').
+#      Without TAG, the options after -- become the tag: "-- --decomposition
+#      ring" gives _decomposition-ring. So runs with different program options
+#      never share a name, and --summary shows them as separate variants.
+#      MERGE_RADIUS (default 0.001 pc, as in the C1 runs) sets --merge-radius;
+#      any other value adds _mr<value> to the name. Merging is part of what we
+#      measure, so the summary shows the stars at start -> end and the merge
+#      time per step. Prefer MERGE_RADIUS over "-- --merge-radius".
+#
+#  --summary N
+#      One row per run, for every time limit (old steps300_ runs included;
+#      the "limit s" column tells them apart). The "us" columns are microseconds per step: the
+#      slowest rank's total for that section over the run, divided by the
+#      steps. forces = the force kernel; comm = the Allgatherv of positions
+#      (and the re-gathers after a merge); sync = the per-step Allreduce (stop
+#      check, merge check and, with clusters, the far-field summaries); merge =
+#      the merge path. v1 keeps its stop check out of ms/step, but it is in
+#      sync. The summary warns when a run merged and when the rows come from
+#      more than one CPU model.
+#
 #  The input is gaia_subsets/gaia_clusters_C<C>_n<n per cluster>.csv; it is
 #  made with IO_Improvements/MakeClusters.py if it isn't there yet (all files
 #  before any job is submitted). Options for MakeClusters go in MAKE_ARGS, e.g.
 #  MAKE_ARGS="--min-gap 1.5" when C large clusters don't fit at theta <= 0.5.
 #  Every job reserves whole nodes, so no other job shares its cores: rank
-#  counts up to 24 get one node (-n 24), above 24 they must be whole nodes
-#  (48, 72, ...) and get -n P with span[ptile=24], 24 ranks per node. The one
+#  counts up to CORES_PER_NODE get one node, above it they must be whole
+#  nodes (48, 72, ...) and get -n P with span[ptile=CORES_PER_NODE]. The one
 #  cluster is then spread over several nodes (Whiteboard C2): its per-step
 #  Allgatherv crosses between nodes, and the cluster code's start-up printout
 #  warns that the cluster runs on more than one host. That is expected here.
+#
+#  hpcintro (bqueues -l hpcintro, 26 Nov): run limit 240 min (the walltime
+#  can't go above it). LSF puts all
+#  nodes of one job on the same CPU model and in one enclosure (RES_REQ
+#  same[type:model] cu[maxcus=1]), but different jobs can land on different
+#  models. CORES_PER_NODE (default 24) must match the queue's nodes, or
+#  "whole node" isn't true: check with  bmgroup rhpcintro2  and bhosts.
+#
 #  Defaults: tiled kernel (--tile-rows 0) and merge radius 0.001 pc, as in the
-#  C1 runs. TIME_LIMIT=60 ./time.sh ... gives shorter runs, e.g. for a test.
-#  Run names: steps<limit>_<program>[-C<C>x<n>][_io-<method><every>]_n<total>_p<ranks>,
-#  so --summary <total> shows the one-cluster and the split runs side by side.
+#  C1 runs.
+#  Run names (<limit> = TIME_LIMIT, 300 by default): steps<limit>_<program>[-C<C>x<n>][_io-<method><every>][_mr<r>][_<tag>]_n<total>_p<ranks>,
+#  so --summary <total> shows the one-cluster, the split and the tagged runs side by side.
 # =============================================================================
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
@@ -88,9 +125,16 @@ PROGRAM=cluster
 CLUSTERS=1
 TOTAL=false
 MAKE_ARGS=${MAKE_ARGS:-}
-TIME_LIMIT=${TIME_LIMIT:-300}
+TIME_LIMIT=${TIME_LIMIT:-300}          # the program's --time-limit, s
+STARTUP_MARGIN=${STARTUP_MARGIN:-120}  # s on top of it for start-up and saving -> the walltime
+PROJECT_TO_S=300                       # --summary: steps in this many seconds, from ms/step
 IO_EVERY=${IO_EVERY:-10000}
 IO_METHOD=${IO_METHOD:-mpiio}
+TAG=${TAG:-}
+DEFAULT_MERGE_RADIUS=0.001
+MERGE_RADIUS=${MERGE_RADIUS:-$DEFAULT_MERGE_RADIUS}
+CORES_PER_NODE=${CORES_PER_NODE:-24}
+QUEUE_RUNLIMIT_MIN=240   # hpcintro's RUNLIMIT
 MODULES="pandas/2.3.0-python-3.12.11 matplotlib/3.10.3-numpy-2.3.1-python-3.12.11 mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8"
 
 positional=()
@@ -114,11 +158,13 @@ done
 if ! [[ "$N" =~ ^[0-9]+$ ]] || [ "$N" -lt 1 ]; then
     echo "N must be a whole number of stars, got '$N'" >&2; exit 1
 fi
-CORES_PER_NODE=24
+if ! [[ "$CORES_PER_NODE" =~ ^[0-9]+$ ]] || [ "$CORES_PER_NODE" -lt 1 ]; then
+    echo "CORES_PER_NODE must be a whole number, got '$CORES_PER_NODE'" >&2; exit 1
+fi
 for P in $RANKS; do
     [[ "$P" =~ ^[0-9]+$ ]] && [ "$P" -ge 1 ] || { echo "Rank counts must be whole numbers, got '$P'" >&2; exit 1; }
     if [ "$P" -gt $CORES_PER_NODE ] && [ $(( P % CORES_PER_NODE )) -ne 0 ]; then
-        echo "Above $CORES_PER_NODE ranks, use whole nodes (48, 72, ...), got '$P'" >&2; exit 1
+        echo "Above $CORES_PER_NODE ranks, use whole nodes (multiples of $CORES_PER_NODE), got '$P'" >&2; exit 1
     fi
 done
 case "$PROGRAM" in
@@ -138,6 +184,33 @@ fi
 if [ "$CLUSTERS" != 1 ] && [ "$PROGRAM" != cluster ]; then
     echo "--clusters needs --program cluster: ParallelImplementation.py has no clusters" >&2; exit 1
 fi
+
+# Merge radius and tag: both go into the run name, so different settings never share one
+if ! [[ "$MERGE_RADIUS" =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ ]]; then
+    echo "MERGE_RADIUS must be a number of pc (0 = no merging), got '$MERGE_RADIUS'" >&2; exit 1
+fi
+MR_TAG=""
+[ "$MERGE_RADIUS" != "$DEFAULT_MERGE_RADIUS" ] && MR_TAG="_mr${MERGE_RADIUS}"
+NAME_TAG=""
+if [ -n "$TAG" ]; then
+    [[ "$TAG" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "TAG may only have letters, digits, '.' and '-', got '$TAG'" >&2; exit 1; }
+    NAME_TAG="_${TAG}"
+elif [ ${#EXTRA[@]} -gt 0 ]; then
+    # "--decomposition ring --tile-rows 0" -> "decomposition-ring-tile-rows-0"
+    slug=$(printf '%s ' "${EXTRA[@]}" | sed -E 's/(^| )-+/\1/g; s/[^A-Za-z0-9.]+/-/g; s/^-+//; s/-+$//')
+    [ -n "$slug" ] && NAME_TAG="_${slug}"
+fi
+
+# Walltime: the program's time limit plus the start-up margin, in whole minutes
+for var in TIME_LIMIT STARTUP_MARGIN; do
+    [[ "${!var}" =~ ^[0-9]+$ ]] || { echo "$var must be a whole number of seconds, got '${!var}'" >&2; exit 1; }
+done
+[ "$TIME_LIMIT" -ge 1 ] || { echo "TIME_LIMIT must be 1 s or more" >&2; exit 1; }
+WALLTIME_MIN=$(( (TIME_LIMIT + STARTUP_MARGIN + 59) / 60 ))
+if [ "$WALLTIME_MIN" -gt $QUEUE_RUNLIMIT_MIN ]; then
+    echo "TIME_LIMIT=$TIME_LIMIT needs $WALLTIME_MIN min of walltime; hpcintro allows $QUEUE_RUNLIMIT_MIN" >&2; exit 1
+fi
+WALLTIME=$(printf '%d:%02d' $(( WALLTIME_MIN / 60 )) $(( WALLTIME_MIN % 60 )))
 
 clusters_for() {   # C for P ranks
     if [ "$CLUSTERS" = per-node ]; then
@@ -176,35 +249,83 @@ if ! python3 -c "import pandas" 2>/dev/null; then
 fi
 
 if $SUMMARY; then
-    python3 - "$TIME_LIMIT" "$N" <<'EOF'
+    python3 - "$N" "$PROJECT_TO_S" <<'EOF'
 import re
 import sys
+
+import numpy as np
 import pandas as pd
-limit, n = sys.argv[1], sys.argv[2]
-pattern = re.compile(rf"^steps{limit}_(?P<variant>.+)_n{n}_p(?P<p>\d+)$")
+
+n, project_s = sys.argv[1], float(sys.argv[2])
+pattern = re.compile(rf"^steps(?P<limit>\d+)_(?P<variant>.+)_n{n}_p(?P<p>\d+)$")
 runs = pd.read_csv("results.csv", low_memory=False)
 names = runs["run_name"].astype(str).str.extract(pattern)
-runs = runs[names["variant"].notna()].assign(variant=names["variant"])
+runs = runs[names["variant"].notna()].assign(variant=names["variant"], limit=names["limit"].astype(int))
 if runs.empty:
-    sys.exit(f"No runs named steps{limit}_<variant>_n{n}_p<ranks> in results.csv yet")
+    sys.exit(f"No runs named steps<limit>_<variant>_n{n}_p<ranks> in results.csv yet")
 runs = runs.sort_values(["variant", "n_ranks", "timestamp"], ascending=[True, False, True])
+
+
+def col(name, default=0.0):
+    """A results column, with `default` for rows (or files) from before the column existed."""
+    if name in runs:
+        return runs[name].fillna(default)
+    return pd.Series(default, index=runs.index)
+
+
+steps = runs["iterations"].astype(float)
+per_step = steps.clip(lower=1)
 ms = runs["step_time_mean_ms"].astype(float)
+
+
+def us_per_step(name):
+    """Microseconds per step of one timed section (slowest rank's total / steps)."""
+    return (col(name).astype(float) / per_step * 1e6).round(1)
+
+
+stars_start = col("n_stars_start", 0).astype(int)
+stars_end = col("n_stars_end", 0).astype(int)
 table = pd.DataFrame({
     "variant": runs["variant"],
-    "decomposition": runs["decomposition"].fillna("") if "decomposition" in runs else "",
+    "decomposition": col("decomposition", ""),
+    "limit s": runs["limit"],
     "ranks": runs["n_ranks"].astype(int),
-    "nodes": runs["n_nodes"].fillna(1).astype(int) if "n_nodes" in runs else 1,
-    "steps in the run": runs["iterations"].astype(int),
+    "nodes": col("n_nodes", 1).astype(int),
+    "merge r": col("merge_radius_pc", np.nan),
+    "stars": stars_start.astype(str) + "->" + stars_end.astype(str),
+    "steps": steps.astype(int),
     "ms/step": ms.round(3),
-    f"steps in {limit} s (from ms/step)": (float(limit) * 1000 / ms).round(-3).astype(int),
-    "IO time (s)": runs["io_time_s"].fillna(0).round(3) if "io_time_s" in runs else 0.0,
-    "snapshots": runs["snapshots_written"].fillna(0).astype(int) if "snapshots_written" in runs else 0,
-    "stop": runs["stop_reason"],
-    "host (rank 0)": runs["hostname"],
-    "when": runs["timestamp"],
+    f"steps in {project_s:g} s": (project_s * 1000 / ms).replace([np.inf, -np.inf], np.nan)
+                                 .round(-3).fillna(0).astype(int),
+    "forces us": us_per_step("forces_time_s"),
+    "comm us": us_per_step("communication_time_s"),
+    "sync us": us_per_step("sync_time_s"),
+    "merge us": us_per_step("merge_time_s"),
 })
-print(f"N = {n}, {limit} s runs: one row per run, by variant, newest last within each rank count")
+snapshots = col("snapshots_written", 0).astype(int)
+if (snapshots > 0).any():  # IO columns only when some run wrote snapshots
+    table["IO s"] = col("io_time_s").astype(float).round(3)
+    table["snapshots"] = snapshots
+table["stop"] = runs["stop_reason"]
+table["host (rank 0)"] = runs["hostname"]
+table["when"] = runs["timestamp"]
+
+print(f"N = {n}: one row per run, by variant, newest last within each rank count. "
+      f"'steps in {project_s:g} s' is projected from ms/step, so runs with different limits compare")
+print("'us' columns: microseconds per step, slowest rank (comm = Allgatherv, sync = per-step Allreduce)")
 print(table.to_string(index=False))
+
+merged = table[stars_end < stars_start]
+if not merged.empty:
+    print(f"\nNote: {len(merged)} run(s) merged stars (stars start->end above). Their steps include merge "
+          f"steps, which cost more than the others, and later steps have fewer stars: compare them with "
+          f"runs that merged about as much.")
+models = col("cpu_model", "").astype(str)
+used = models[models != ""].value_counts()
+if len(used) > 1:
+    print("\nNote: these rows come from more than one CPU model; compare runs on the same model:")
+    for model, count in used.items():
+        print(f"  {count:3d} run(s): {model}")
 EOF
     exit 0
 fi
@@ -226,7 +347,6 @@ for P in $RANKS; do
     fi
 done
 
-WALLTIME_MIN=$(( (TIME_LIMIT + 120 + 59) / 60 ))   # the run, plus 2 minutes for start-up and saving
 EXTRA_TEXT="${EXTRA[*]:-}"
 
 for P in $RANKS; do
@@ -237,11 +357,11 @@ for P in $RANKS; do
     else
         VARIANT="${PROGRAM}-C${C}x${n}${IO_TAG}"; CLUSTER_OPTION="--clusters ${C}"
     fi
-    NAME="steps${TIME_LIMIT}_${VARIANT}_n$(( C * n ))_p${P}"
+    NAME="steps${TIME_LIMIT}_${VARIANT}${MR_TAG}${NAME_TAG}_n$(( C * n ))_p${P}"
     if [ "$P" -le $CORES_PER_NODE ]; then
         SLOTS=$CORES_PER_NODE; SPAN="span[hosts=1]"           # one whole node
     else
-        SLOTS=$P; SPAN="span[ptile=${CORES_PER_NODE}]"         # P / 24 whole nodes
+        SLOTS=$P; SPAN="span[ptile=${CORES_PER_NODE}]"         # P / CORES_PER_NODE whole nodes
     fi
     JOB=$(cat <<EOF
 #!/bin/bash
@@ -250,7 +370,7 @@ for P in $RANKS; do
 #BSUB -n ${SLOTS}
 #BSUB -R "${SPAN}"
 #BSUB -R "rusage[mem=2GB]"
-#BSUB -W 00:$(printf '%02d' "$WALLTIME_MIN")
+#BSUB -W ${WALLTIME}
 #BSUB -o ${NAME}_%J.out
 #BSUB -e ${NAME}_%J.err
 module load ${MODULES}
@@ -258,7 +378,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg
 echo "=== ${NAME}: ${C} cluster(s) of ${n} stars, ${P} ranks on \${LSB_MCPU_HOSTS}, ${SCRIPT}, as many steps as fit in ${TIME_LIMIT} s"
 mpirun --report-bindings -np ${P} python3 ${SCRIPT} \\
     --data ${DATA} --steps 1000000000 --time-limit ${TIME_LIMIT} \\
-    --tile-rows 0 --merge-radius 0.001 --run-name ${NAME} ${CLUSTER_OPTION} ${IO_OPTIONS} ${EXTRA_TEXT}
+    --tile-rows 0 --merge-radius ${MERGE_RADIUS} --run-name ${NAME} ${CLUSTER_OPTION} ${IO_OPTIONS} ${EXTRA_TEXT}
 EOF
 )
     if $DRY_RUN; then
@@ -275,5 +395,8 @@ if ! $DRY_RUN; then
     else
         echo "Submitted $(echo $RANKS | wc -w) job(s). The total grows with C, so the summary is per total:"
         for P in $RANKS; do C=$(clusters_for "$P"); echo "  ./time.sh --summary $(( C * N ))   (P = $P, $C cluster(s))"; done
+    fi
+    if [ -n "${MR_TAG}${NAME_TAG}" ]; then
+        echo "The run names end in '${MR_TAG}${NAME_TAG}' before _n...: these runs are a variant of their own in the summary."
     fi
 fi
