@@ -260,7 +260,8 @@ n, project_s = sys.argv[1], float(sys.argv[2])
 pattern = re.compile(rf"^steps(?P<limit>\d+)_(?P<variant>.+)_n{n}_p(?P<p>\d+)$")
 runs = pd.read_csv("results.csv", low_memory=False)
 names = runs["run_name"].astype(str).str.extract(pattern)
-runs = runs[names["variant"].notna()].assign(variant=names["variant"], limit=names["limit"].astype(int))
+keep = names["variant"].notna()  # only this N's time.sh runs; everything else in results.csv is skipped
+runs = runs[keep].assign(variant=names.loc[keep, "variant"], limit=names.loc[keep, "limit"].astype(int))
 if runs.empty:
     sys.exit(f"No runs named steps<limit>_<variant>_n{n}_p<ranks> in results.csv yet")
 runs = runs.sort_values(["variant", "n_ranks", "timestamp"], ascending=[True, False, True])
