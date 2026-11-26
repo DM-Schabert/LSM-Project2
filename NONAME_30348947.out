@@ -1,0 +1,37 @@
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30348947: <NONAME> in cluster <dcc> Done
+
+Job <NONAME> was submitted from host <n-62-30-5> by user <s123142> in cluster <dcc> at Tue Nov 24 09:42:37 2026
+Job was executed on host(s) <n-62-11-65>, in queue <hpc>, as user <s123142> in cluster <dcc> at Tue Nov 24 09:42:39 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Tue Nov 24 09:42:39 2026
+Terminated at Tue Nov 24 09:42:40 2026
+Results reported at Tue Nov 24 09:42:40 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+N=2000 DATA=gaia_subsets/gaia_clusters_C2_n1000.csv MODE=validate STEPS=10000
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   0.33 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     1024.00 MB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   1 sec.
+    Turnaround time :                            3 sec.
+
+The output (if any) is above this job summary.
+

@@ -1,0 +1,82 @@
+===== 24 ranks on n-62-21-75, 20,000 calls each
+  Allreduce, 1 int64, cluster communicator                   5.30 µs per call
+  Allreduce, 1 int64, world communicator                     5.09 µs per call
+  Allreduce, (2, 7) float64, world communicator              7.28 µs per call
+  Allreduce, (2, 7) float64, cluster communicator            7.00 µs per call
+  old merge check: close_pairs_anywhere                     13.17 µs per call
+  new step exchange: exchange_step                          27.14 µs per call
+  Allgatherv of 100 positions (cluster communicator)        31.03 µs per call
+===== 16 ranks on n-62-21-75, 20,000 calls each
+  Allreduce, 1 int64, cluster communicator                   4.57 µs per call
+  Allreduce, 1 int64, world communicator                     4.60 µs per call
+  Allreduce, (2, 7) float64, world communicator              6.53 µs per call
+  Allreduce, (2, 7) float64, cluster communicator            6.33 µs per call
+  old merge check: close_pairs_anywhere                     13.56 µs per call
+  new step exchange: exchange_step                          26.28 µs per call
+  Allgatherv of 100 positions (cluster communicator)        29.84 µs per call
+===== 8 ranks on n-62-21-75, 20,000 calls each
+  Allreduce, 1 int64, cluster communicator                   3.78 µs per call
+  Allreduce, 1 int64, world communicator                     3.20 µs per call
+  Allreduce, (2, 7) float64, world communicator              3.85 µs per call
+  Allreduce, (2, 7) float64, cluster communicator            3.84 µs per call
+  old merge check: close_pairs_anywhere                      9.24 µs per call
+  new step exchange: exchange_step                          19.33 µs per call
+  Allgatherv of 100 positions (cluster communicator)        13.69 µs per call
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30388584: <exchange_bench> in cluster <dcc> Done
+
+Job <exchange_bench> was submitted from host <n-62-9-40> by user <s123142> in cluster <dcc> at Thu Nov 26 09:53:25 2026
+Job was executed on host(s) <24*n-62-21-75>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Thu Nov 26 09:53:27 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Thu Nov 26 09:53:27 2026
+Terminated at Thu Nov 26 09:53:41 2026
+Results reported at Thu Nov 26 09:53:41 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -J exchange_bench
+#BSUB -q hpcintro
+#BSUB -n 24
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:10
+#BSUB -o exchange_bench_%J.out
+#BSUB -e exchange_bench_%J.err
+module load pandas/2.3.0-python-3.12.11
+module load matplotlib/3.10.3-numpy-2.3.1-python-3.12.11
+module load mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
+for P in 24 16 8; do
+  mpirun -np $P python3 IO_Improvements/exchange_bench.py
+done
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   156.69 sec.
+    Max Memory :                                 898 MB
+    Average Memory :                             898.00 MB
+    Total Requested Memory :                     49152.00 MB
+    Delta Memory :                               48254.00 MB
+    Max Swap :                                   -
+    Max Processes :                              12
+    Max Threads :                                31
+    Run time :                                   14 sec.
+    Turnaround time :                            16 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <exchange_bench_30388584.err> for stderr output of this job.
+

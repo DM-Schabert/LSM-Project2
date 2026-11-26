@@ -1,0 +1,58 @@
+=== steps300_n200_p24: 200 stars, 24 ranks on n-62-21-47 24 , as many steps as fit in 300 s
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 30388910: <steps300_n200_p24> in cluster <dcc> Exited
+
+Job <steps300_n200_p24> was submitted from host <n-62-9-40> by user <s123142> in cluster <dcc> at Thu Nov 26 10:29:41 2026
+Job was executed on host(s) <24*n-62-21-47>, in queue <hpcintro>, as user <s123142> in cluster <dcc> at Thu Nov 26 10:38:02 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Thu Nov 26 10:38:02 2026
+Terminated at Thu Nov 26 10:46:19 2026
+Results reported at Thu Nov 26 10:46:19 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J steps300_n200_p24
+#BSUB -q hpcintro
+#BSUB -n 24
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -W 00:07
+#BSUB -o steps300_n200_p24_%J.out
+#BSUB -e steps300_n200_p24_%J.err
+module load pandas/2.3.0-python-3.12.11 matplotlib/3.10.3-numpy-2.3.1-python-3.12.11 mpi4py/4.0.3-python-3.12.11-openmpi-5.0.8
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
+echo "=== steps300_n200_p24: 200 stars, 24 ranks on ${LSB_MCPU_HOSTS}, as many steps as fit in 300 s"
+mpirun --report-bindings -np 24 python3 IO_Improvements/ClusterImplementation.py \    --data gaia_subsets/gaia_clusters_C1_n200.csv --steps 1000000000 --time-limit 300 \    --tile-rows 0 --merge-radius 0.001 --run-name steps300_n200_p24 
+
+------------------------------------------------------------
+
+TERM_RUNLIMIT: job killed after reaching LSF run time limit.
+Exited with exit code 2.
+
+Resource usage summary:
+
+    CPU time :                                   39.00 sec.
+    Max Memory :                                 11 MB
+    Average Memory :                             5.86 MB
+    Total Requested Memory :                     49152.00 MB
+    Delta Memory :                               49141.00 MB
+    Max Swap :                                   -
+    Max Processes :                              1
+    Max Threads :                                1
+    Run time :                                   497 sec.
+    Turnaround time :                            998 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <steps300_n200_p24_30388910.err> for stderr output of this job.
+

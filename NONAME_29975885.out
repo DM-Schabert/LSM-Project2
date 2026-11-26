@@ -1,0 +1,38 @@
+/bin/bash: line 1: ./batch.sh: Permission denied
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 29975885: <NONAME> in cluster <dcc> Exited
+
+Job <NONAME> was submitted from host <n-62-27-17> by user <s123142> in cluster <dcc> at Tue Nov 10 12:31:06 2026
+Job was executed on host(s) <n-62-28-34>, in queue <hpc>, as user <s123142> in cluster <dcc> at Tue Nov 10 12:31:08 2026
+</zhome/a7/8/77238> was used as the home directory.
+</zhome/a7/8/77238/HPC_Course/LargeModels/LSM2Stars> was used as the working directory.
+Started at Tue Nov 10 12:31:08 2026
+Terminated at Tue Nov 10 12:31:08 2026
+Results reported at Tue Nov 10 12:31:08 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+batch.sh
+------------------------------------------------------------
+
+Exited with exit code 126.
+
+Resource usage summary:
+
+    CPU time :                                   0.31 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     1024.00 MB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   0 sec.
+    Turnaround time :                            2 sec.
+
+The output (if any) is above this job summary.
+
