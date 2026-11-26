@@ -1,11 +1,17 @@
 """Time one step's collectives on their own, call by call, without any physics.
 
 Compares the old merge check (one int64 Allreduce on the cluster's
-communicator, ParallelImplementation.close_pairs_anywhere) with the new step
+communicator, ParallelImplementation.close_pairs_anywhere) with the step
 exchange (one (C + 1, 7) float64 Allreduce on the world communicator,
-ClusterImplementation.exchange_step), plus the bare Allreduces under them and
-the Allgatherv of 100 positions. Every rank runs the same calls; the printed
-time is the slowest rank's mean per call.
+ClusterImplementation.StepExchanger, buffers allocated once), v1's
+allgather_rows with ClusterImplementation.PositionGather (count and offset
+lists built once), the bare MPI calls under them, and the cost of a
+`with perf.time()` block against timing by hand. Every rank runs the same
+calls; the printed time is the slowest rank's mean per call.
+
+On 26 Nov at 24 ranks, the first version of the step exchange (new arrays and
+a result object every call) took 27.1 µs per call, the old merge check 13.2 µs,
+allgather_rows 31.0 µs and a bare Allreduce of one number 5.3 µs.
 
 Run from the project root, e.g. in a job on a reserved node:
     for P in 24 16 8; do mpirun -np $P python3 IO_Improvements/exchange_bench.py; done
@@ -66,8 +72,28 @@ timeit("Allreduce, 1 int64, world communicator", lambda: world.Allreduce(one, on
 timeit("Allreduce, (2, 7) float64, world communicator", lambda: world.Allreduce(table, table_out, op=MPI.SUM))
 timeit("Allreduce, (2, 7) float64, cluster communicator", lambda: cluster.Allreduce(table, table_out, op=MPI.SUM))
 timeit("old merge check: close_pairs_anywhere", lambda: pi.close_pairs_anywhere(cluster, [], perf))
-timeit("new step exchange: exchange_step", lambda: ci.exchange_step(state, layout, world, 0, 0, False, perf))
-timeit("Allgatherv of 100 positions (cluster communicator)",
+exchanger = ci.StepExchanger(layout, world, with_summaries=False)
+timeit("step exchange, lean: StepExchanger", lambda: exchanger(state, 0, 0, perf))
+counts = [int(c) * 3 for c in state.blocks.counts]
+displs = [int(d) * 3 for d in state.blocks.displs]
+spec = [positions, counts, displs, MPI.DOUBLE]
+timeit("bare Allgatherv of 100 positions", lambda: cluster.Allgatherv(state.my_positions, spec))
+timeit("Allgatherv via v1's allgather_rows",
        lambda: pi.allgather_rows(cluster, state.my_positions, positions, state.blocks, perf))
+gather = ci.PositionGather()
+timeit("Allgatherv via PositionGather (lists built once)", lambda: gather(cluster, state, perf))
+
+
+def timed_block() -> None:
+    with perf.time("x"):
+        pass
+
+
+def timed_by_hand() -> None:
+    ci.record(perf, "x", time.perf_counter())
+
+
+timeit("an empty `with perf.time()` block", timed_block)
+timeit("timing by hand (perf_counter + record)", timed_by_hand)
 cluster.Free()
 world.Free()
